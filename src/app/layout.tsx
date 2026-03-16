@@ -14,12 +14,19 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
+  applicationName: "DayStack",
   title: {
     default: "DayStack",
     template: "%s | DayStack",
   },
   description:
     "DayStack is a timeline-based daily execution planner for building structure, momentum, and streaks around your day.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "DayStack",
+  },
   icons: {
     icon: [
       {

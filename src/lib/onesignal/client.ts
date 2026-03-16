@@ -1,7 +1,11 @@
 "use client";
 
 import { getOneSignalEnv } from "@/lib/env";
-import type { OneSignalSubscriptionState } from "@/types/daystack";
+import type {
+  NotificationPlatform,
+  NotificationSupportState,
+  OneSignalSubscriptionState,
+} from "@/types/daystack";
 
 declare global {
   interface Window {
@@ -39,12 +43,147 @@ let sdkScriptPromise: Promise<void> | null = null;
 let readyPromise: Promise<OneSignalClient | null> | null = null;
 let hasInitialized = false;
 
+function detectPlatform(): NotificationPlatform {
+  if (typeof window === "undefined") {
+    return "unknown";
+  }
+
+  const navigatorRef = window.navigator;
+  const userAgent = navigatorRef.userAgent;
+  const isIOS =
+    /iPad|iPhone|iPod/.test(userAgent) ||
+    (navigatorRef.platform === "MacIntel" && navigatorRef.maxTouchPoints > 1);
+
+  if (isIOS) {
+    return "ios";
+  }
+
+  if (/Android/i.test(userAgent)) {
+    return "android";
+  }
+
+  if (userAgent) {
+    return "desktop";
+  }
+
+  return "unknown";
+}
+
+function detectBrowserLabel(platform: NotificationPlatform) {
+  if (typeof window === "undefined") {
+    return "this browser";
+  }
+
+  const userAgent = window.navigator.userAgent;
+
+  if (platform === "ios") {
+    return "Safari on iPhone or iPad";
+  }
+
+  if (/Edg\//.test(userAgent)) {
+    return "Edge";
+  }
+
+  if (/Firefox\//.test(userAgent)) {
+    return "Firefox";
+  }
+
+  if (/Chrome\//.test(userAgent) || /CriOS\//.test(userAgent)) {
+    return "Chrome";
+  }
+
+  if (/Safari\//.test(userAgent)) {
+    return "Safari";
+  }
+
+  return "this browser";
+}
+
+function detectStandaloneMode() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const navigatorRef = window.navigator as Navigator & { standalone?: boolean };
+  return Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || navigatorRef.standalone);
+}
+
+function detectPermissionStatus(): NotificationPermission | "unsupported" {
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    return "unsupported";
+  }
+
+  return window.Notification.permission;
+}
+
+function detectNativePushSupport() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return "Notification" in window && "serviceWorker" in window.navigator && "PushManager" in window;
+}
+
+function resolveSupportState({
+  configured,
+  isStandalone,
+  permissionStatus,
+  platform,
+  subscribed,
+  supported,
+}: {
+  configured: boolean;
+  isStandalone: boolean;
+  permissionStatus: NotificationPermission | "unsupported";
+  platform: NotificationPlatform;
+  subscribed: boolean;
+  supported: boolean;
+}): NotificationSupportState {
+  if (!configured) {
+    return "missing-config";
+  }
+
+  if (permissionStatus === "denied") {
+    return "permission-denied";
+  }
+
+  if (platform === "ios" && !isStandalone) {
+    return "needs-install";
+  }
+
+  if (!supported) {
+    return "unsupported";
+  }
+
+  if (subscribed) {
+    return "subscribed";
+  }
+
+  return "available";
+}
+
 function createDefaultState(overrides?: Partial<OneSignalSubscriptionState>): OneSignalSubscriptionState {
+  const configured = Boolean(getOneSignalEnv());
+  const platform = detectPlatform();
+  const permissionStatus = detectPermissionStatus();
+
   return {
-    configured: Boolean(getOneSignalEnv()),
-    permissionGranted: false,
+    browserLabel: detectBrowserLabel(platform),
+    configured,
+    isStandalone: detectStandaloneMode(),
+    permissionGranted: permissionStatus === "granted",
+    permissionStatus,
+    platform,
     ready: false,
-    supported: false,
+    supportState: resolveSupportState({
+      configured,
+      isStandalone: detectStandaloneMode(),
+      permissionStatus,
+      platform,
+      subscribed: false,
+      supported: detectNativePushSupport(),
+    }),
+    supported: detectNativePushSupport(),
     subscribed: false,
     subscriptionId: null,
     ...overrides,
@@ -94,16 +233,34 @@ function ensureSdkScript() {
 }
 
 function readState(oneSignal: OneSignalClient | null): OneSignalSubscriptionState {
+  const configured = Boolean(getOneSignalEnv());
+  const platform = detectPlatform();
+  const permissionStatus = detectPermissionStatus();
+  const isStandalone = detectStandaloneMode();
+
   if (!oneSignal) {
     return createDefaultState();
   }
 
-  const supported = oneSignal.Notifications?.isPushSupported?.() ?? false;
+  const supported = oneSignal.Notifications?.isPushSupported?.() ?? detectNativePushSupport();
   const subscribed = oneSignal.User?.PushSubscription?.optedIn ?? false;
 
   return createDefaultState({
-    permissionGranted: oneSignal.Notifications?.permission ?? false,
+    browserLabel: detectBrowserLabel(platform),
+    configured,
+    isStandalone,
+    permissionGranted: permissionStatus === "granted" || oneSignal.Notifications?.permission === true,
+    permissionStatus,
+    platform,
     ready: true,
+    supportState: resolveSupportState({
+      configured,
+      isStandalone,
+      permissionStatus,
+      platform,
+      subscribed,
+      supported,
+    }),
     supported,
     subscribed,
     subscriptionId: oneSignal.User?.PushSubscription?.id ?? null,
@@ -201,6 +358,10 @@ export async function enableOneSignalPush() {
 
   if (!oneSignal) {
     return createDefaultState();
+  }
+
+  if (readState(oneSignal).supportState === "needs-install") {
+    return readState(oneSignal);
   }
 
   if (oneSignal.Notifications?.isPushSupported?.() === false) {

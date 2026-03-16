@@ -16,13 +16,42 @@ import type { OneSignalSubscriptionState, UserNotificationPreferencesRecord } fr
 
 function createDefaultNotificationState(): OneSignalSubscriptionState {
   return {
+    browserLabel: "this browser",
     configured: Boolean(process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID?.trim()),
+    isStandalone: false,
     permissionGranted: false,
+    permissionStatus: "unsupported",
+    platform: "unknown",
     ready: false,
+    supportState: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID?.trim() ? "unsupported" : "missing-config",
     supported: false,
     subscribed: false,
     subscriptionId: null,
   };
+}
+
+function getPushSupportError(state: OneSignalSubscriptionState) {
+  if (state.supportState === "missing-config") {
+    return "Add your OneSignal app ID before enabling reminders.";
+  }
+
+  if (state.supportState === "needs-install") {
+    return "On iPhone and iPad, install DayStack to the Home Screen first. Then open the installed app and enable reminders there.";
+  }
+
+  if (state.supportState === "permission-denied") {
+    return `Notifications are turned off for ${state.browserLabel}. Re-enable them in the browser's site settings, then try again.`;
+  }
+
+  if (state.supportState === "unsupported") {
+    return `${state.browserLabel} cannot receive DayStack web push notifications in this context.`;
+  }
+
+  if (!state.subscribed) {
+    return "Push permission was not granted for this browser.";
+  }
+
+  return null;
 }
 
 interface UseNotificationSettingsOptions {
@@ -140,16 +169,12 @@ export function useNotificationSettings({
         const nextState = nextValue ? await enableOneSignalPush() : await disableOneSignalPush();
         setNotificationState(nextState);
 
-        if (!nextState.configured) {
-          throw new Error("Add your OneSignal app ID before enabling reminders.");
-        }
+        if (nextValue) {
+          const pushSupportError = getPushSupportError(nextState);
 
-        if (nextValue && !nextState.supported) {
-          throw new Error("This browser does not support web push notifications.");
-        }
-
-        if (nextValue && !nextState.subscribed) {
-          throw new Error("Push permission was not granted for this browser.");
+          if (pushSupportError) {
+            throw new Error(pushSupportError);
+          }
         }
 
         const nextPreferences = await updateNotificationPreferences(supabase, userId, {

@@ -130,9 +130,9 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
+    <form className="space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
       {isSignup ? (
-        <label className="block space-y-2.5">
+        <label className="block space-y-2">
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/75">
             Full name
           </span>
@@ -148,7 +148,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         </label>
       ) : null}
 
-      <label className="block space-y-2.5">
+      <label className="block space-y-2">
         <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/75">
           Email
         </span>
@@ -164,7 +164,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         {fieldErrors.email ? <p className="text-sm text-danger">{fieldErrors.email}</p> : null}
       </label>
 
-      <label className="block space-y-2.5">
+      <label className="block space-y-2">
         <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/75">
           Password
         </span>
@@ -196,7 +196,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         {isSignup ? "Create account" : "Log in"}
       </Button>
 
-      <p className="text-center text-sm text-secondary-foreground">
+      <p className="pt-1 text-center text-sm text-secondary-foreground">
         {isSignup ? "Already have an account?" : "Need an account?"}{" "}
         <Link
           href={isSignup ? "/login" : "/signup"}
@@ -206,7 +206,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         </Link>
       </p>
 
-      <p className="text-center text-xs tracking-[0.08em] text-secondary-foreground/75">
+      <p className="text-center text-[11px] tracking-[0.1em] text-secondary-foreground/75">
         {isSignup ? "Start free. Plan clearly. Follow through." : "Welcome back to a calmer day."}
       </p>
     </form>

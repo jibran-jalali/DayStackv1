@@ -18,14 +18,29 @@ export interface ParticipantProfile {
   fullName: string;
 }
 
+export type NotificationSupportState =
+  | "available"
+  | "missing-config"
+  | "needs-install"
+  | "permission-denied"
+  | "subscribed"
+  | "unsupported";
+
+export type NotificationPlatform = "android" | "desktop" | "ios" | "unknown";
+
 export interface PlannerTask extends TaskRecord {
   participants: ParticipantProfile[];
 }
 
 export interface OneSignalSubscriptionState {
+  browserLabel: string;
   configured: boolean;
+  isStandalone: boolean;
   permissionGranted: boolean;
+  permissionStatus: NotificationPermission | "unsupported";
+  platform: NotificationPlatform;
   ready: boolean;
+  supportState: NotificationSupportState;
   supported: boolean;
   subscribed: boolean;
   subscriptionId: string | null;

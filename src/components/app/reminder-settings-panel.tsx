@@ -1,4 +1,4 @@
-import { Bell, BellOff, LoaderCircle, Send } from "lucide-react";
+import { Bell, BellOff, CheckCircle2, LoaderCircle, Send, ShieldAlert, Smartphone } from "lucide-react";
 
 import { Button } from "@/components/shared/button";
 import { StatusChip } from "@/components/shared/status-chip";
@@ -16,6 +16,73 @@ interface ReminderSettingsPanelProps {
     nextValue: boolean,
   ) => void;
   preferences: UserNotificationPreferencesRecord;
+}
+
+function getSupportContent(
+  notificationState: OneSignalSubscriptionState,
+  isPushEnabled: boolean,
+) {
+  if (!notificationState.configured) {
+    return {
+      body: "Push is not connected for this deployment yet.",
+      label: "Setup",
+      steps: ["Add the OneSignal App ID and REST API key in your environment settings."],
+      tone: "default" as const,
+      title: "Reminders need OneSignal",
+    };
+  }
+
+  if (notificationState.supportState === "needs-install") {
+    return {
+      body: "iPhone and iPad web push works from the installed web app, not from a normal browser tab.",
+      label: "Home Screen",
+      steps: [
+        "Open DayStack in Safari.",
+        "Tap Share, then choose Add to Home Screen.",
+        "Open the installed DayStack app and enable reminders there.",
+      ],
+      tone: "brand" as const,
+      title: "Install DayStack first",
+    };
+  }
+
+  if (notificationState.supportState === "permission-denied") {
+    return {
+      body: `Notifications are currently turned off for ${notificationState.browserLabel}.`,
+      label: "Permission off",
+      steps: ["Open the browser's site settings, allow notifications for DayStack, then return here."],
+      tone: "warning" as const,
+      title: "Browser permission is blocked",
+    };
+  }
+
+  if (notificationState.supportState === "unsupported") {
+    return {
+      body: `${notificationState.browserLabel} cannot receive DayStack web push notifications in this context.`,
+      label: "Unavailable",
+      steps: ["Try the installed iPhone app or a push-capable browser on desktop or Android."],
+      tone: "default" as const,
+      title: "Push is not available here",
+    };
+  }
+
+  if (isPushEnabled) {
+    return {
+      body: "This browser is subscribed and ready to receive DayStack reminder pushes.",
+      label: "Ready",
+      steps: ["Use Test notification to confirm the connection before relying on reminders."],
+      tone: "success" as const,
+      title: "Reminders are active",
+    };
+  }
+
+  return {
+    body: `Push is available on ${notificationState.browserLabel} once you turn reminders on.`,
+    label: "Available",
+    steps: ["Enable reminders when you want DayStack to nudge the schedule on this device."],
+    tone: "brand" as const,
+    title: "This browser can receive reminders",
+  };
 }
 
 function ToggleRow({
@@ -73,15 +140,15 @@ export function ReminderSettingsPanel({
   onToggleSetting,
   preferences,
 }: ReminderSettingsPanelProps) {
-  const isPushReady = notificationState.configured && notificationState.supported;
+  const isPushReady =
+    notificationState.configured &&
+    (notificationState.supportState === "available" || notificationState.supportState === "subscribed");
   const isPushEnabled = preferences.push_enabled && notificationState.subscribed;
-  const helperText = !notificationState.configured
-    ? "Add your OneSignal env vars to turn on web push."
-    : !notificationState.supported
-      ? "This browser does not support web push."
-      : isPushEnabled
-        ? "Push is active on this browser."
-        : "Turn on push when you want DayStack to nudge the plan.";
+  const supportContent = getSupportContent(notificationState, isPushEnabled);
+  const canTogglePush =
+    isPushEnabled ||
+    notificationState.supportState === "available" ||
+    notificationState.supportState === "subscribed";
 
   return (
     <section
@@ -91,10 +158,10 @@ export function ReminderSettingsPanel({
         isHighlighted && "border-primary/30 shadow-[0_18px_36px_rgba(24,190,239,0.12)]",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/70">Reminders</p>
-          <p className="mt-2 text-sm text-secondary-foreground">{helperText}</p>
+          <p className="mt-2 text-sm text-secondary-foreground">{supportContent.body}</p>
         </div>
         <StatusChip
           label={isPushEnabled ? "On" : "Off"}
@@ -104,10 +171,11 @@ export function ReminderSettingsPanel({
         />
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <Button
           size="sm"
-          disabled={isBusy || !notificationState.configured || !notificationState.supported}
+          className="w-full sm:w-auto"
+          disabled={isBusy || !canTogglePush}
           onClick={() => onTogglePush(!isPushEnabled)}
         >
           {isBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : isPushEnabled ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
@@ -116,12 +184,59 @@ export function ReminderSettingsPanel({
         <Button
           size="sm"
           variant="secondary"
+          className="w-full sm:w-auto"
           disabled={isBusy || !isPushEnabled}
           onClick={onSendTest}
         >
           <Send className="h-4 w-4" />
           Test notification
         </Button>
+      </div>
+
+      <div
+        className={cn(
+          "mt-3 rounded-[18px] border px-3.5 py-3.5",
+          supportContent.tone === "success" && "border-emerald-200 bg-emerald-50/72",
+          supportContent.tone === "brand" && "border-cyan-200 bg-cyan-50/72",
+          supportContent.tone === "warning" && "border-amber-200 bg-amber-50/82",
+          supportContent.tone === "default" && "border-border/75 bg-muted/45",
+        )}
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className={cn(
+              "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+              supportContent.tone === "success" && "bg-emerald-100 text-emerald-700",
+              supportContent.tone === "brand" && "bg-cyan-100 text-sky-700",
+              supportContent.tone === "warning" && "bg-amber-100 text-amber-700",
+              supportContent.tone === "default" && "bg-white text-secondary-foreground",
+            )}
+          >
+            {supportContent.tone === "success" ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : supportContent.tone === "warning" ? (
+              <ShieldAlert className="h-4 w-4" />
+            ) : (
+              <Smartphone className="h-4 w-4" />
+            )}
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/70">
+              {supportContent.label}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-foreground">{supportContent.title}</p>
+            {supportContent.steps.length > 0 ? (
+              <ol className="mt-2 space-y-1.5 text-sm leading-6 text-secondary-foreground">
+                {supportContent.steps.map((step, index) => (
+                  <li key={step} className="flex gap-2">
+                    <span className="font-semibold text-foreground/70">{index + 1}.</span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       <div className="mt-3 space-y-2">
