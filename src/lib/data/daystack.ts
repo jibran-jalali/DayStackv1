@@ -1,9 +1,12 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import "server-only";
 
-import { expireTaskMentionNotifications, syncTaskMentionNotifications } from "@/lib/data/notifications";
+import { and, asc, desc, eq, ilike, inArray, ne, or } from "drizzle-orm";
+
+import { getDb } from "@/db/client";
+import { daily_summaries, task_participants, tasks, users } from "@/db/schema";
+import { expireTaskMentionNotifications, syncTaskMentionNotificationsForTask } from "@/lib/data/notifications";
 import { syncTaskRemindersForTask } from "@/lib/data/reminders";
 import { buildSummary, calculateActiveStreak, deriveDisplayName } from "@/lib/daystack";
-import type { Database } from "@/types/database";
 import type {
   DailySummaryRecord,
   DashboardSnapshot,
@@ -15,14 +18,24 @@ import type {
   TaskRecord,
 } from "@/types/daystack";
 
-type DayStackClient = SupabaseClient<Database>;
+type DayStackDb = NonNullable<ReturnType<typeof getDb>>;
+
+function getRequiredDb(): DayStackDb {
+  const db = getDb();
+
+  if (!db) {
+    throw new Error("Database is not configured.");
+  }
+
+  return db;
+}
 
 function createSummaryPayload(
   userId: string,
   taskDate: string,
-  tasks: Array<Pick<TaskRecord, "status" | "task_type">>,
+  tasksForDay: Array<Pick<TaskRecord, "status" | "task_type">>,
 ) {
-  const summary = buildSummary(tasks);
+  const summary = buildSummary(tasksForDay);
 
   return {
     user_id: userId,
@@ -34,69 +47,62 @@ function createSummaryPayload(
   };
 }
 
-function mapParticipantProfile(profile: Pick<ProfileRecord, "id" | "full_name">): ParticipantProfile {
+function mapParticipantProfile(
+  profile: Pick<ProfileRecord, "email" | "full_name" | "id">,
+): ParticipantProfile {
   return {
+    email: profile.email,
     id: profile.id,
-    fullName: deriveDisplayName(profile.full_name, undefined),
+    fullName: deriveDisplayName(profile.full_name, profile.email ?? undefined),
   };
 }
 
 async function fetchTaskParticipantsForTasks(
-  client: DayStackClient,
+  db: DayStackDb,
   taskIds: string[],
 ): Promise<TaskParticipantRecord[]> {
   if (taskIds.length === 0) {
     return [];
   }
 
-  const { data, error } = await client
-    .from("task_participants")
-    .select("*")
-    .in("task_id", taskIds);
-
-  if (error) {
-    throw error;
-  }
-
-  return (data ?? []) as TaskParticipantRecord[];
+  return db
+    .select()
+    .from(task_participants)
+    .where(inArray(task_participants.task_id, taskIds));
 }
 
-async function hydrateTasksWithParticipants(client: DayStackClient, tasks: TaskRecord[]): Promise<PlannerTask[]> {
-  if (tasks.length === 0) {
+async function hydrateTasksWithParticipants(
+  db: DayStackDb,
+  taskRows: TaskRecord[],
+): Promise<PlannerTask[]> {
+  if (taskRows.length === 0) {
     return [];
   }
 
-  const taskParticipants = await fetchTaskParticipantsForTasks(
-    client,
-    tasks.map((task) => task.id),
+  const participantRows = await fetchTaskParticipantsForTasks(
+    db,
+    taskRows.map((task) => task.id),
   );
 
-  if (taskParticipants.length === 0) {
-    return tasks.map((task) => ({
+  if (participantRows.length === 0) {
+    return taskRows.map((task) => ({
       ...task,
       participants: [],
     }));
   }
 
-  const participantIds = [...new Set(taskParticipants.map((participant) => participant.participant_id))];
+  const participantIds = [...new Set(participantRows.map((participant) => participant.participant_id))];
+  const profiles = await db
+    .select({
+      email: users.email,
+      full_name: users.full_name,
+      id: users.id,
+    })
+    .from(users)
+    .where(inArray(users.id, participantIds));
 
-  const { data: profiles, error: profilesError } = await client
-    .from("profiles")
-    .select("id, full_name")
-    .in("id", participantIds);
-
-  if (profilesError) {
-    throw profilesError;
-  }
-
-  const profilesById = new Map(
-    (profiles ?? []).map((profile) => [
-      profile.id,
-      mapParticipantProfile(profile as Pick<ProfileRecord, "id" | "full_name">),
-    ]),
-  );
-
-  const participantsByTaskId = taskParticipants.reduce<Map<string, ParticipantProfile[]>>((accumulator, participant) => {
+  const profilesById = new Map(profiles.map((profile) => [profile.id, mapParticipantProfile(profile)]));
+  const participantsByTaskId = participantRows.reduce<Map<string, ParticipantProfile[]>>((accumulator, participant) => {
     const profile = profilesById.get(participant.participant_id);
 
     if (!profile) {
@@ -109,148 +115,122 @@ async function hydrateTasksWithParticipants(client: DayStackClient, tasks: TaskR
     return accumulator;
   }, new Map());
 
-  return tasks.map((task) => ({
+  return taskRows.map((task) => ({
     ...task,
     participants: participantsByTaskId.get(task.id) ?? [],
   }));
 }
 
 async function replaceTaskParticipants(
-  client: DayStackClient,
+  db: DayStackDb,
   taskId: string,
   participantIds: string[],
 ) {
   const uniqueIds = [...new Set(participantIds)];
 
-  const { error: deleteError } = await client.from("task_participants").delete().eq("task_id", taskId);
-
-  if (deleteError) {
-    throw deleteError;
-  }
+  await db.delete(task_participants).where(eq(task_participants.task_id, taskId));
 
   if (uniqueIds.length === 0) {
     return;
   }
 
-  const { error: insertError } = await client.from("task_participants").insert(
+  await db.insert(task_participants).values(
     uniqueIds.map((participantId) => ({
-      task_id: taskId,
+      id: crypto.randomUUID(),
       participant_id: participantId,
+      task_id: taskId,
     })),
   );
-
-  if (insertError) {
-    throw insertError;
-  }
 }
 
 async function fetchTaskRowsForDate(
-  client: DayStackClient,
+  db: DayStackDb,
   userId: string,
   taskDate: string,
 ): Promise<TaskRecord[]> {
-  const { data, error } = await client
-    .from("tasks")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("task_date", taskDate)
-    .order("start_time", { ascending: true })
-    .order("end_time", { ascending: true });
-
-  if (error) {
-    throw error;
-  }
-
-  return (data ?? []) as TaskRecord[];
+  return db
+    .select()
+    .from(tasks)
+    .where(and(eq(tasks.user_id, userId), eq(tasks.task_date, taskDate)))
+    .orderBy(asc(tasks.start_time), asc(tasks.end_time));
 }
 
 export async function fetchTasksForDate(
-  client: DayStackClient,
   userId: string,
   taskDate: string,
 ): Promise<PlannerTask[]> {
-  const rows = await fetchTaskRowsForDate(client, userId, taskDate);
-  return hydrateTasksWithParticipants(client, rows);
+  const db = getRequiredDb();
+  const rows = await fetchTaskRowsForDate(db, userId, taskDate);
+  return hydrateTasksWithParticipants(db, rows);
 }
 
 export async function fetchRecentSummaries(
-  client: DayStackClient,
   userId: string,
   limit = 45,
 ): Promise<DailySummaryRecord[]> {
-  const { data, error } = await client
-    .from("daily_summaries")
-    .select("*")
-    .eq("user_id", userId)
-    .order("summary_date", { ascending: false })
+  const db = getRequiredDb();
+
+  return db
+    .select()
+    .from(daily_summaries)
+    .where(eq(daily_summaries.user_id, userId))
+    .orderBy(desc(daily_summaries.summary_date))
     .limit(limit);
-
-  if (error) {
-    throw error;
-  }
-
-  return (data ?? []) as DailySummaryRecord[];
 }
 
-export async function fetchProfile(client: DayStackClient, userId: string): Promise<ProfileRecord | null> {
-  const { data, error } = await client
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  return (data ?? null) as ProfileRecord | null;
+export async function fetchProfile(userId: string): Promise<ProfileRecord | null> {
+  const db = getRequiredDb();
+  const [profile] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  return profile ?? null;
 }
 
 export async function syncDailySummaryForDate(
-  client: DayStackClient,
   userId: string,
   taskDate: string,
 ): Promise<DailySummaryRecord> {
-  const tasks = await fetchTaskRowsForDate(client, userId, taskDate);
-  const payload = createSummaryPayload(userId, taskDate, tasks);
+  const db = getRequiredDb();
+  const tasksForDay = await fetchTaskRowsForDate(db, userId, taskDate);
+  const payload = createSummaryPayload(userId, taskDate, tasksForDay);
+  const now = new Date().toISOString();
 
-  const { data, error } = await client
-    .from("daily_summaries")
-    .upsert(payload, {
-      onConflict: "user_id,summary_date",
+  const [summary] = await db
+    .insert(daily_summaries)
+    .values({
+      id: crypto.randomUUID(),
+      ...payload,
+      created_at: now,
+      updated_at: now,
     })
-    .select("*")
-    .single();
+    .onConflictDoUpdate({
+      target: [daily_summaries.user_id, daily_summaries.summary_date],
+      set: {
+        ...payload,
+        updated_at: now,
+      },
+    })
+    .returning();
 
-  if (error) {
-    throw error;
-  }
-
-  return data as DailySummaryRecord;
+  return summary;
 }
 
 export async function fetchDashboardSnapshot(
-  client: DayStackClient,
   userId: string,
   taskDate: string,
 ): Promise<DashboardSnapshot> {
-  const [tasks, persistedSummary, recentSummaries] = await Promise.all([
-    fetchTasksForDate(client, userId, taskDate),
-    client
-      .from("daily_summaries")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("summary_date", taskDate)
-      .maybeSingle(),
-    fetchRecentSummaries(client, userId),
+  const db = getRequiredDb();
+  const [tasksForDay, persistedSummary, recentSummaries] = await Promise.all([
+    fetchTasksForDate(userId, taskDate),
+    db
+      .select()
+      .from(daily_summaries)
+      .where(and(eq(daily_summaries.user_id, userId), eq(daily_summaries.summary_date, taskDate)))
+      .limit(1)
+      .then((rows) => rows[0] ?? null),
+    fetchRecentSummaries(userId),
   ]);
 
-  if (persistedSummary.error) {
-    throw persistedSummary.error;
-  }
-
-  const summary = buildSummary(tasks);
-  const liveSummary = (persistedSummary.data ?? {
+  const summary = buildSummary(tasksForDay);
+  const liveSummary = (persistedSummary ?? {
     id: `live-${taskDate}`,
     user_id: userId,
     summary_date: taskDate,
@@ -262,25 +242,31 @@ export async function fetchDashboardSnapshot(
     updated_at: new Date().toISOString(),
   }) as DailySummaryRecord;
 
-  const mergedSummaries = [liveSummary, ...recentSummaries.filter((item) => item.summary_date !== taskDate)] as DailySummaryRecord[];
+  const mergedSummaries = [
+    liveSummary,
+    ...recentSummaries.filter((item) => item.summary_date !== taskDate),
+  ] as DailySummaryRecord[];
 
   return {
     taskDate,
-    tasks,
+    tasks: tasksForDay,
     recentSummaries: mergedSummaries,
     summary,
     streak: calculateActiveStreak(mergedSummaries, taskDate),
-  } as DashboardSnapshot;
+  };
 }
 
 export async function createTask(
-  client: DayStackClient,
   userId: string,
   values: TaskFormValues,
 ): Promise<TaskRecord> {
-  const { data, error } = await client
-    .from("tasks")
-    .insert({
+  const db = getRequiredDb();
+  const taskId = crypto.randomUUID();
+
+  const [createdTask] = await db
+    .insert(tasks)
+    .values({
+      id: taskId,
       user_id: userId,
       title: values.title,
       task_date: values.taskDate,
@@ -290,213 +276,198 @@ export async function createTask(
       meeting_link: values.taskType === "meeting" ? values.meetingLink || null : null,
       status: "pending",
     })
-    .select("*")
-    .single();
+    .returning();
 
-  if (error) {
-    throw error;
-  }
+  const participantIds =
+    values.taskType === "meeting" ? values.participants.map((participant) => participant.id) : [];
 
-  const createdTask = data as TaskRecord;
-  const participantIds = values.taskType === "meeting" ? values.participants.map((participant) => participant.id) : [];
-
-  await replaceTaskParticipants(client, createdTask.id, participantIds);
+  await replaceTaskParticipants(db, createdTask.id, participantIds);
   await Promise.all([
-    syncTaskMentionNotifications(createdTask.id),
-    syncTaskRemindersForTask(client, userId, createdTask),
-    syncDailySummaryForDate(client, userId, values.taskDate),
+    syncTaskMentionNotificationsForTask(userId, createdTask.id),
+    syncTaskRemindersForTask(userId, createdTask),
+    syncDailySummaryForDate(userId, values.taskDate),
   ]);
 
   return createdTask;
 }
 
 export async function updateTask(
-  client: DayStackClient,
   userId: string,
   taskId: string,
   values: TaskFormValues,
 ): Promise<TaskRecord> {
-  const { data: existingTask, error: existingTaskError } = await client
-    .from("tasks")
-    .select("task_date")
-    .eq("id", taskId)
-    .eq("user_id", userId)
-    .single();
+  const db = getRequiredDb();
+  const [existingTask] = await db
+    .select({ task_date: tasks.task_date })
+    .from(tasks)
+    .where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)))
+    .limit(1);
 
-  if (existingTaskError) {
-    throw existingTaskError;
+  if (!existingTask) {
+    throw new Error("Task not found.");
   }
 
-  const { data, error } = await client
-    .from("tasks")
-    .update({
+  const [updatedTask] = await db
+    .update(tasks)
+    .set({
       title: values.title,
       task_date: values.taskDate,
       start_time: values.startTime,
       end_time: values.endTime,
       task_type: values.taskType,
       meeting_link: values.taskType === "meeting" ? values.meetingLink || null : null,
+      updated_at: new Date().toISOString(),
     })
-    .eq("id", taskId)
-    .eq("user_id", userId)
-    .select("*")
-    .single();
+    .where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)))
+    .returning();
 
-  if (error) {
-    throw error;
-  }
+  const participantIds =
+    values.taskType === "meeting" ? values.participants.map((participant) => participant.id) : [];
 
-  const updatedTask = data as TaskRecord;
-  const participantIds = values.taskType === "meeting" ? values.participants.map((participant) => participant.id) : [];
-
-  await replaceTaskParticipants(client, taskId, participantIds);
+  await replaceTaskParticipants(db, taskId, participantIds);
   await Promise.all([
-    syncTaskMentionNotifications(updatedTask.id),
-    syncTaskRemindersForTask(client, userId, updatedTask),
+    syncTaskMentionNotificationsForTask(userId, updatedTask.id),
+    syncTaskRemindersForTask(userId, updatedTask),
   ]);
 
   if (existingTask.task_date !== values.taskDate) {
     await Promise.all([
-      syncDailySummaryForDate(client, userId, existingTask.task_date),
-      syncDailySummaryForDate(client, userId, values.taskDate),
+      syncDailySummaryForDate(userId, existingTask.task_date),
+      syncDailySummaryForDate(userId, values.taskDate),
     ]);
   } else {
-    await syncDailySummaryForDate(client, userId, values.taskDate);
+    await syncDailySummaryForDate(userId, values.taskDate);
   }
 
   return updatedTask;
 }
 
 export async function rescheduleTask(
-  client: DayStackClient,
   userId: string,
   taskId: string,
   values: Pick<TaskFormValues, "endTime" | "startTime" | "taskDate">,
 ): Promise<TaskRecord> {
-  const { data: existingTask, error: existingTaskError } = await client
-    .from("tasks")
-    .select("task_date")
-    .eq("id", taskId)
-    .eq("user_id", userId)
-    .single();
+  const db = getRequiredDb();
+  const [existingTask] = await db
+    .select({ task_date: tasks.task_date })
+    .from(tasks)
+    .where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)))
+    .limit(1);
 
-  if (existingTaskError) {
-    throw existingTaskError;
+  if (!existingTask) {
+    throw new Error("Task not found.");
   }
 
-  const { data, error } = await client
-    .from("tasks")
-    .update({
+  const [rescheduledTask] = await db
+    .update(tasks)
+    .set({
       end_time: values.endTime,
       start_time: values.startTime,
       task_date: values.taskDate,
+      updated_at: new Date().toISOString(),
     })
-    .eq("id", taskId)
-    .eq("user_id", userId)
-    .select("*")
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  const rescheduledTask = data as TaskRecord;
+    .where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)))
+    .returning();
 
   await Promise.all([
-    syncTaskMentionNotifications(rescheduledTask.id),
-    syncTaskRemindersForTask(client, userId, rescheduledTask),
+    syncTaskMentionNotificationsForTask(userId, rescheduledTask.id),
+    syncTaskRemindersForTask(userId, rescheduledTask),
   ]);
 
   if (existingTask.task_date !== values.taskDate) {
     await Promise.all([
-      syncDailySummaryForDate(client, userId, existingTask.task_date),
-      syncDailySummaryForDate(client, userId, values.taskDate),
+      syncDailySummaryForDate(userId, existingTask.task_date),
+      syncDailySummaryForDate(userId, values.taskDate),
     ]);
   } else {
-    await syncDailySummaryForDate(client, userId, values.taskDate);
+    await syncDailySummaryForDate(userId, values.taskDate);
   }
 
   return rescheduledTask;
 }
 
-export async function deleteTask(client: DayStackClient, userId: string, taskId: string): Promise<string> {
-  const { data, error } = await client
-    .from("tasks")
-    .delete()
-    .eq("id", taskId)
-    .eq("user_id", userId)
-    .select("task_date")
-    .single();
+export async function deleteTask(userId: string, taskId: string): Promise<string> {
+  const db = getRequiredDb();
+  const [task] = await db
+    .select({ task_date: tasks.task_date })
+    .from(tasks)
+    .where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)))
+    .limit(1);
 
-  if (error) {
-    throw error;
+  if (!task) {
+    throw new Error("Task not found.");
   }
 
-  const deletedTask = data as { task_date: string };
+  await db.delete(tasks).where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)));
 
   await Promise.all([
-    expireTaskMentionNotifications(client, userId, taskId),
-    syncDailySummaryForDate(client, userId, deletedTask.task_date),
+    expireTaskMentionNotifications(userId, taskId),
+    syncDailySummaryForDate(userId, task.task_date),
   ]);
 
-  return deletedTask.task_date;
+  return task.task_date;
 }
 
 export async function toggleTaskStatus(
-  client: DayStackClient,
   userId: string,
   taskId: string,
   status: "pending" | "completed",
 ): Promise<TaskRecord> {
-  const { data, error } = await client
-    .from("tasks")
-    .update({
+  const db = getRequiredDb();
+  const [nextTask] = await db
+    .update(tasks)
+    .set({
       status,
+      updated_at: new Date().toISOString(),
     })
-    .eq("id", taskId)
-    .eq("user_id", userId)
-    .select("*")
-    .single();
+    .where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)))
+    .returning();
 
-  if (error) {
-    throw error;
+  if (!nextTask) {
+    throw new Error("Task not found.");
   }
 
-  const nextTask = data as TaskRecord;
-
-  await syncTaskRemindersForTask(client, userId, nextTask);
-  await syncDailySummaryForDate(client, userId, nextTask.task_date);
+  await syncTaskRemindersForTask(userId, nextTask);
+  await syncDailySummaryForDate(userId, nextTask.task_date);
 
   return nextTask;
 }
 
 export async function searchProfiles(
-  client: DayStackClient,
   query: string,
   options?: {
     excludeUserId?: string;
     limit?: number;
   },
 ): Promise<ParticipantProfile[]> {
-  let request = client.from("profiles").select("id, full_name");
+  const db = getRequiredDb();
+  const limit = options?.limit ?? 6;
+  const normalizedQuery = query.trim();
+  const conditions = [];
 
   if (options?.excludeUserId) {
-    request = request.neq("id", options.excludeUserId);
+    conditions.push(ne(users.id, options.excludeUserId));
   }
-
-  const normalizedQuery = query.trim();
 
   if (normalizedQuery.length > 0) {
-    request = request.ilike("full_name", `%${normalizedQuery}%`);
+    conditions.push(
+      or(
+        ilike(users.full_name, `%${normalizedQuery}%`),
+        ilike(users.email, `%${normalizedQuery}%`),
+      )!,
+    );
   }
 
-  const { data, error } = await request
-    .order("full_name", { ascending: true })
-    .limit(options?.limit ?? 6);
+  const results = await db
+    .select({
+      email: users.email,
+      full_name: users.full_name,
+      id: users.id,
+    })
+    .from(users)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(asc(users.full_name), asc(users.email))
+    .limit(limit);
 
-  if (error) {
-    throw error;
-  }
-
-  return (data ?? []).map((profile) => mapParticipantProfile(profile as Pick<ProfileRecord, "id" | "full_name">));
+  return results.map((profile) => mapParticipantProfile(profile));
 }

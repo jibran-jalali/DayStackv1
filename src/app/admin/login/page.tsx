@@ -50,7 +50,7 @@ export default async function AdminLoginPage() {
                   </h1>
                   <p className="max-w-xl text-base leading-7 text-secondary-foreground sm:text-lg sm:leading-8">
                     This console is isolated from the normal planner flow. Credentials are validated on the server
-                    only, and account actions run through the Supabase service role after an admin session is
+                    only, and account actions run directly against the DayStack database after an admin session is
                     established.
                   </p>
                 </div>

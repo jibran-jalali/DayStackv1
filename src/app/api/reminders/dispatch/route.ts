@@ -5,9 +5,8 @@ import {
   fetchDueTaskReminders,
   updateTaskReminderStatus,
 } from "@/lib/data/reminders";
+import { getSessionUser } from "@/lib/auth";
 import { isOneSignalServerConfigured, sendOneSignalNotification } from "@/lib/onesignal/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { createSupabaseServiceClient } from "@/lib/supabase/service";
 
 export const runtime = "nodejs";
 
@@ -26,19 +25,8 @@ export async function POST(request: Request) {
   const isCronRequest = Boolean(cronSecret && authorization === `Bearer ${cronSecret}`);
   const appUrl = `${new URL(request.url).origin}/app`;
 
-  const serviceClient = createSupabaseServiceClient();
-
   if (isCronRequest) {
-    if (!serviceClient) {
-      return NextResponse.json(
-        {
-          error: "SUPABASE_SERVICE_ROLE_KEY is required for global reminder dispatch.",
-        },
-        { status: 503 },
-      );
-    }
-
-    const reminders = await fetchDueTaskReminders(serviceClient, {
+    const reminders = await fetchDueTaskReminders({
       limit: 50,
     });
 
@@ -48,10 +36,10 @@ export async function POST(request: Request) {
 
     for (const dueReminder of reminders) {
       try {
-        await updateTaskReminderStatus(serviceClient, dueReminder.reminder.id, "processing");
+        await updateTaskReminderStatus(dueReminder.reminder.id, "processing");
 
         if (!dueReminder.preferences.push_enabled || dueReminder.task.status === "completed") {
-          await updateTaskReminderStatus(serviceClient, dueReminder.reminder.id, "skipped");
+          await updateTaskReminderStatus(dueReminder.reminder.id, "skipped");
           skipped += 1;
           continue;
         }
@@ -71,12 +59,12 @@ export async function POST(request: Request) {
           url: appUrl,
         });
 
-        await updateTaskReminderStatus(serviceClient, dueReminder.reminder.id, "sent", {
+        await updateTaskReminderStatus(dueReminder.reminder.id, "sent", {
           sentAt: new Date().toISOString(),
         });
         sent += 1;
       } catch {
-        await updateTaskReminderStatus(serviceClient, dueReminder.reminder.id, "failed");
+        await updateTaskReminderStatus(dueReminder.reminder.id, "failed");
         failed += 1;
       }
     }
@@ -89,20 +77,7 @@ export async function POST(request: Request) {
     });
   }
 
-  const supabase = await createSupabaseServerClient();
-
-  if (!supabase) {
-    return NextResponse.json(
-      {
-        error: "Supabase is not configured.",
-      },
-      { status: 503 },
-    );
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) {
     return NextResponse.json(
@@ -113,7 +88,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const reminders = await fetchDueTaskReminders(supabase, {
+  const reminders = await fetchDueTaskReminders({
     limit: 20,
     userId: user.id,
   });
@@ -124,12 +99,12 @@ export async function POST(request: Request) {
 
   for (const dueReminder of reminders) {
     try {
-      await updateTaskReminderStatus(supabase, dueReminder.reminder.id, "processing", {
+      await updateTaskReminderStatus(dueReminder.reminder.id, "processing", {
         userId: user.id,
       });
 
       if (!dueReminder.preferences.push_enabled || dueReminder.task.status === "completed") {
-        await updateTaskReminderStatus(supabase, dueReminder.reminder.id, "skipped", {
+        await updateTaskReminderStatus(dueReminder.reminder.id, "skipped", {
           userId: user.id,
         });
         skipped += 1;
@@ -151,13 +126,13 @@ export async function POST(request: Request) {
         url: appUrl,
       });
 
-      await updateTaskReminderStatus(supabase, dueReminder.reminder.id, "sent", {
+      await updateTaskReminderStatus(dueReminder.reminder.id, "sent", {
         sentAt: new Date().toISOString(),
         userId: user.id,
       });
       sent += 1;
     } catch {
-      await updateTaskReminderStatus(supabase, dueReminder.reminder.id, "failed", {
+      await updateTaskReminderStatus(dueReminder.reminder.id, "failed", {
         userId: user.id,
       });
       failed += 1;

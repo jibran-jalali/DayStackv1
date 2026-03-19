@@ -1,15 +1,24 @@
 import { z } from "zod";
+import type { InferSelectModel } from "drizzle-orm";
 
-import type { Database } from "@/types/database";
+import type {
+  daily_summaries,
+  task_notifications,
+  task_participants,
+  task_reminders,
+  tasks,
+  user_notification_preferences,
+  users,
+} from "@/db/schema";
 
-export type TaskRecord = Database["public"]["Tables"]["tasks"]["Row"];
-export type DailySummaryRecord = Database["public"]["Tables"]["daily_summaries"]["Row"];
-export type ProfileRecord = Database["public"]["Tables"]["profiles"]["Row"];
-export type TaskParticipantRecord = Database["public"]["Tables"]["task_participants"]["Row"];
-export type UserNotificationPreferencesRecord =
-  Database["public"]["Tables"]["user_notification_preferences"]["Row"];
-export type TaskReminderRecord = Database["public"]["Tables"]["task_reminders"]["Row"];
-export type TaskNotificationRecord = Database["public"]["Tables"]["task_notifications"]["Row"];
+export type UserRecord = InferSelectModel<typeof users>;
+export type TaskRecord = InferSelectModel<typeof tasks>;
+export type DailySummaryRecord = InferSelectModel<typeof daily_summaries>;
+export type ProfileRecord = UserRecord;
+export type TaskParticipantRecord = InferSelectModel<typeof task_participants>;
+export type UserNotificationPreferencesRecord = InferSelectModel<typeof user_notification_preferences>;
+export type TaskReminderRecord = InferSelectModel<typeof task_reminders>;
+export type TaskNotificationRecord = InferSelectModel<typeof task_notifications>;
 export type TaskType = TaskRecord["task_type"];
 export type ReminderType = TaskReminderRecord["reminder_type"];
 export type ReminderStatus = TaskReminderRecord["status"];

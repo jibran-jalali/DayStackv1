@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, LoaderCircle } from "lucide-react";
+import { signIn } from "next-auth/react";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/shared/button";
 import { Input } from "@/components/shared/input";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { getErrorMessage } from "@/lib/utils";
 import { loginSchema, signupSchema, type LoginValues, type SignupValues } from "@/types/daystack";
 
@@ -69,53 +69,53 @@ export function AuthForm({ mode }: AuthFormProps) {
     }
 
     startTransition(async () => {
-      const supabase = createSupabaseBrowserClient();
-
-      if (!supabase) {
-        setFeedback({
-          type: "error",
-          message: "Add your Supabase environment variables to enable authentication.",
-        });
-        return;
-      }
-
       try {
         if (mode === "signup") {
-          const { data, error } = await supabase.auth.signUp({
+          const signupResponse = await fetch("/api/auth/signup", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              email: values.email,
+              fullName: values.fullName,
+              password: values.password,
+            }),
+          });
+
+          const signupPayload = (await signupResponse.json().catch(() => null)) as
+            | {
+                message?: string;
+              }
+            | null;
+
+          if (!signupResponse.ok) {
+            throw new Error(signupPayload?.message ?? "Account creation failed.");
+          }
+
+          const result = await signIn("credentials", {
             email: values.email,
             password: values.password,
-            options: {
-              data: {
-                full_name: values.fullName?.trim() || null,
-              },
-            },
+            redirect: false,
           });
 
-          if (error) {
-            throw error;
+          if (result?.error) {
+            throw new Error("Account created, but automatic sign-in failed. Please log in.");
           }
 
-          if (data.session) {
-            router.replace("/app");
-            router.refresh();
-            return;
-          }
-
-          setFeedback({
-            type: "success",
-            message:
-              "Account created. If email confirmation is enabled in Supabase, verify your inbox before logging in.",
-          });
+          router.replace("/app");
+          router.refresh();
           return;
         }
 
-        const { error } = await supabase.auth.signInWithPassword({
+        const result = await signIn("credentials", {
           email: values.email,
           password: values.password,
+          redirect: false,
         });
 
-        if (error) {
-          throw error;
+        if (result?.error) {
+          throw new Error("Invalid email or password.");
         }
 
         router.replace("/app");

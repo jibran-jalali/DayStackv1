@@ -5,6 +5,7 @@ import { AdminDashboard } from "@/components/admin/admin-dashboard";
 import { SetupNotice } from "@/components/shared/setup-notice";
 import { fetchAdminDashboardSnapshot } from "@/lib/admin/data";
 import { isAdminConfigured, requireAdminAuthentication } from "@/lib/admin/auth";
+import { isDatabaseConfigured } from "@/lib/env";
 import type { AdminDashboardSnapshot } from "@/types/admin";
 
 export const metadata = {
@@ -39,6 +40,19 @@ function AdminErrorState({
 }
 
 export default async function AdminPage() {
+  if (!isDatabaseConfigured()) {
+    return (
+      <main className="container-shell min-h-screen py-6">
+        <SetupNotice
+          showAction={false}
+          eyebrow="Database environment required"
+          title="Set POSTGRES_URL before opening /admin."
+          description="The internal admin route needs the main DayStack database to be configured."
+        />
+      </main>
+    );
+  }
+
   if (!isAdminConfigured()) {
     return (
       <main className="container-shell min-h-screen py-6">
@@ -65,24 +79,6 @@ export default async function AdminPage() {
     snapshot = await fetchAdminDashboardSnapshot();
   } catch (error) {
     console.error("Admin dashboard bootstrap failed:", error);
-
-    if (error instanceof Error && error.message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
-      return (
-        <main className="container-shell min-h-screen py-6">
-          <SetupNotice
-            showAction={false}
-            eyebrow="Service role required"
-            title="Add SUPABASE_SERVICE_ROLE_KEY to load account management data."
-            description={
-              <>
-                Listing, disabling, activating, and deleting users depends on the Supabase service role. Add{" "}
-                <code>SUPABASE_SERVICE_ROLE_KEY</code> to the server environment for the admin route.
-              </>
-            }
-          />
-        </main>
-      );
-    }
 
     return (
       <AdminErrorState

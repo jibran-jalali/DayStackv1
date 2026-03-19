@@ -1,27 +1,50 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import "server-only";
 
-import { buildSummary, deriveDisplayName } from "@/lib/daystack";
+import { and, desc, eq, inArray } from "drizzle-orm";
+
+import { getDb } from "@/db/client";
+import {
+  daily_summaries,
+  task_notifications,
+  task_participants,
+  tasks,
+  users,
+} from "@/db/schema";
 import { syncTaskRemindersForTask } from "@/lib/data/reminders";
-import type { Database } from "@/types/database";
+import { buildSummary, deriveDisplayName } from "@/lib/daystack";
 import type {
   ParticipantProfile,
   PlannerNotification,
   ProfileRecord,
   TaskNotificationAcceptResult,
-  TaskNotificationRecord,
   TaskRecord,
 } from "@/types/daystack";
 
-type DayStackClient = SupabaseClient<Database>;
+type DayStackDb = NonNullable<ReturnType<typeof getDb>>;
 
-function mapParticipantProfile(profile: Pick<ProfileRecord, "id" | "full_name">): ParticipantProfile {
+function getRequiredDb(): DayStackDb {
+  const db = getDb();
+
+  if (!db) {
+    throw new Error("Database is not configured.");
+  }
+
+  return db;
+}
+
+function mapParticipantProfile(
+  profile: Pick<ProfileRecord, "email" | "full_name" | "id">,
+): ParticipantProfile {
   return {
+    email: profile.email,
     id: profile.id,
-    fullName: deriveDisplayName(profile.full_name, undefined),
+    fullName: deriveDisplayName(profile.full_name, profile.email ?? undefined),
   };
 }
 
-function createNotificationSnapshot(task: Pick<TaskRecord, "end_time" | "id" | "meeting_link" | "start_time" | "task_date" | "task_type" | "title">) {
+function createNotificationSnapshot(
+  task: Pick<TaskRecord, "end_time" | "id" | "meeting_link" | "start_time" | "task_date" | "task_type" | "title">,
+) {
   return {
     end_time: task.end_time,
     meeting_link: task.meeting_link,
@@ -33,164 +56,55 @@ function createNotificationSnapshot(task: Pick<TaskRecord, "end_time" | "id" | "
   };
 }
 
-async function syncTaskMentionNotificationsInDatabase(
-  client: DayStackClient,
-  actorUserId: string,
-  taskId: string,
-) {
-  const [{ data: taskRow, error: taskError }, { data: participantRows, error: participantError }, { data: notificationRows, error: notificationError }] =
-    await Promise.all([
-      client
-        .from("tasks")
-        .select("end_time, id, meeting_link, start_time, task_date, task_type, title, user_id")
-        .eq("id", taskId)
-        .eq("user_id", actorUserId)
-        .single(),
-      client.from("task_participants").select("participant_id").eq("task_id", taskId),
-      client
-        .from("task_notifications")
-        .select("*")
-        .eq("task_id", taskId)
-        .eq("notification_type", "task_mention"),
-    ]);
+async function syncAcceptedTaskSummary(userId: string, taskDate: string) {
+  const db = getRequiredDb();
+  const rows = await db
+    .select({
+      status: tasks.status,
+      task_type: tasks.task_type,
+    })
+    .from(tasks)
+    .where(and(eq(tasks.user_id, userId), eq(tasks.task_date, taskDate)));
 
-  if (taskError) {
-    throw taskError;
-  }
+  const summary = buildSummary(rows);
+  const now = new Date().toISOString();
 
-  if (participantError) {
-    throw participantError;
-  }
-
-  if (notificationError) {
-    throw notificationError;
-  }
-
-  const task = taskRow as Pick<
-    TaskRecord,
-    "end_time" | "id" | "meeting_link" | "start_time" | "task_date" | "task_type" | "title" | "user_id"
-  >;
-  const existingRows = (notificationRows ?? []) as TaskNotificationRecord[];
-  const nextRecipientIds =
-    task.task_type === "meeting"
-      ? [
-          ...new Set(
-              (participantRows ?? [])
-                .map((row) => row.participant_id)
-                .filter((participantId): participantId is string => Boolean(participantId) && participantId !== actorUserId),
-            ),
-        ]
-      : [];
-  const nextRecipientIdSet = new Set(nextRecipientIds);
-  const acceptedRows = existingRows.filter(
-    (notification) => notification.status === "accepted" && nextRecipientIdSet.has(notification.user_id),
-  );
-  const upsertRows = nextRecipientIds
-    .filter((recipientId) => !acceptedRows.some((notification) => notification.user_id === recipientId))
-    .map((recipientId) => ({
-      actor_user_id: actorUserId,
-      notification_type: "task_mention" as const,
-      read_at: null,
-      status: "pending" as const,
-      user_id: recipientId,
-      ...createNotificationSnapshot(task),
-    }));
-
-  if (upsertRows.length > 0) {
-    const { error: upsertError } = await client.from("task_notifications").upsert(upsertRows, {
-      onConflict: "task_id,user_id,notification_type",
-    });
-
-    if (upsertError) {
-      throw upsertError;
-    }
-  }
-
-  if (acceptedRows.length > 0) {
-    const { error: acceptedUpdateError } = await client
-      .from("task_notifications")
-      .update({
-        actor_user_id: actorUserId,
-        ...createNotificationSnapshot(task),
-      })
-      .in(
-        "id",
-        acceptedRows.map((notification) => notification.id),
-      );
-
-    if (acceptedUpdateError) {
-      throw acceptedUpdateError;
-    }
-  }
-
-  const dismissedIds = existingRows
-    .filter((notification) => notification.status === "pending" && !nextRecipientIdSet.has(notification.user_id))
-    .map((notification) => notification.id);
-
-  if (dismissedIds.length > 0) {
-    const { error: dismissError } = await client
-      .from("task_notifications")
-      .update({
-        read_at: new Date().toISOString(),
-        status: "dismissed",
-      })
-      .in("id", dismissedIds);
-
-    if (dismissError) {
-      throw dismissError;
-    }
-  }
-}
-
-async function syncAcceptedTaskSummary(client: DayStackClient, userId: string, taskDate: string) {
-  const { data: tasks, error: tasksError } = await client
-    .from("tasks")
-    .select("status, task_type")
-    .eq("user_id", userId)
-    .eq("task_date", taskDate);
-
-  if (tasksError) {
-    throw tasksError;
-  }
-
-  const summary = buildSummary((tasks ?? []) as Array<Pick<TaskRecord, "status" | "task_type">>);
-
-  const { error: summaryError } = await client.from("daily_summaries").upsert(
-    {
+  await db
+    .insert(daily_summaries)
+    .values({
+      id: crypto.randomUUID(),
       user_id: userId,
       summary_date: taskDate,
       total_tasks: summary.totalTasks,
       completed_tasks: summary.completedTasks,
       execution_score: summary.executionScore,
       successful_day: summary.successfulDay,
-    },
-    {
-      onConflict: "user_id,summary_date",
-    },
-  );
-
-  if (summaryError) {
-    throw summaryError;
-  }
+      created_at: now,
+      updated_at: now,
+    })
+    .onConflictDoUpdate({
+      target: [daily_summaries.user_id, daily_summaries.summary_date],
+      set: {
+        total_tasks: summary.totalTasks,
+        completed_tasks: summary.completedTasks,
+        execution_score: summary.executionScore,
+        successful_day: summary.successfulDay,
+        updated_at: now,
+      },
+    });
 }
 
 export async function fetchTaskNotifications(
-  client: DayStackClient,
   userId: string,
   limit = 10,
 ): Promise<PlannerNotification[]> {
-  const { data, error } = await client
-    .from("task_notifications")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
+  const db = getRequiredDb();
+  const notificationRows = await db
+    .select()
+    .from(task_notifications)
+    .where(eq(task_notifications.user_id, userId))
+    .orderBy(desc(task_notifications.created_at))
     .limit(limit);
-
-  if (error) {
-    throw error;
-  }
-
-  const notificationRows = (data ?? []) as TaskNotificationRecord[];
 
   if (notificationRows.length === 0) {
     return [];
@@ -205,30 +119,29 @@ export async function fetchTaskNotifications(
     ),
   ];
 
-  const [{ data: profiles, error: profilesError }, { data: acceptedTasks, error: acceptedTasksError }] =
-    await Promise.all([
-      client.from("profiles").select("id, full_name").in("id", actorIds),
-      acceptedTaskIds.length > 0
-        ? client.from("tasks").select("id, task_date").in("id", acceptedTaskIds)
-        : Promise.resolve({ data: [], error: null }),
-    ]);
+  const [actorRows, acceptedTaskRows] = await Promise.all([
+    db
+      .select({
+        email: users.email,
+        full_name: users.full_name,
+        id: users.id,
+      })
+      .from(users)
+      .where(inArray(users.id, actorIds)),
+    acceptedTaskIds.length > 0
+      ? db
+          .select({
+            id: tasks.id,
+            task_date: tasks.task_date,
+          })
+          .from(tasks)
+          .where(inArray(tasks.id, acceptedTaskIds))
+      : Promise.resolve([]),
+  ]);
 
-  if (profilesError) {
-    throw profilesError;
-  }
-
-  if (acceptedTasksError) {
-    throw acceptedTasksError;
-  }
-
-  const actorsById = new Map(
-    (profiles ?? []).map((profile) => [
-      profile.id,
-      mapParticipantProfile(profile as Pick<ProfileRecord, "id" | "full_name">),
-    ]),
-  );
+  const actorsById = new Map(actorRows.map((actor) => [actor.id, mapParticipantProfile(actor)]));
   const acceptedTaskDatesById = new Map(
-    ((acceptedTasks ?? []) as Array<Pick<TaskRecord, "id" | "task_date">>).map((task) => [task.id, task.task_date]),
+    acceptedTaskRows.map((task) => [task.id, task.task_date]),
   );
 
   return notificationRows
@@ -274,125 +187,347 @@ export async function fetchTaskNotifications(
     });
 }
 
-export async function markTaskNotificationsRead(client: DayStackClient, notificationIds: string[]) {
+export async function markTaskNotificationsRead(userId: string, notificationIds: string[]) {
+  const db = getRequiredDb();
   const uniqueIds = [...new Set(notificationIds)];
 
   if (uniqueIds.length === 0) {
     return 0;
   }
 
-  const { data, error } = await client.rpc("mark_task_notifications_read", {
-    p_notification_ids: uniqueIds,
-  });
+  const updatedRows = await db
+    .update(task_notifications)
+    .set({
+      read_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(task_notifications.user_id, userId),
+        inArray(task_notifications.id, uniqueIds),
+      ),
+    )
+    .returning({ id: task_notifications.id });
 
-  if (error) {
-    throw error;
-  }
-
-  return data ?? 0;
+  return updatedRows.length;
 }
 
 export async function syncTaskMentionNotificationsForTask(
-  client: DayStackClient,
   actorUserId: string,
   taskId: string,
 ) {
-  await syncTaskMentionNotificationsInDatabase(client, actorUserId, taskId);
-}
+  const db = getRequiredDb();
+  const [task] = await db
+    .select({
+      end_time: tasks.end_time,
+      id: tasks.id,
+      meeting_link: tasks.meeting_link,
+      start_time: tasks.start_time,
+      task_date: tasks.task_date,
+      task_type: tasks.task_type,
+      title: tasks.title,
+      user_id: tasks.user_id,
+    })
+    .from(tasks)
+    .where(and(eq(tasks.id, taskId), eq(tasks.user_id, actorUserId)))
+    .limit(1);
 
-export async function syncTaskMentionNotifications(taskId: string) {
-  const response = await fetch("/api/tasks/mentions/sync", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      taskId,
-    }),
-  });
+  if (!task) {
+    throw new Error("Task not found.");
+  }
 
-  const payload = (await response.json().catch(() => null)) as
-    | {
-        message?: string;
-      }
-    | null;
+  const [participantRows, existingRows] = await Promise.all([
+    db
+      .select({ participant_id: task_participants.participant_id })
+      .from(task_participants)
+      .where(eq(task_participants.task_id, taskId)),
+    db
+      .select()
+      .from(task_notifications)
+      .where(
+        and(
+          eq(task_notifications.task_id, taskId),
+          eq(task_notifications.notification_type, "task_mention"),
+        ),
+      ),
+  ]);
 
-  if (!response.ok) {
-    throw new Error(payload?.message ?? "Mention notifications could not be synchronized.");
+  const nextRecipientIds =
+    task.task_type === "meeting"
+      ? [
+          ...new Set(
+              participantRows
+                .map((row) => row.participant_id)
+                .filter((participantId): participantId is string => participantId !== actorUserId),
+            ),
+        ]
+      : [];
+  const nextRecipientIdSet = new Set(nextRecipientIds);
+  const acceptedRows = existingRows.filter(
+    (notification) => notification.status === "accepted" && nextRecipientIdSet.has(notification.user_id),
+  );
+  const upsertRows = nextRecipientIds
+    .filter((recipientId) => !acceptedRows.some((notification) => notification.user_id === recipientId))
+    .map((recipientId) => ({
+      id: crypto.randomUUID(),
+      actor_user_id: actorUserId,
+      notification_type: "task_mention" as const,
+      read_at: null,
+      status: "pending" as const,
+      user_id: recipientId,
+      ...createNotificationSnapshot(task),
+    }));
+
+  if (upsertRows.length > 0) {
+    const now = new Date().toISOString();
+    await db
+      .insert(task_notifications)
+      .values(upsertRows)
+      .onConflictDoUpdate({
+        target: [
+          task_notifications.task_id,
+          task_notifications.user_id,
+          task_notifications.notification_type,
+        ],
+        set: {
+          actor_user_id: actorUserId,
+          ...createNotificationSnapshot(task),
+          read_at: null,
+          status: "pending",
+          updated_at: now,
+        },
+      });
+  }
+
+  if (acceptedRows.length > 0) {
+    await db
+      .update(task_notifications)
+      .set({
+        actor_user_id: actorUserId,
+        ...createNotificationSnapshot(task),
+        updated_at: new Date().toISOString(),
+      })
+      .where(
+        inArray(
+          task_notifications.id,
+          acceptedRows.map((notification) => notification.id),
+        ),
+      );
+  }
+
+  const dismissedIds = existingRows
+    .filter((notification) => notification.status === "pending" && !nextRecipientIdSet.has(notification.user_id))
+    .map((notification) => notification.id);
+
+  if (dismissedIds.length > 0) {
+    await db
+      .update(task_notifications)
+      .set({
+        read_at: new Date().toISOString(),
+        status: "dismissed",
+        updated_at: new Date().toISOString(),
+      })
+      .where(inArray(task_notifications.id, dismissedIds));
   }
 }
 
-export async function expireTaskMentionNotifications(client: DayStackClient, actorUserId: string, taskId: string) {
-  const { error } = await client
-    .from("task_notifications")
-    .update({
+export async function expireTaskMentionNotifications(actorUserId: string, taskId: string) {
+  const db = getRequiredDb();
+
+  await db
+    .update(task_notifications)
+    .set({
       read_at: new Date().toISOString(),
       status: "expired",
+      updated_at: new Date().toISOString(),
     })
-    .eq("task_id", taskId)
-    .eq("actor_user_id", actorUserId)
-    .eq("status", "pending");
-
-  if (error) {
-    throw error;
-  }
+    .where(
+      and(
+        eq(task_notifications.task_id, taskId),
+        eq(task_notifications.actor_user_id, actorUserId),
+        eq(task_notifications.status, "pending"),
+      ),
+    );
 }
 
 export async function acceptTaskNotification(
-  client: DayStackClient,
   userId: string,
   notificationId: string,
 ): Promise<TaskNotificationAcceptResult> {
-  const { data, error } = await client.rpc("accept_task_notification", {
-    p_notification_id: notificationId,
+  const db = getRequiredDb();
+
+  const result = await db.transaction(async (tx) => {
+    const [notification] = await tx
+      .select()
+      .from(task_notifications)
+      .where(and(eq(task_notifications.id, notificationId), eq(task_notifications.user_id, userId)))
+      .limit(1);
+
+    if (!notification) {
+      throw new Error("This notification is no longer available.");
+    }
+
+    if (notification.status === "accepted" && notification.accepted_task_id) {
+      const [existingAcceptedTask] = await tx
+        .select()
+        .from(tasks)
+        .where(and(eq(tasks.id, notification.accepted_task_id), eq(tasks.user_id, userId)))
+        .limit(1);
+
+      if (existingAcceptedTask) {
+        await tx
+          .update(task_notifications)
+          .set({
+            read_at: notification.read_at ?? new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .where(eq(task_notifications.id, notification.id));
+
+        return {
+          acceptedTask: existingAcceptedTask,
+          result: {
+            acceptedTaskId: existingAcceptedTask.id,
+            outcome: "already_accepted" as const,
+            taskDate: existingAcceptedTask.task_date,
+          },
+        };
+      }
+    }
+
+    const [existingClone] = await tx
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.user_id, userId), eq(tasks.source_task_id, notification.task_id)))
+      .limit(1);
+
+    if (existingClone) {
+      await tx
+        .update(task_notifications)
+        .set({
+          status: "accepted",
+          accepted_task_id: existingClone.id,
+          read_at: notification.read_at ?? new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .where(eq(task_notifications.id, notification.id));
+
+      return {
+        acceptedTask: existingClone,
+        result: {
+          acceptedTaskId: existingClone.id,
+          outcome: "already_accepted" as const,
+          taskDate: existingClone.task_date,
+        },
+      };
+    }
+
+    const [sourceTask] = await tx
+      .select()
+      .from(tasks)
+      .where(eq(tasks.id, notification.task_id))
+      .limit(1);
+
+    if (!sourceTask) {
+      await tx
+        .update(task_notifications)
+        .set({
+          status: "expired",
+          read_at: notification.read_at ?? new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .where(eq(task_notifications.id, notification.id));
+
+      return {
+        acceptedTask: null,
+        result: {
+          acceptedTaskId: null,
+          outcome: "task_missing" as const,
+          taskDate: notification.task_date,
+        },
+      };
+    }
+
+    const clonedTaskId = crypto.randomUUID();
+    const [clonedTask] = await tx
+      .insert(tasks)
+      .values({
+        id: clonedTaskId,
+        user_id: userId,
+        title: sourceTask.title,
+        task_date: sourceTask.task_date,
+        start_time: sourceTask.start_time,
+        end_time: sourceTask.end_time,
+        task_type: sourceTask.task_type,
+        meeting_link: sourceTask.meeting_link,
+        status: "pending",
+        source_task_id: sourceTask.id,
+      })
+      .onConflictDoNothing()
+      .returning();
+
+    const acceptedTask =
+      clonedTask ??
+      (
+        await tx
+          .select()
+          .from(tasks)
+          .where(and(eq(tasks.user_id, userId), eq(tasks.source_task_id, sourceTask.id)))
+          .limit(1)
+      )[0];
+
+    if (!acceptedTask) {
+      throw new Error("The task mention could not be accepted.");
+    }
+
+    const sourceParticipantRows = await tx
+      .select({ participant_id: task_participants.participant_id })
+      .from(task_participants)
+      .where(eq(task_participants.task_id, sourceTask.id));
+
+    const participantIds = [
+      sourceTask.user_id,
+      ...sourceParticipantRows.map((participant) => participant.participant_id),
+    ].filter((participantId, index, collection) => participantId !== userId && collection.indexOf(participantId) === index);
+
+    if (participantIds.length > 0) {
+      await tx
+        .insert(task_participants)
+        .values(
+          participantIds.map((participantId) => ({
+            id: crypto.randomUUID(),
+            participant_id: participantId,
+            task_id: acceptedTask.id,
+          })),
+        )
+        .onConflictDoNothing();
+    }
+
+    await tx
+      .update(task_notifications)
+      .set({
+        status: "accepted",
+        accepted_task_id: acceptedTask.id,
+        read_at: notification.read_at ?? new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .where(eq(task_notifications.id, notification.id));
+
+    return {
+      acceptedTask,
+      result: {
+        acceptedTaskId: acceptedTask.id,
+        outcome: clonedTask ? ("accepted" as const) : ("already_accepted" as const),
+        taskDate: acceptedTask.task_date,
+      },
+    };
   });
 
-  if (error) {
-    throw error;
+  if (result.acceptedTask) {
+    await Promise.all([
+      syncTaskRemindersForTask(userId, result.acceptedTask),
+      syncAcceptedTaskSummary(userId, result.acceptedTask.task_date),
+    ]);
   }
 
-  const resultRow = Array.isArray(data) ? data[0] : data;
-
-  if (!resultRow) {
-    throw new Error("The task mention could not be accepted.");
-  }
-
-  if (
-    resultRow.outcome !== "accepted" &&
-    resultRow.outcome !== "already_accepted" &&
-    resultRow.outcome !== "task_missing"
-  ) {
-    throw new Error("The task mention returned an unexpected result.");
-  }
-
-  const result: TaskNotificationAcceptResult = {
-    acceptedTaskId: resultRow.accepted_task_id,
-    outcome: resultRow.outcome,
-    taskDate: resultRow.task_date,
-  };
-
-  if (!result.acceptedTaskId) {
-    return result;
-  }
-
-  const { data: acceptedTaskRow, error: acceptedTaskError } = await client
-    .from("tasks")
-    .select("*")
-    .eq("id", result.acceptedTaskId)
-    .eq("user_id", userId)
-    .single();
-
-  if (acceptedTaskError) {
-    throw acceptedTaskError;
-  }
-
-  const acceptedTask = acceptedTaskRow as TaskRecord;
-
-  await Promise.all([
-    syncTaskRemindersForTask(client, userId, acceptedTask),
-    syncAcceptedTaskSummary(client, userId, acceptedTask.task_date),
-  ]);
-
-  return result;
+  return result.result;
 }

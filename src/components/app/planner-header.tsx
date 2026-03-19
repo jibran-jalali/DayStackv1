@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Flame, LoaderCircle, LogOut, Plus, Settings2 } from "lucide-react";
+import { signOut } from "next-auth/react";
 import { useTransition } from "react";
 
 import { NotificationCenter } from "@/components/app/notification-center";
@@ -11,7 +12,6 @@ import { Button } from "@/components/shared/button";
 import { logoutOneSignalUser } from "@/lib/onesignal/client";
 import { Logo } from "@/components/shared/logo";
 import { StatusChip } from "@/components/shared/status-chip";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn, getErrorMessage } from "@/lib/utils";
 import type { PlannerDateMode, TaskNotificationAcceptResult } from "@/types/daystack";
 
@@ -34,7 +34,6 @@ interface PlannerHeaderProps {
   settingsHref?: string;
   streak?: number;
   subtitle?: string;
-  userId: string;
   viewMode?: PlannerViewMode;
 }
 
@@ -73,28 +72,19 @@ export function PlannerHeader({
   settingsHref = "/app/settings",
   streak,
   subtitle,
-  userId,
   viewMode,
 }: PlannerHeaderProps) {
   const [isPending, startTransition] = useTransition();
 
   function handleSignOut() {
-    const supabase = createSupabaseBrowserClient();
-
-    if (!supabase) {
-      onSignOutError("Add your Supabase environment variables before using authentication.");
-      return;
-    }
-
     startTransition(async () => {
       try {
         await logoutOneSignalUser().catch(() => undefined);
 
-        const { error } = await supabase.auth.signOut();
-
-        if (error) {
-          throw error;
-        }
+        await signOut({
+          redirect: false,
+          callbackUrl: "/login",
+        });
 
         window.location.assign("/login");
       } catch (error) {
@@ -172,7 +162,7 @@ export function PlannerHeader({
             </Button>
           ) : null}
 
-          <NotificationCenter userId={userId} onNotice={onNotice} onTaskAccepted={onTaskAccepted} />
+          <NotificationCenter onNotice={onNotice} onTaskAccepted={onTaskAccepted} />
 
           <div className="flex items-center gap-2 rounded-full border border-border/80 bg-white/92 px-2 py-1.5 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(24,190,239,0.16),rgba(109,40,240,0.16))] text-sm font-semibold text-foreground">

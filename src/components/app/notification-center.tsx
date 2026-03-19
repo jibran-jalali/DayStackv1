@@ -6,16 +6,18 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 
 import { Button, buttonVariants } from "@/components/shared/button";
 import { StatusChip } from "@/components/shared/status-chip";
-import { acceptTaskNotification, fetchTaskNotifications, markTaskNotificationsRead } from "@/lib/data/notifications";
+import {
+  acceptTaskNotification,
+  fetchTaskNotifications,
+  markTaskNotificationsRead,
+} from "@/lib/client/notifications";
 import { formatClockTime, formatDateKey, formatDateLabel } from "@/lib/daystack";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn, getErrorMessage } from "@/lib/utils";
 import type { PlannerNotification, TaskNotificationAcceptResult } from "@/types/daystack";
 
 interface NotificationCenterProps {
   onNotice?: (notice: { message: string; type: "error" | "success" }) => void;
   onTaskAccepted?: (result: TaskNotificationAcceptResult) => Promise<void> | void;
-  userId: string;
 }
 
 function getStatusTone(status: PlannerNotification["status"]) {
@@ -46,14 +48,13 @@ function getStatusLabel(status: PlannerNotification["status"]) {
   return "Pending";
 }
 
-export function NotificationCenter({ onNotice, onTaskAccepted, userId }: NotificationCenterProps) {
+export function NotificationCenter({ onNotice, onTaskAccepted }: NotificationCenterProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [notifications, setNotifications] = useState<PlannerNotification[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeNotificationId, setActiveNotificationId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   const unreadIds = useMemo(
     () => notifications.filter((notification) => !notification.readAt).map((notification) => notification.id),
@@ -62,14 +63,8 @@ export function NotificationCenter({ onNotice, onTaskAccepted, userId }: Notific
   const unreadCount = unreadIds.length;
 
   const loadNotifications = useCallback(async (options?: { silent?: boolean }) => {
-    if (!supabase) {
-      setNotifications([]);
-      setLoadError("Add your Supabase environment variables to load notifications.");
-      return;
-    }
-
     try {
-      const nextNotifications = await fetchTaskNotifications(supabase, userId);
+      const nextNotifications = await fetchTaskNotifications();
       setNotifications(nextNotifications);
       setLoadError(null);
     } catch (error) {
@@ -77,7 +72,7 @@ export function NotificationCenter({ onNotice, onTaskAccepted, userId }: Notific
         setLoadError(getErrorMessage(error));
       }
     }
-  }, [supabase, userId]);
+  }, []);
 
   useEffect(() => {
     void loadNotifications();
@@ -92,32 +87,6 @@ export function NotificationCenter({ onNotice, onTaskAccepted, userId }: Notific
 
     return () => window.clearInterval(intervalId);
   }, [loadNotifications]);
-
-  useEffect(() => {
-    if (!supabase) {
-      return;
-    }
-
-    const channel = supabase
-      .channel(`task-notifications-${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "task_notifications",
-          filter: `user_id=eq.${userId}`,
-        },
-        () => {
-          void loadNotifications({ silent: true });
-        },
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [loadNotifications, supabase, userId]);
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -150,13 +119,9 @@ export function NotificationCenter({ onNotice, onTaskAccepted, userId }: Notific
       return;
     }
 
-    if (!supabase) {
-      return;
-    }
-
     startTransition(async () => {
       try {
-        await markTaskNotificationsRead(supabase, unreadIds);
+        await markTaskNotificationsRead(unreadIds);
         setNotifications((current) =>
           current.map((notification) =>
             unreadIds.includes(notification.id)
@@ -171,21 +136,13 @@ export function NotificationCenter({ onNotice, onTaskAccepted, userId }: Notific
         return;
       }
     });
-  }, [isOpen, supabase, unreadIds]);
+  }, [isOpen, unreadIds]);
 
   async function handleAccept(notificationId: string) {
-    if (!supabase) {
-      onNotice?.({
-        type: "error",
-        message: "Add your Supabase environment variables before accepting task mentions.",
-      });
-      return;
-    }
-
     setActiveNotificationId(notificationId);
 
     try {
-      const result = await acceptTaskNotification(supabase, userId, notificationId);
+      const result = await acceptTaskNotification(notificationId);
       await onTaskAccepted?.(result);
       await loadNotifications();
 

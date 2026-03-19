@@ -30,9 +30,8 @@ function getAdminConfig(): AdminConfig | null {
 
   const sessionSecret =
     process.env.ADMIN_SESSION_SECRET?.trim() ||
-    createHash("sha256")
-      .update(`${username}:${password}:${process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? ""}`)
-      .digest("hex");
+    process.env.AUTH_SECRET?.trim() ||
+    createHash("sha256").update(`${username}:${password}`).digest("hex");
 
   return {
     password,

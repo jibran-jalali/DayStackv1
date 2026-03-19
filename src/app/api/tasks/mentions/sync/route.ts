@@ -1,24 +1,10 @@
 import { NextResponse } from "next/server";
 
+import { getSessionUser } from "@/lib/auth";
 import { syncTaskMentionNotificationsForTask } from "@/lib/data/notifications";
-import { createSupabaseServiceClient } from "@/lib/supabase/service";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
-  const supabase = await createSupabaseServerClient();
-
-  if (!supabase) {
-    return NextResponse.json(
-      {
-        message: "Supabase is not configured.",
-      },
-      { status: 503 },
-    );
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) {
     return NextResponse.json(
@@ -26,17 +12,6 @@ export async function POST(request: Request) {
         message: "You must be signed in to sync mentions.",
       },
       { status: 401 },
-    );
-  }
-
-  const serviceClient = createSupabaseServiceClient();
-
-  if (!serviceClient) {
-    return NextResponse.json(
-      {
-        message: "SUPABASE_SERVICE_ROLE_KEY is required to sync mentions.",
-      },
-      { status: 503 },
     );
   }
 
@@ -57,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await syncTaskMentionNotificationsForTask(serviceClient, user.id, taskId);
+    await syncTaskMentionNotificationsForTask(user.id, taskId);
 
     return NextResponse.json({
       ok: true,

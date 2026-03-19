@@ -1,18 +1,21 @@
 import "server-only";
 
-import type { User } from "@supabase/supabase-js";
+import { count, desc, eq, inArray } from "drizzle-orm";
 
-import { isUserDisabled } from "@/lib/auth-status";
+import { getDb, withDbReconnectRetry } from "@/db/client";
+import {
+  daily_summaries,
+  task_notifications,
+  task_participants,
+  task_reminders,
+  tasks,
+  user_notification_preferences,
+  users,
+} from "@/db/schema";
 import { deriveDisplayName } from "@/lib/daystack";
-import { createSupabaseServiceClient } from "@/lib/supabase/service";
 import type { AdminAccount, AdminDashboardSnapshot } from "@/types/admin";
-import type { Database } from "@/types/database";
-import type { ProfileRecord } from "@/types/daystack";
 
-const USERS_PER_PAGE = 200;
-const DISABLE_DURATION = "876000h";
-
-type UsageRow = Database["public"]["Functions"]["admin_account_usage_snapshot"]["Returns"][number];
+type DayStackDb = NonNullable<ReturnType<typeof getDb>>;
 
 function buildSnapshot(accounts: AdminAccount[]): AdminDashboardSnapshot {
   const activeAccounts = accounts.filter((account) => account.status === "active").length;
@@ -30,184 +33,161 @@ function sortAccounts(accounts: AdminAccount[]) {
   return [...accounts].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
-function getRequiredServiceClient() {
-  const client = createSupabaseServiceClient();
-
-  if (!client) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for the admin dashboard.");
-  }
-
-  return client;
-}
-
-async function listAllAuthUsers() {
-  const client = getRequiredServiceClient();
-  const users: User[] = [];
-  let page = 1;
-
-  while (true) {
-    const { data, error } = await client.auth.admin.listUsers({
-      page,
-      perPage: USERS_PER_PAGE,
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    const batch = data.users ?? [];
-    users.push(...batch);
-
-    if (!data.nextPage || batch.length < USERS_PER_PAGE) {
-      break;
-    }
-
-    page = data.nextPage;
-  }
-
-  return users;
-}
-
-async function fetchProfilesByIds(userIds: string[]) {
+async function fetchUsageByIds(db: DayStackDb, userIds: string[]) {
   if (userIds.length === 0) {
-    return new Map<string, Pick<ProfileRecord, "full_name" | "id">>();
+    return new Map<string, number>();
   }
 
-  const client = getRequiredServiceClient();
-  const { data, error } = await client.from("profiles").select("id, full_name").in("id", userIds);
+  const [taskCounts, participantCounts, summaryCounts, preferenceCounts, reminderCounts, notificationCounts] =
+    await Promise.all([
+      db
+        .select({
+          owned_records: count(),
+          user_id: tasks.user_id,
+        })
+        .from(tasks)
+        .where(inArray(tasks.user_id, userIds))
+        .groupBy(tasks.user_id),
+      db
+        .select({
+          owned_records: count(),
+          user_id: tasks.user_id,
+        })
+        .from(task_participants)
+        .innerJoin(tasks, eq(tasks.id, task_participants.task_id))
+        .where(inArray(tasks.user_id, userIds))
+        .groupBy(tasks.user_id),
+      db
+        .select({
+          owned_records: count(),
+          user_id: daily_summaries.user_id,
+        })
+        .from(daily_summaries)
+        .where(inArray(daily_summaries.user_id, userIds))
+        .groupBy(daily_summaries.user_id),
+      db
+        .select({
+          owned_records: count(),
+          user_id: user_notification_preferences.user_id,
+        })
+        .from(user_notification_preferences)
+        .where(inArray(user_notification_preferences.user_id, userIds))
+        .groupBy(user_notification_preferences.user_id),
+      db
+        .select({
+          owned_records: count(),
+          user_id: task_reminders.user_id,
+        })
+        .from(task_reminders)
+        .where(inArray(task_reminders.user_id, userIds))
+        .groupBy(task_reminders.user_id),
+      db
+        .select({
+          owned_records: count(),
+          user_id: task_notifications.user_id,
+        })
+        .from(task_notifications)
+        .where(inArray(task_notifications.user_id, userIds))
+        .groupBy(task_notifications.user_id),
+    ]);
 
-  if (error) {
-    throw error;
+  const usageById = new Map(userIds.map((userId) => [userId, 1]));
+  const usageRows = [
+    ...taskCounts,
+    ...participantCounts,
+    ...summaryCounts,
+    ...preferenceCounts,
+    ...reminderCounts,
+    ...notificationCounts,
+  ];
+
+  for (const row of usageRows) {
+    usageById.set(row.user_id, (usageById.get(row.user_id) ?? 0) + Number(row.owned_records));
   }
 
-  return new Map(
-    (data ?? []).map((profile) => [profile.id, profile as Pick<ProfileRecord, "full_name" | "id">]),
-  );
-}
-
-async function fetchUsageByIds(userIds: string[]) {
-  if (userIds.length === 0) {
-    return new Map<string, number | null>();
-  }
-
-  const client = getRequiredServiceClient();
-  const { data, error } = await client.rpc("admin_account_usage_snapshot", {
-    p_user_ids: userIds,
-  });
-
-  if (error) {
-    console.error("Admin usage snapshot failed:", error);
-    return new Map<string, number | null>(userIds.map((userId) => [userId, null]));
-  }
-
-  const rows = (data ?? []) as UsageRow[];
-
-  return new Map(
-    userIds.map((userId) => {
-      const usageRow = rows.find((row) => row.user_id === userId);
-      const estimatedOwnedRecords =
-        typeof usageRow?.estimated_owned_records === "string"
-          ? Number.parseInt(usageRow.estimated_owned_records, 10)
-          : usageRow?.estimated_owned_records ?? 0;
-
-      return [userId, Number.isFinite(estimatedOwnedRecords) ? estimatedOwnedRecords : 0];
-    }),
-  );
+  return usageById;
 }
 
 function mapAdminAccount(
-  user: User,
-  profile: Pick<ProfileRecord, "full_name" | "id"> | undefined,
-  usage: number | null | undefined,
+  user: typeof users.$inferSelect,
+  usage: number | undefined,
 ): AdminAccount {
-  const metadata = user.user_metadata as { full_name?: string | null } | undefined;
-
   return {
     createdAt: user.created_at,
-    email: user.email ?? "Not available",
-    estimatedOwnedRecords: typeof usage === "number" ? usage : null,
+    email: user.email,
+    estimatedOwnedRecords: usage ?? 0,
     id: user.id,
     lastSignInAt: user.last_sign_in_at ?? null,
-    name: deriveDisplayName(profile?.full_name ?? metadata?.full_name, user.email),
-    status: isUserDisabled(user) ? "disabled" : "active",
+    name: deriveDisplayName(user.full_name, user.email),
+    status: user.status,
   };
 }
 
-async function mapUsersToAdminAccounts(users: User[]) {
-  const userIds = users.map((user) => user.id);
-  const [profilesById, usageById] = await Promise.all([fetchProfilesByIds(userIds), fetchUsageByIds(userIds)]);
+async function fetchAccountById(db: DayStackDb, accountId: string) {
+  const [user] = await db.select().from(users).where(eq(users.id, accountId)).limit(1);
 
-  return sortAccounts(
-    users.map((user) => mapAdminAccount(user, profilesById.get(user.id), usageById.get(user.id))),
-  );
-}
-
-async function fetchAuthUserById(accountId: string) {
-  const client = getRequiredServiceClient();
-  const { data, error } = await client.auth.admin.getUserById(accountId);
-
-  if (error) {
-    throw error;
-  }
-
-  if (!data.user) {
+  if (!user) {
     throw new Error("Account not found.");
   }
 
-  return data.user;
+  return user;
 }
 
-async function mapSingleAccount(user: User) {
-  const [profilesById, usageById] = await Promise.all([fetchProfilesByIds([user.id]), fetchUsageByIds([user.id])]);
-  return mapAdminAccount(user, profilesById.get(user.id), usageById.get(user.id));
+async function mapSingleAccount(db: DayStackDb, user: typeof users.$inferSelect) {
+  const usageById = await fetchUsageByIds(db, [user.id]);
+  return mapAdminAccount(user, usageById.get(user.id));
 }
 
 export async function fetchAdminDashboardSnapshot() {
-  const users = await listAllAuthUsers();
-  const accounts = await mapUsersToAdminAccounts(users);
+  return withDbReconnectRetry(async (db) => {
+    const userRows = await db.select().from(users).orderBy(desc(users.created_at));
+    const usageById = await fetchUsageByIds(db, userRows.map((user) => user.id));
+    const accounts = sortAccounts(userRows.map((user) => mapAdminAccount(user, usageById.get(user.id))));
 
-  return buildSnapshot(accounts);
+    return buildSnapshot(accounts);
+  });
 }
 
 export async function disableAdminAccount(accountId: string) {
-  const client = getRequiredServiceClient();
-  const { data, error } = await client.auth.admin.updateUserById(accountId, {
-    ban_duration: DISABLE_DURATION,
+  return withDbReconnectRetry(async (db) => {
+    const [user] = await db
+      .update(users)
+      .set({
+        status: "disabled",
+        updated_at: new Date().toISOString(),
+      })
+      .where(eq(users.id, accountId))
+      .returning();
+
+    if (!user) {
+      return mapSingleAccount(db, await fetchAccountById(db, accountId));
+    }
+
+    return mapSingleAccount(db, user);
   });
-
-  if (error) {
-    throw error;
-  }
-
-  if (!data.user) {
-    return mapSingleAccount(await fetchAuthUserById(accountId));
-  }
-
-  return mapSingleAccount(data.user);
 }
 
 export async function activateAdminAccount(accountId: string) {
-  const client = getRequiredServiceClient();
-  const { data, error } = await client.auth.admin.updateUserById(accountId, {
-    ban_duration: "none",
+  return withDbReconnectRetry(async (db) => {
+    const [user] = await db
+      .update(users)
+      .set({
+        status: "active",
+        updated_at: new Date().toISOString(),
+      })
+      .where(eq(users.id, accountId))
+      .returning();
+
+    if (!user) {
+      return mapSingleAccount(db, await fetchAccountById(db, accountId));
+    }
+
+    return mapSingleAccount(db, user);
   });
-
-  if (error) {
-    throw error;
-  }
-
-  if (!data.user) {
-    return mapSingleAccount(await fetchAuthUserById(accountId));
-  }
-
-  return mapSingleAccount(data.user);
 }
 
 export async function deleteAdminAccount(accountId: string) {
-  const client = getRequiredServiceClient();
-  const { error } = await client.auth.admin.deleteUser(accountId, false);
-
-  if (error) {
-    throw error;
-  }
+  return withDbReconnectRetry(async (db) => {
+    await db.delete(users).where(eq(users.id, accountId));
+  });
 }

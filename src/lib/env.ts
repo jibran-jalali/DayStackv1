@@ -1,40 +1,49 @@
-export interface SupabaseEnv {
-  url: string;
-  publishableKey: string;
-}
-
 export interface OneSignalEnv {
   appId: string;
 }
 
-const DEFAULT_SUPABASE_URL = "https://lvfclrfqzjepuhiqrfqt.supabase.co";
-const DEFAULT_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_91UCrF9eEE4rhyQmAOgesA_f2xxqekr";
+function normalizeEnvValue(value: string | undefined) {
+  const trimmed = value?.trim();
 
-export function getSupabaseEnv(): SupabaseEnv | null {
-  const url =
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
-    process.env.SUPABASE_URL?.trim() ||
-    DEFAULT_SUPABASE_URL;
-  const publishableKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ||
-    process.env.SUPABASE_PUBLISHABLE_DEFAULT_KEY?.trim() ||
-    process.env.SUPABASE_ANON_KEY?.trim() ||
-    DEFAULT_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!url || !publishableKey) {
+  if (!trimmed) {
     return null;
   }
 
-  return {
-    url,
-    publishableKey,
-  };
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    return trimmed.slice(1, -1).trim() || null;
+  }
+
+  return trimmed;
 }
 
-export function isSupabaseConfigured() {
-  return Boolean(getSupabaseEnv());
+export function getDatabaseUrl() {
+  const pooled =
+    normalizeEnvValue(process.env.POSTGRES_URL) ?? normalizeEnvValue(process.env.DATABASE_URL);
+  const direct =
+    normalizeEnvValue(process.env.POSTGRES_URL_NON_POOLING) ??
+    normalizeEnvValue(process.env.DATABASE_URL_UNPOOLED);
+
+  if (process.env.NODE_ENV === "development") {
+    return direct ?? pooled;
+  }
+
+  return pooled ?? direct;
+}
+
+export function getDatabaseMigrationUrl() {
+  return (
+    normalizeEnvValue(process.env.POSTGRES_URL_NON_POOLING) ??
+    normalizeEnvValue(process.env.DATABASE_URL_UNPOOLED) ??
+    getDatabaseUrl()
+  );
+}
+
+export function isDatabaseConfigured() {
+  return Boolean(getDatabaseUrl());
+}
+
+export function isAuthConfigured() {
+  return Boolean(process.env.AUTH_SECRET?.trim());
 }
 
 export function getOneSignalEnv(): OneSignalEnv | null {

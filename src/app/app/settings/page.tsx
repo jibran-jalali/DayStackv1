@@ -2,8 +2,9 @@ import { SettingsShell } from "@/components/app/settings-shell";
 import { SetupNotice } from "@/components/shared/setup-notice";
 import { fetchProfile } from "@/lib/data/daystack";
 import { fetchNotificationPreferences } from "@/lib/data/reminders";
+import { getSessionUser } from "@/lib/auth";
 import { deriveDisplayName, isValidDateKey } from "@/lib/daystack";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isAuthConfigured, isDatabaseConfigured } from "@/lib/env";
 
 export const metadata = {
   title: "Settings",
@@ -16,13 +17,11 @@ function isSchemaMissingError(error: unknown) {
     return false;
   }
 
-  const maybeError = error as { code?: string; message?: string };
+  const maybeError = error as { message?: string };
 
   return (
-    maybeError.code === "PGRST205" ||
-    maybeError.code === "PGRST204" ||
-    maybeError.message?.includes("Could not find the table") === true ||
-    maybeError.message?.includes("Could not find the column") === true
+    maybeError.message?.includes("does not exist") === true ||
+    maybeError.message?.includes("column") === true
   );
 }
 
@@ -31,9 +30,7 @@ interface SettingsPageProps {
 }
 
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
-  const supabase = await createSupabaseServerClient();
-
-  if (!supabase) {
+  if (!isDatabaseConfigured() || !isAuthConfigured()) {
     return (
       <main className="container-shell min-h-screen py-10">
         <SetupNotice />
@@ -41,9 +38,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
     );
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) {
     return null;
@@ -57,17 +52,15 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
   try {
     const [profile, notificationPreferences] = await Promise.all([
-      fetchProfile(supabase, user.id),
-      fetchNotificationPreferences(supabase, user.id),
+      fetchProfile(user.id),
+      fetchNotificationPreferences(user.id),
     ]);
-
-    const metadata = user.user_metadata as { full_name?: string | null } | undefined;
 
     return (
       <SettingsShell
         userId={user.id}
         email={user.email}
-        displayName={deriveDisplayName(profile?.full_name ?? metadata?.full_name, user.email)}
+        displayName={deriveDisplayName(profile?.full_name, user.email)}
         initialNotificationPreferences={notificationPreferences}
         returnDate={returnDate}
       />
@@ -81,12 +74,12 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           <SetupNotice
             showAction={false}
             eyebrow="Database schema missing"
-            title="Your Supabase credentials are loaded, but DayStack's tables are not in this project yet."
+            title="Your Postgres connection is loaded, but DayStack&rsquo;s tables are not in this database yet."
             description={
               <>
-                Run the SQL in <code>supabase/schema.sql</code> inside your Supabase SQL editor. Settings need{" "}
-                <code>profiles</code>, <code>user_notification_preferences</code>, <code>task_reminders</code>, and{" "}
-                <code>task_notifications</code> to be available before reminders and mentions can be managed here.
+                Run DayStack&rsquo;s database migrations before opening settings. This page needs <code>users</code>,{" "}
+                <code>user_notification_preferences</code>, <code>task_reminders</code>, and{" "}
+                <code>task_notifications</code> before reminders and mentions can be managed here.
               </>
             }
           />
@@ -99,7 +92,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         <SetupNotice
           showAction={false}
           eyebrow="Settings load failed"
-          title="DayStack reached Supabase, but reminder settings could not be loaded."
+          title="DayStack reached Postgres, but reminder settings could not be loaded."
           description="Check the terminal for the server-side error details, then retry the page."
         />
       </main>

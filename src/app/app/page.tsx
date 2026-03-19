@@ -2,8 +2,9 @@ import { PlannerShell } from "@/components/app/planner-shell";
 import { SetupNotice } from "@/components/shared/setup-notice";
 import { fetchDashboardSnapshot, fetchProfile } from "@/lib/data/daystack";
 import { fetchNotificationPreferences } from "@/lib/data/reminders";
+import { getSessionUser } from "@/lib/auth";
 import { deriveDisplayName, formatDateKey, isValidDateKey } from "@/lib/daystack";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isAuthConfigured, isDatabaseConfigured } from "@/lib/env";
 
 export const metadata = {
   title: "Dashboard",
@@ -16,13 +17,11 @@ function isSchemaMissingError(error: unknown) {
     return false;
   }
 
-  const maybeError = error as { code?: string; message?: string };
+  const maybeError = error as { message?: string };
 
   return (
-    maybeError.code === "PGRST205" ||
-    maybeError.code === "PGRST204" ||
-    maybeError.message?.includes("Could not find the table") === true ||
-    maybeError.message?.includes("Could not find the column") === true
+    maybeError.message?.includes("does not exist") === true ||
+    maybeError.message?.includes("column") === true
   );
 }
 
@@ -31,9 +30,7 @@ interface AppPageProps {
 }
 
 export default async function AppPage({ searchParams }: AppPageProps) {
-  const supabase = await createSupabaseServerClient();
-
-  if (!supabase) {
+  if (!isDatabaseConfigured() || !isAuthConfigured()) {
     return (
       <main className="container-shell min-h-screen py-10">
         <SetupNotice />
@@ -41,9 +38,7 @@ export default async function AppPage({ searchParams }: AppPageProps) {
     );
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) {
     return null;
@@ -57,18 +52,16 @@ export default async function AppPage({ searchParams }: AppPageProps) {
 
   try {
     const [snapshot, profile, notificationPreferences] = await Promise.all([
-      fetchDashboardSnapshot(supabase, user.id, taskDate),
-      fetchProfile(supabase, user.id),
-      fetchNotificationPreferences(supabase, user.id),
+      fetchDashboardSnapshot(user.id, taskDate),
+      fetchProfile(user.id),
+      fetchNotificationPreferences(user.id),
     ]);
-
-    const metadata = user.user_metadata as { full_name?: string | null } | undefined;
 
     return (
       <PlannerShell
         userId={user.id}
         email={user.email}
-        displayName={deriveDisplayName(profile?.full_name ?? metadata?.full_name, user.email)}
+        displayName={deriveDisplayName(profile?.full_name, user.email)}
         initialSnapshot={snapshot}
         initialNotificationPreferences={notificationPreferences}
       />
@@ -82,11 +75,11 @@ export default async function AppPage({ searchParams }: AppPageProps) {
           <SetupNotice
             showAction={false}
             eyebrow="Database schema missing"
-            title="Your Supabase credentials are loaded, but DayStack's tables are not in this project yet."
+            title="Your Postgres connection is loaded, but DayStack&rsquo;s tables are not in this database yet."
             description={
               <>
-                Run the SQL in <code>supabase/schema.sql</code> inside your Supabase SQL editor. The dashboard
-                needs <code>profiles</code>, <code>tasks</code>, <code>task_participants</code>,{" "}
+                Run DayStack&rsquo;s database migrations before opening the planner. The app needs{" "}
+                <code>users</code>, <code>tasks</code>, <code>task_participants</code>,{" "}
                 <code>daily_summaries</code>, <code>user_notification_preferences</code>,{" "}
                 <code>task_reminders</code>, and <code>task_notifications</code> before it can load live data.
               </>
@@ -101,7 +94,7 @@ export default async function AppPage({ searchParams }: AppPageProps) {
         <SetupNotice
           showAction={false}
           eyebrow="Dashboard load failed"
-          title="DayStack reached Supabase, but the dashboard data could not be loaded."
+          title="DayStack reached Postgres, but the dashboard data could not be loaded."
           description="Check the terminal for the server-side error details, then retry the page."
         />
       </main>

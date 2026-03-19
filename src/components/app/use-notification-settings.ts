@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useState, useTransition } from "react";
 
-import { updateNotificationPreferences } from "@/lib/data/reminders";
+import { updateNotificationPreferences } from "@/lib/client/reminders";
 import {
   disableOneSignalPush,
   enableOneSignalPush,
@@ -10,7 +10,6 @@ import {
   loginOneSignalUser,
   observeOneSignalState,
 } from "@/lib/onesignal/client";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { getErrorMessage } from "@/lib/utils";
 import type { OneSignalSubscriptionState, UserNotificationPreferencesRecord } from "@/types/daystack";
 
@@ -76,14 +75,8 @@ export function useNotificationSettings({
       return;
     }
 
-    const supabase = createSupabaseBrowserClient();
-
-    if (!supabase) {
-      return;
-    }
-
     try {
-      const nextPreferences = await updateNotificationPreferences(supabase, userId, {
+      const nextPreferences = await updateNotificationPreferences({
         push_enabled: subscribed,
       });
       setNotificationPreferences(nextPreferences);
@@ -128,19 +121,9 @@ export function useNotificationSettings({
     key: "remind_5_min_before" | "remind_at_start" | "remind_overdue",
     nextValue: boolean,
   ) {
-    const supabase = createSupabaseBrowserClient();
-
-    if (!supabase) {
-      onNotice?.({
-        type: "error",
-        message: "Add your Supabase environment variables before changing reminders.",
-      });
-      return;
-    }
-
     startTransition(async () => {
       try {
-        const nextPreferences = await updateNotificationPreferences(supabase, userId, {
+        const nextPreferences = await updateNotificationPreferences({
           [key]: nextValue,
         });
         setNotificationPreferences(nextPreferences);
@@ -160,12 +143,6 @@ export function useNotificationSettings({
   function togglePushReminders(nextValue: boolean) {
     startTransition(async () => {
       try {
-        const supabase = createSupabaseBrowserClient();
-
-        if (!supabase) {
-          throw new Error("Add your Supabase environment variables before changing reminders.");
-        }
-
         const nextState = nextValue ? await enableOneSignalPush() : await disableOneSignalPush();
         setNotificationState(nextState);
 
@@ -177,7 +154,7 @@ export function useNotificationSettings({
           }
         }
 
-        const nextPreferences = await updateNotificationPreferences(supabase, userId, {
+        const nextPreferences = await updateNotificationPreferences({
           push_enabled: nextValue ? nextState.subscribed : false,
         });
 

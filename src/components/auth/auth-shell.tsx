@@ -5,7 +5,7 @@ import { AuthForm } from "@/components/auth/auth-form";
 import { buttonVariants } from "@/components/shared/button";
 import { Logo } from "@/components/shared/logo";
 import { SetupNotice } from "@/components/shared/setup-notice";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isAuthConfigured, isDatabaseConfigured } from "@/lib/env";
 
 const authRows = [
   {
@@ -124,7 +124,9 @@ export function AuthShell({
                   </p>
                 </div>
 
-                {!isSupabaseConfigured() ? <SetupNotice compact showAction={false} /> : null}
+                {!isDatabaseConfigured() || !isAuthConfigured() ? (
+                  <SetupNotice compact showAction={false} />
+                ) : null}
 
                 {notice ? (
                   <div className="rounded-[24px] border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-900">

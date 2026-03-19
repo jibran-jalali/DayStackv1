@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { getSessionUser } from "@/lib/auth";
 import { fetchNotificationPreferences } from "@/lib/data/reminders";
-import { sendOneSignalNotification, isOneSignalServerConfigured } from "@/lib/onesignal/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isOneSignalServerConfigured, sendOneSignalNotification } from "@/lib/onesignal/server";
 
 export async function POST(request: Request) {
   if (!isOneSignalServerConfigured()) {
@@ -14,20 +14,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createSupabaseServerClient();
-
-  if (!supabase) {
-    return NextResponse.json(
-      {
-        error: "Supabase is not configured.",
-      },
-      { status: 503 },
-    );
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) {
     return NextResponse.json(
@@ -38,7 +25,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const preferences = await fetchNotificationPreferences(supabase, user.id);
+  const preferences = await fetchNotificationPreferences(user.id);
 
   if (!preferences.push_enabled) {
     return NextResponse.json(

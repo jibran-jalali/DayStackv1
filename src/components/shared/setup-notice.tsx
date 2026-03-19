@@ -6,13 +6,12 @@ import { buttonVariants } from "@/components/shared/button";
 export function SetupNotice({
   compact = false,
   showAction = true,
-  eyebrow = "Supabase setup required",
-  title = "Add your public Supabase credentials to unlock auth and data.",
+  eyebrow = "Database setup required",
+  title = "Add your Postgres and auth environment variables to unlock DayStack.",
   description = (
     <>
-      Set <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY</code>,
-      run the SQL in <code>supabase/schema.sql</code>, and the dashboard will switch from setup mode to live
-      mode automatically.
+      Set <code>POSTGRES_URL</code> and <code>AUTH_SECRET</code>, apply the database migrations, and the app
+      will switch from setup mode to live mode automatically.
     </>
   ),
 }: {

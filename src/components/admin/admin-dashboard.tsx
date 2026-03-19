@@ -247,7 +247,7 @@ export function AdminDashboard({ initialSnapshot }: AdminDashboardProps) {
           <EmptyState
             icon={<Users className="h-5 w-5" />}
             title="No accounts found"
-            description="No registered DayStack users were returned from Supabase Auth."
+            description="No registered DayStack users were returned from the application database."
           />
         ) : (
           <>

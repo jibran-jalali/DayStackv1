@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { DateSwitcher } from "@/components/app/date-switcher";
 import { ExecutionLane } from "@/components/app/execution-lane";
@@ -10,7 +10,14 @@ import { TaskModal } from "@/components/app/task-modal";
 import { TimelineGrid } from "@/components/app/timeline-grid";
 import { TimelineList } from "@/components/app/timeline-list";
 import type { PlannerViewMode } from "@/components/app/view-toggle";
-import { createTask, deleteTask, fetchDashboardSnapshot, rescheduleTask, toggleTaskStatus, updateTask } from "@/lib/data/daystack";
+import {
+  createTask,
+  deleteTask,
+  fetchDashboardSnapshot,
+  rescheduleTask,
+  toggleTaskStatus,
+  updateTask,
+} from "@/lib/client/daystack";
 import {
   addMinutesToTime,
   buildSummary,
@@ -29,7 +36,6 @@ import {
   minutesToTime,
   toMinutes,
 } from "@/lib/daystack";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn, getErrorMessage } from "@/lib/utils";
 import type {
   DailySummaryRecord,
@@ -170,21 +176,8 @@ export function PlannerShell({
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
   const [followToday, setFollowToday] = useState(() => initialSnapshot.taskDate === formatDateKey(new Date()));
   const [settingsHighlighted, setSettingsHighlighted] = useState(false);
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const isPending = busyMode !== null;
   const isSurfaceRefreshing = busyMode === "navigation";
-
-  const getBrowserClient = useCallback(() => {
-    if (!supabase) {
-      setNotice({
-        type: "error",
-        message: "Add your Supabase environment variables to load live data.",
-      });
-      return null;
-    }
-
-    return supabase;
-  }, [supabase]);
 
   function applyTasksToCurrentSnapshot(
     nextTasks: PlannerTask[] | ((currentTasks: PlannerTask[]) => PlannerTask[]),
@@ -217,17 +210,11 @@ export function PlannerShell({
       return;
     }
 
-    const client = getBrowserClient();
-
-    if (!client) {
-      return;
-    }
-
     setBusyMode("navigation");
 
     void (async () => {
       try {
-        const nextSnapshot = await fetchDashboardSnapshot(client, userId, todayDate);
+        const nextSnapshot = await fetchDashboardSnapshot(todayDate);
         setSnapshot(nextSnapshot);
         setFollowToday(true);
         syncPlannerLocation(todayDate);
@@ -240,7 +227,7 @@ export function PlannerShell({
         setBusyMode(null);
       }
     })();
-  }, [followToday, getBrowserClient, snapshot.taskDate, todayDate, userId]);
+  }, [followToday, snapshot.taskDate, todayDate]);
 
   useEffect(() => {
     if (notice?.type !== "success") {
@@ -267,12 +254,6 @@ export function PlannerShell({
   }, [settingsHighlighted]);
 
   async function handleSaveTask(values: TaskFormValues) {
-    const client = getBrowserClient();
-
-    if (!client) {
-      return;
-    }
-
     const shouldHighlightSettings =
       !editorTask &&
       snapshot.tasks.length === 0 &&
@@ -283,8 +264,8 @@ export function PlannerShell({
 
     try {
       const savedTask = editorTask
-        ? await updateTask(client, userId, editorTask.id, values)
-        : await createTask(client, userId, values);
+        ? await updateTask(editorTask.id, values)
+        : await createTask(values);
 
       const nextPlannerTask: PlannerTask = {
         ...savedTask,
@@ -292,7 +273,7 @@ export function PlannerShell({
       };
 
       if (shouldRefreshSnapshot) {
-        const nextSnapshot = await fetchDashboardSnapshot(client, userId, values.taskDate);
+        const nextSnapshot = await fetchDashboardSnapshot(values.taskDate);
         setSnapshot(nextSnapshot);
       } else if (editorTask) {
         applyTasksToCurrentSnapshot((currentTasks) =>
@@ -346,12 +327,6 @@ export function PlannerShell({
       return;
     }
 
-    const client = getBrowserClient();
-
-    if (!client) {
-      return;
-    }
-
     setEditorTask(null);
     setComposerDefaults(null);
     setFocusedTaskId(null);
@@ -361,7 +336,7 @@ export function PlannerShell({
 
     void (async () => {
       try {
-        const nextSnapshot = await fetchDashboardSnapshot(client, userId, nextDate);
+        const nextSnapshot = await fetchDashboardSnapshot(nextDate);
         setSnapshot(nextSnapshot);
         setFollowToday(nextDate === formatDateKey(new Date()));
         syncPlannerLocation(nextDate);
@@ -383,18 +358,12 @@ export function PlannerShell({
       return;
     }
 
-    const client = getBrowserClient();
-
-    if (!client) {
-      return;
-    }
-
     const previousSnapshot = snapshot;
     setBusyMode("minor");
 
     void (async () => {
       try {
-        const taskDate = await deleteTask(client, userId, task.id);
+        const taskDate = await deleteTask(task.id);
         applyTasksToCurrentSnapshot((currentTasks) =>
           currentTasks.filter((currentTask) => currentTask.id !== task.id),
         );
@@ -423,12 +392,6 @@ export function PlannerShell({
   }
 
   function handleToggleTask(task: PlannerTask) {
-    const client = getBrowserClient();
-
-    if (!client) {
-      return;
-    }
-
     const previousSnapshot = snapshot;
     const nextStatus = task.status === "completed" ? "pending" : "completed";
 
@@ -446,7 +409,7 @@ export function PlannerShell({
 
     void (async () => {
       try {
-        await toggleTaskStatus(client, userId, task.id, nextStatus);
+        await toggleTaskStatus(task.id, nextStatus);
         setFollowToday(task.task_date === formatDateKey(new Date()));
         syncPlannerLocation(task.task_date);
         setNotice({
@@ -474,16 +437,10 @@ export function PlannerShell({
       return;
     }
 
-    const client = getBrowserClient();
-
-    if (!client) {
-      return;
-    }
-
     setBusyMode("minor");
 
     try {
-      const nextSnapshot = await fetchDashboardSnapshot(client, userId, result.taskDate);
+      const nextSnapshot = await fetchDashboardSnapshot(result.taskDate);
       setSnapshot(nextSnapshot);
       setFollowToday(result.taskDate === formatDateKey(new Date()));
 
@@ -503,12 +460,6 @@ export function PlannerShell({
   }
 
   function handleRescheduleTask(task: PlannerTask, nextStartTime: string, nextEndTime: string) {
-    const client = getBrowserClient();
-
-    if (!client) {
-      return;
-    }
-
     const previousSnapshot = snapshot;
     const optimisticTasks = sortTasksForPlanner(
       snapshot.tasks.map((currentTask) =>
@@ -527,7 +478,7 @@ export function PlannerShell({
 
     void (async () => {
       try {
-        await rescheduleTask(client, userId, task.id, {
+        await rescheduleTask(task.id, {
           endTime: nextEndTime,
           startTime: nextStartTime,
           taskDate: snapshot.taskDate,
@@ -661,7 +612,6 @@ export function PlannerShell({
                 ? "Review what this day looked like."
                 : "Plan and execute in one surface."
           }
-          userId={userId}
           viewMode={viewMode}
           onAddTask={() => handleCreateTask()}
           onNotice={handleNotificationNotice}

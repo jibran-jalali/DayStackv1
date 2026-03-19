@@ -1,38 +1,28 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-import { isUserDisabled } from "@/lib/auth-status";
-import { isSupabaseConfigured } from "@/lib/env";
-import { updateSession } from "@/lib/supabase/proxy";
-
-function redirectWithCookies(pathname: string, request: NextRequest, response: NextResponse) {
-  const redirectResponse = NextResponse.redirect(new URL(pathname, request.url));
-
-  response.cookies.getAll().forEach((cookie) => {
-    redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
-  });
-
-  return redirectResponse;
-}
+import { isAuthConfigured, isDatabaseConfigured } from "@/lib/env";
 
 export async function proxy(request: NextRequest) {
-  const { response, user } = await updateSession(request);
+  const response = NextResponse.next();
   const pathname = request.nextUrl.pathname;
 
-  if (!isSupabaseConfigured()) {
+  if (!isDatabaseConfigured() || !isAuthConfigured()) {
     return response;
   }
 
-  if (pathname.startsWith("/app") && !user) {
-    return redirectWithCookies("/login", request, response);
+  const token = await getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET,
+  });
+
+  if (pathname.startsWith("/app") && !token?.sub) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (pathname.startsWith("/app") && isUserDisabled(user)) {
-    return redirectWithCookies("/login?disabled=1", request, response);
-  }
-
-  if ((pathname === "/login" || pathname === "/signup") && user && !isUserDisabled(user)) {
-    return redirectWithCookies("/app", request, response);
+  if ((pathname === "/login" || pathname === "/signup") && token?.sub) {
+    return NextResponse.redirect(new URL("/app", request.url));
   }
 
   return response;

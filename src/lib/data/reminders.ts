@@ -1,7 +1,10 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import "server-only";
 
+import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
+
+import { getDb } from "@/db/client";
+import { task_reminders, tasks, user_notification_preferences } from "@/db/schema";
 import { formatClockTime, formatDateKey } from "@/lib/daystack";
-import type { Database } from "@/types/database";
 import type {
   DueTaskReminder,
   ReminderStatus,
@@ -11,7 +14,7 @@ import type {
   UserNotificationPreferencesRecord,
 } from "@/types/daystack";
 
-type DayStackClient = SupabaseClient<Database>;
+type DayStackDb = NonNullable<ReturnType<typeof getDb>>;
 
 const DEFAULT_REMINDER_PREFERENCES = {
   push_enabled: false,
@@ -21,6 +24,16 @@ const DEFAULT_REMINDER_PREFERENCES = {
 } as const;
 
 const MUTABLE_REMINDER_STATUSES: ReminderStatus[] = ["failed", "pending", "processing", "skipped"];
+
+function getRequiredDb(): DayStackDb {
+  const db = getDb();
+
+  if (!db) {
+    throw new Error("Database is not configured.");
+  }
+
+  return db;
+}
 
 function createDefaultPreferences(userId: string): UserNotificationPreferencesRecord {
   const nowIso = new Date().toISOString();
@@ -54,7 +67,7 @@ function getReminderRowsForTask(
     return [];
   }
 
-  const rows: Array<Database["public"]["Tables"]["task_reminders"]["Insert"]> = [];
+  const rows: Array<Pick<TaskReminderRecord, "remind_at" | "reminder_type" | "status" | "task_id" | "user_id">> = [];
 
   if (preferences.remind_5_min_before) {
     rows.push({
@@ -90,60 +103,52 @@ function getReminderRowsForTask(
 }
 
 export async function fetchNotificationPreferences(
-  client: DayStackClient,
   userId: string,
 ): Promise<UserNotificationPreferencesRecord> {
-  const { data, error } = await client
-    .from("user_notification_preferences")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const db = getRequiredDb();
+  const [preferences] = await db
+    .select()
+    .from(user_notification_preferences)
+    .where(eq(user_notification_preferences.user_id, userId))
+    .limit(1);
 
-  if (error) {
-    throw error;
-  }
-
-  return (data ?? createDefaultPreferences(userId)) as UserNotificationPreferencesRecord;
+  return preferences ?? createDefaultPreferences(userId);
 }
 
 async function fetchPendingTasksForReminderSync(
-  client: DayStackClient,
+  db: DayStackDb,
   userId: string,
   fromDate: string,
 ): Promise<TaskRecord[]> {
-  const { data, error } = await client
-    .from("tasks")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("status", "pending")
-    .gte("task_date", fromDate)
-    .order("task_date", { ascending: true })
-    .order("start_time", { ascending: true });
-
-  if (error) {
-    throw error;
-  }
-
-  return (data ?? []) as TaskRecord[];
+  return db
+    .select()
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.user_id, userId),
+        eq(tasks.status, "pending"),
+        gte(tasks.task_date, fromDate),
+      ),
+    )
+    .orderBy(asc(tasks.task_date), asc(tasks.start_time));
 }
 
 export async function syncTaskRemindersForTask(
-  client: DayStackClient,
   userId: string,
   task: Pick<TaskRecord, "end_time" | "id" | "start_time" | "status" | "task_date">,
   preferences?: UserNotificationPreferencesRecord,
 ) {
-  const activePreferences = preferences ?? (await fetchNotificationPreferences(client, userId));
+  const db = getRequiredDb();
+  const activePreferences = preferences ?? (await fetchNotificationPreferences(userId));
 
-  const { error: deleteError } = await client
-    .from("task_reminders")
-    .delete()
-    .eq("task_id", task.id)
-    .in("status", MUTABLE_REMINDER_STATUSES);
-
-  if (deleteError) {
-    throw deleteError;
-  }
+  await db
+    .delete(task_reminders)
+    .where(
+      and(
+        eq(task_reminders.task_id, task.id),
+        inArray(task_reminders.status, MUTABLE_REMINDER_STATUSES),
+      ),
+    );
 
   const reminderRows = getReminderRowsForTask(userId, task, activePreferences);
 
@@ -151,33 +156,33 @@ export async function syncTaskRemindersForTask(
     return;
   }
 
-  const { error: insertError } = await client.from("task_reminders").insert(reminderRows);
-
-  if (insertError) {
-    throw insertError;
-  }
+  await db.insert(task_reminders).values(
+    reminderRows.map((row) => ({
+      id: crypto.randomUUID(),
+      ...row,
+    })),
+  );
 }
 
 export async function syncTaskRemindersForUser(
-  client: DayStackClient,
   userId: string,
   preferences?: UserNotificationPreferencesRecord,
   now = new Date(),
 ) {
-  const activePreferences = preferences ?? (await fetchNotificationPreferences(client, userId));
-  const tasks = await fetchPendingTasksForReminderSync(client, userId, formatDateKey(now));
+  const db = getRequiredDb();
+  const activePreferences = preferences ?? (await fetchNotificationPreferences(userId));
+  const pendingTasks = await fetchPendingTasksForReminderSync(db, userId, formatDateKey(now));
 
-  if (tasks.length === 0) {
+  if (pendingTasks.length === 0) {
     return activePreferences;
   }
 
-  await Promise.all(tasks.map((task) => syncTaskRemindersForTask(client, userId, task, activePreferences)));
+  await Promise.all(pendingTasks.map((task) => syncTaskRemindersForTask(userId, task, activePreferences)));
 
   return activePreferences;
 }
 
 export async function updateNotificationPreferences(
-  client: DayStackClient,
   userId: string,
   updates: Partial<
     Pick<
@@ -187,7 +192,9 @@ export async function updateNotificationPreferences(
   >,
   now = new Date(),
 ): Promise<UserNotificationPreferencesRecord> {
-  const current = await fetchNotificationPreferences(client, userId);
+  const db = getRequiredDb();
+  const current = await fetchNotificationPreferences(userId);
+  const timestamp = now.toISOString();
   const nextPreferences = {
     user_id: userId,
     push_enabled: updates.push_enabled ?? current.push_enabled,
@@ -196,52 +203,46 @@ export async function updateNotificationPreferences(
     remind_overdue: updates.remind_overdue ?? current.remind_overdue,
   };
 
-  const { data, error } = await client
-    .from("user_notification_preferences")
-    .upsert(nextPreferences, {
-      onConflict: "user_id",
+  const [savedPreferences] = await db
+    .insert(user_notification_preferences)
+    .values({
+      ...nextPreferences,
+      created_at: current.created_at ?? timestamp,
+      updated_at: timestamp,
     })
-    .select("*")
-    .single();
+    .onConflictDoUpdate({
+      target: user_notification_preferences.user_id,
+      set: {
+        ...nextPreferences,
+        updated_at: timestamp,
+      },
+    })
+    .returning();
 
-  if (error) {
-    throw error;
-  }
-
-  const savedPreferences = data as UserNotificationPreferencesRecord;
-
-  await syncTaskRemindersForUser(client, userId, savedPreferences, now);
+  await syncTaskRemindersForUser(userId, savedPreferences, now);
 
   return savedPreferences;
 }
 
-export async function fetchDueTaskReminders(
-  client: DayStackClient,
-  options?: {
-    limit?: number;
-    nowIso?: string;
-    userId?: string;
-  },
-): Promise<DueTaskReminder[]> {
-  let reminderQuery = client
-    .from("task_reminders")
-    .select("*")
-    .eq("status", "pending")
-    .lte("remind_at", options?.nowIso ?? new Date().toISOString())
-    .order("remind_at", { ascending: true })
-    .limit(options?.limit ?? 25);
+export async function fetchDueTaskReminders(options?: {
+  limit?: number;
+  nowIso?: string;
+  userId?: string;
+}): Promise<DueTaskReminder[]> {
+  const db = getRequiredDb();
+  const nowIso = options?.nowIso ?? new Date().toISOString();
+  const conditions = [eq(task_reminders.status, "pending"), lte(task_reminders.remind_at, nowIso)];
 
   if (options?.userId) {
-    reminderQuery = reminderQuery.eq("user_id", options.userId);
+    conditions.push(eq(task_reminders.user_id, options.userId));
   }
 
-  const { data: reminders, error: remindersError } = await reminderQuery;
-
-  if (remindersError) {
-    throw remindersError;
-  }
-
-  const reminderRows = (reminders ?? []) as TaskReminderRecord[];
+  const reminderRows = await db
+    .select()
+    .from(task_reminders)
+    .where(and(...conditions))
+    .orderBy(asc(task_reminders.remind_at))
+    .limit(options?.limit ?? 25);
 
   if (reminderRows.length === 0) {
     return [];
@@ -249,34 +250,30 @@ export async function fetchDueTaskReminders(
 
   const taskIds = [...new Set(reminderRows.map((reminder) => reminder.task_id))];
   const userIds = [...new Set(reminderRows.map((reminder) => reminder.user_id))];
-
-  const [{ data: tasks, error: tasksError }, { data: preferences, error: preferencesError }] = await Promise.all([
-    client.from("tasks").select("id, user_id, title, task_date, start_time, end_time, status, task_type, meeting_link").in("id", taskIds),
-    client
-      .from("user_notification_preferences")
-      .select("*")
-      .in("user_id", userIds),
+  const [taskRows, preferenceRows] = await Promise.all([
+    db
+      .select({
+        end_time: tasks.end_time,
+        id: tasks.id,
+        meeting_link: tasks.meeting_link,
+        start_time: tasks.start_time,
+        status: tasks.status,
+        task_date: tasks.task_date,
+        task_type: tasks.task_type,
+        title: tasks.title,
+        user_id: tasks.user_id,
+      })
+      .from(tasks)
+      .where(inArray(tasks.id, taskIds)),
+    db
+      .select()
+      .from(user_notification_preferences)
+      .where(inArray(user_notification_preferences.user_id, userIds)),
   ]);
 
-  if (tasksError) {
-    throw tasksError;
-  }
-
-  if (preferencesError) {
-    throw preferencesError;
-  }
-
-  const tasksById = new Map(
-    ((tasks ?? []) as Array<
-      Pick<
-        TaskRecord,
-        "end_time" | "id" | "meeting_link" | "start_time" | "status" | "task_date" | "task_type" | "title" | "user_id"
-      >
-    >).map((task) => [task.id, task]),
-  );
-
+  const tasksById = new Map(taskRows.map((task) => [task.id, task]));
   const preferencesByUserId = new Map(
-    ((preferences ?? []) as UserNotificationPreferencesRecord[]).map((preference) => [preference.user_id, preference]),
+    preferenceRows.map((preference) => [preference.user_id, preference]),
   );
 
   return reminderRows.flatMap((reminder) => {
@@ -298,7 +295,6 @@ export async function fetchDueTaskReminders(
 }
 
 export async function updateTaskReminderStatus(
-  client: DayStackClient,
   reminderId: string,
   status: ReminderStatus,
   options?: {
@@ -306,26 +302,27 @@ export async function updateTaskReminderStatus(
     userId?: string;
   },
 ) {
-  let request = client
-    .from("task_reminders")
-    .update({
-      status,
-      sent_at: options?.sentAt ?? null,
-    })
-    .eq("id", reminderId);
+  const db = getRequiredDb();
+  const conditions = [eq(task_reminders.id, reminderId)];
 
   if (options?.userId) {
-    request = request.eq("user_id", options.userId);
+    conditions.push(eq(task_reminders.user_id, options.userId));
   }
 
-  const { error } = await request;
-
-  if (error) {
-    throw error;
-  }
+  await db
+    .update(task_reminders)
+    .set({
+      status,
+      sent_at: options?.sentAt ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .where(and(...conditions));
 }
 
-export function buildReminderCopy(task: Pick<TaskRecord, "end_time" | "start_time" | "title">, reminderType: ReminderType) {
+export function buildReminderCopy(
+  task: Pick<TaskRecord, "end_time" | "start_time" | "title">,
+  reminderType: ReminderType,
+) {
   if (reminderType === "5_minutes_before") {
     return {
       title: "Starting in 5 minutes",
