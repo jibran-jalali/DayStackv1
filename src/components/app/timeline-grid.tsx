@@ -30,6 +30,7 @@ interface TimelineGridProps {
 
 const TIMELINE_INTERVAL = 15;
 const SLOT_HEIGHT = 24;
+const SHORT_BLOCK_MIN_HEIGHT = 32;
 const DEFAULT_START_MINUTES = 6 * 60;
 const DEFAULT_END_MINUTES = 22 * 60;
 const OVERLAP_GAP = 6;
@@ -177,9 +178,14 @@ function getBlockMetrics(startMinutes: number, endMinutes: number, timelineStart
   const rawHeight = ((endMinutes - startMinutes) / TIMELINE_INTERVAL) * SLOT_HEIGHT;
   const desiredGap = rawHeight < 36 ? 2 : rawHeight < 84 ? 4 : 6;
   const maxHeight = rawHeight > 2.5 ? rawHeight - 0.75 : rawHeight;
-  const minimumReadableHeight = rawHeight < 18 ? maxHeight : Math.min(22, maxHeight);
-  const height = Math.min(Math.max(rawHeight - desiredGap, minimumReadableHeight), maxHeight);
-  const topOffset = ((startMinutes - timelineStartMinutes) / TIMELINE_INTERVAL) * SLOT_HEIGHT + (rawHeight - height) / 2;
+  const isShortBlock = rawHeight <= SLOT_HEIGHT;
+  const minimumReadableHeight = isShortBlock ? SHORT_BLOCK_MIN_HEIGHT : Math.min(22, maxHeight);
+  const height =
+    isShortBlock
+      ? Math.max(rawHeight - desiredGap, minimumReadableHeight)
+      : Math.min(Math.max(rawHeight - desiredGap, minimumReadableHeight), maxHeight);
+  const taskTopOffset = ((startMinutes - timelineStartMinutes) / TIMELINE_INTERVAL) * SLOT_HEIGHT;
+  const topOffset = isShortBlock ? taskTopOffset : taskTopOffset + (rawHeight - height) / 2;
 
   return {
     height,
@@ -373,13 +379,13 @@ export function TimelineGrid({
                 startMinutes,
               );
               const density = getBlockDensity(rawHeight, layout.columns);
-              const isCompact = density !== "full";
               const isMicro = density === "micro";
               const isTight = density === "micro" || layout.columns > 1;
               const isMeeting = task.task_type === "meeting";
+              const showParticipantNames = isMeeting && task.participants.length > 0 && !isTight;
               const { left, width } = getLayoutStyles(layout.column, layout.columns);
               const controlButtonClass = isMicro
-                ? "h-5 w-5 rounded-full border border-white/70 bg-white/88 px-0 text-secondary-foreground shadow-[0_6px_14px_rgba(15,23,42,0.05)] hover:bg-white"
+                ? "h-5 w-5 rounded-full border border-white/75 bg-white/92 px-0 text-secondary-foreground shadow-[0_4px_10px_rgba(15,23,42,0.05)] hover:bg-white"
                 : density === "compact"
                   ? "h-7 w-7 rounded-full border border-white/70 bg-white/86 px-0 text-secondary-foreground shadow-[0_8px_18px_rgba(15,23,42,0.05)] hover:bg-white"
                   : "h-8 w-8 rounded-full border border-white/70 bg-white/84 px-0 text-secondary-foreground shadow-[0_8px_18px_rgba(15,23,42,0.05)] hover:bg-white";
@@ -409,7 +415,7 @@ export function TimelineGrid({
                     className={cn(
                       "relative h-full cursor-pointer text-left focus:outline-none",
                       isMicro
-                        ? "px-2.5 py-1.5 pr-14"
+                        ? "px-2 py-1 pr-12"
                         : density === "compact"
                           ? "px-3 py-2.5 pr-[4.5rem]"
                           : "px-3 py-3 pr-24 sm:pr-[6.75rem]",
@@ -425,11 +431,11 @@ export function TimelineGrid({
                     <span
                       className={cn(
                         "absolute left-2 w-1 rounded-full",
-                        isMicro ? "inset-y-2" : "inset-y-3",
+                        isMicro ? "inset-y-1.5" : "inset-y-3",
                         isBlocked ? blockedAccentStyles[visualState] : accentStyles[visualState],
                       )}
                     />
-                    <div className={cn("min-w-0 pl-2", isMicro && "pt-0.5")}>
+                    <div className={cn("min-w-0 pl-2", isMicro && "flex h-full items-center pr-0.5")}>
                       <div className={cn("flex min-w-0 items-center gap-2", isMicro && "gap-1.5")}>
                         {isMeeting ? (
                           <Video className={cn("shrink-0 text-primary", isMicro ? "h-3 w-3" : "h-3.5 w-3.5")} />
@@ -442,36 +448,45 @@ export function TimelineGrid({
                         )}
                         <p
                           className={cn(
-                            isMicro ? "truncate text-[11px] font-semibold leading-tight" : "truncate text-sm font-semibold",
+                            isMicro ? "truncate text-[11px] font-semibold leading-none" : "truncate text-sm font-semibold",
                             isBlocked ? blockedTextStyles[visualState] : blockTextStyles[visualState],
                           )}
                         >
                           {task.title}
                         </p>
                       </div>
-                      {!isCompact ? (
-                        <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-secondary-foreground">
-                          {formatClockTime(minutesToTime(effectiveStartMinutes))} to{" "}
-                          {formatClockTime(minutesToTime(effectiveEndMinutes))}
-                        </p>
-                      ) : density === "compact" ? (
-                        <p className="mt-1 inline-flex items-center gap-1.5 text-[11px] text-secondary-foreground">
-                          {formatClockTime(minutesToTime(effectiveStartMinutes))}
-                        </p>
-                      ) : null}
-                      {isMeeting && task.participants.length > 0 && !isTight ? (
-                        <p className="mt-1 inline-flex max-w-full items-center gap-1.5 truncate text-[11px] text-secondary-foreground">
-                          <Users className="h-3.5 w-3.5 shrink-0" />
-                          {formatParticipantNames(task.participants, layout.columns > 1 ? 1 : 2)}
-                        </p>
+                      {!isMicro ? (
+                        <div
+                          className={cn(
+                            "mt-1 flex min-w-0 items-center gap-2 text-secondary-foreground",
+                            density === "compact" ? "text-[11px] leading-tight" : "text-xs",
+                          )}
+                        >
+                          <span className="shrink-0">
+                            {density === "compact"
+                              ? formatClockTime(minutesToTime(effectiveStartMinutes))
+                              : `${formatClockTime(minutesToTime(effectiveStartMinutes))} to ${formatClockTime(minutesToTime(effectiveEndMinutes))}`}
+                          </span>
+                          {showParticipantNames ? (
+                            <>
+                              <span className="h-1 w-1 shrink-0 rounded-full bg-secondary-foreground/35" />
+                              <span className="flex min-w-0 items-center gap-1.5">
+                                <Users className="h-3.5 w-3.5 shrink-0" />
+                                <span className="truncate">
+                                  {formatParticipantNames(task.participants, layout.columns > 1 ? 1 : 2)}
+                                </span>
+                              </span>
+                            </>
+                          ) : null}
+                        </div>
                       ) : null}
                     </div>
                   </div>
 
                   <div
                     className={cn(
-                      "pointer-events-none absolute right-2.5 flex",
-                      isMicro ? "inset-y-0 items-center" : "top-2.5 flex-col items-end gap-1.5",
+                      "pointer-events-none absolute flex",
+                      isMicro ? "right-2 inset-y-0 items-center" : "right-2.5 top-2.5 flex-col items-end gap-1.5",
                     )}
                   >
                     {density === "full" ? (
@@ -483,7 +498,7 @@ export function TimelineGrid({
                     <div
                       className={cn(
                         "pointer-events-auto flex items-center",
-                        isMicro ? "gap-1 pr-0.5" : density === "compact" ? "gap-1.5" : "gap-1.5",
+                        isMicro ? "gap-0.5" : density === "compact" ? "gap-1.5" : "gap-1.5",
                       )}
                     >
                       <Button

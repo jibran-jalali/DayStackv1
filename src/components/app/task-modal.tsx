@@ -53,30 +53,41 @@ export function TaskModal({ children, description, onClose, open, title }: TaskM
         onClick={onClose}
       />
 
-      <div className="absolute inset-x-0 bottom-0 mx-auto flex max-h-[85vh] w-full max-w-2xl items-end px-0 sm:inset-0 sm:items-center sm:px-4">
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={title}
-          className={cn(
-            "relative w-full overflow-hidden rounded-t-[28px] border border-white/70 bg-white/96 shadow-[0_30px_90px_rgba(15,23,42,0.18)] transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] sm:rounded-[28px]",
-            open ? "translate-y-0 opacity-100 sm:scale-100" : "translate-y-5 opacity-95 sm:scale-[0.985]",
-          )}
-        >
-          <div className="border-b border-border/80 px-5 py-4 sm:px-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="section-label">Task editor</p>
-                <h2 className="mt-1 font-display text-[1.75rem] font-semibold text-foreground">{title}</h2>
-                <p className="mt-1.5 text-sm text-secondary-foreground">{description}</p>
+      <div className="absolute inset-0 overflow-y-auto">
+        <div className="flex min-h-full items-center justify-center p-2.5 sm:p-5">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            className={cn(
+              "relative flex w-full max-w-[42rem] flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white/96 shadow-[0_28px_84px_rgba(15,23,42,0.16)] transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              "max-h-[calc(100dvh-1.25rem)] sm:max-h-[calc(100dvh-2.5rem)]",
+              open ? "translate-y-0 scale-100 opacity-100" : "translate-y-4 scale-[0.985] opacity-95",
+            )}
+          >
+            <div className="border-b border-border/80 px-5 py-4 sm:px-6 sm:py-[1.125rem]">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="section-label">Task editor</p>
+                  <h2 className="mt-1 font-display text-[1.65rem] font-semibold tracking-tight text-foreground">{title}</h2>
+                  <p className="mt-1 text-sm leading-6 text-secondary-foreground">{description}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 w-9 shrink-0 rounded-full px-0"
+                  onClick={onClose}
+                  aria-label="Close task modal"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
-              <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full px-0" onClick={onClose} aria-label="Close task modal">
-                <X className="h-4 w-4" />
-              </Button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 overscroll-contain soft-scrollbar sm:px-6 sm:py-5">
+              {children}
             </div>
           </div>
-
-          <div className="max-h-[calc(85vh-5.5rem)] overflow-y-auto px-5 py-5 soft-scrollbar sm:px-6">{children}</div>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { CalendarRange, CheckCircle2, PencilLine, Trash2, Users, Video } from "lucide-react";
+import { CalendarRange, Check, CheckCircle2, PencilLine, Trash2, Users, Video } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/shared/button";
 import { formatClockTime, formatParticipantNames, getTaskAnchorId, isBlockedTask } from "@/lib/daystack";
@@ -7,12 +7,15 @@ import type { PlannerTask, TaskVisualState } from "@/types/daystack";
 
 interface TaskCardProps {
   focusedTaskId?: string | null;
+  isSelected?: boolean;
   task: PlannerTask;
   visualState: TaskVisualState;
   isPending: boolean;
   onEdit: (task: PlannerTask) => void;
   onDelete: (task: PlannerTask) => void;
+  onToggleSelection?: (taskId: string) => void;
   onToggle: (task: PlannerTask) => void;
+  selectionMode?: boolean;
 }
 
 const stateStyles: Record<TaskVisualState, string> = {
@@ -39,7 +42,18 @@ const blockedStateStyles: Record<TaskVisualState, string> = {
   overdue: "border-slate-400 bg-slate-200/92 shadow-[0_12px_22px_rgba(71,85,105,0.08)]",
 };
 
-export function TaskCard({ focusedTaskId, task, visualState, isPending, onEdit, onDelete, onToggle }: TaskCardProps) {
+export function TaskCard({
+  focusedTaskId,
+  isPending,
+  isSelected = false,
+  onDelete,
+  onEdit,
+  onToggle,
+  onToggleSelection,
+  selectionMode = false,
+  task,
+  visualState,
+}: TaskCardProps) {
   const isMeeting = task.task_type === "meeting";
   const isBlocked = isBlockedTask(task);
 
@@ -49,6 +63,7 @@ export function TaskCard({ focusedTaskId, task, visualState, isPending, onEdit, 
       className={cn(
         "rounded-[20px] border px-3 py-3 transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 sm:px-4",
         isBlocked ? blockedStateStyles[visualState] : stateStyles[visualState],
+        selectionMode && isSelected && "border-primary/35 ring-2 ring-primary/25 ring-offset-2 ring-offset-background",
         focusedTaskId === task.id && "ring-2 ring-primary/35 ring-offset-2 ring-offset-background",
       )}
     >
@@ -98,6 +113,30 @@ export function TaskCard({ focusedTaskId, task, visualState, isPending, onEdit, 
         </button>
 
         <div className="flex shrink-0 items-center gap-2">
+          {selectionMode ? (
+            <Button
+              size="sm"
+              variant={isSelected ? "primary" : "secondary"}
+              className="h-10 px-3"
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleSelection?.(task.id);
+              }}
+              disabled={isPending}
+              aria-label={`${isSelected ? "Unselect" : "Select"} ${task.title}`}
+              aria-pressed={isSelected}
+            >
+              <span
+                className={cn(
+                  "flex h-4 w-4 items-center justify-center rounded border",
+                  isSelected ? "border-white/70 bg-white/12" : "border-border/80 bg-white/72",
+                )}
+              >
+                {isSelected ? <Check className="h-3 w-3" /> : null}
+              </span>
+              {isSelected ? "Selected" : "Select"}
+            </Button>
+          ) : null}
           {isMeeting && task.meeting_link ? (
             <a
               href={task.meeting_link}

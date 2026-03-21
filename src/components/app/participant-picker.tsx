@@ -80,11 +80,11 @@ export function ParticipantPicker({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground/70" />
         <Input
-          className="pl-10"
+          className="h-11 rounded-[16px] border-border/80 bg-white/96 py-2.5 pl-10 pr-3.5 text-[15px] shadow-none"
           placeholder="Search people to mention"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -93,11 +93,11 @@ export function ParticipantPicker({
       </div>
 
       {value.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {value.map((participant) => (
             <span
               key={participant.id}
-              className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-white/92 px-3 py-1.5 text-sm text-foreground shadow-[0_8px_18px_rgba(15,23,42,0.04)]"
+              className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-white/94 px-3 py-1 text-sm text-foreground shadow-[0_8px_18px_rgba(15,23,42,0.04)]"
             >
               {participant.fullName}
               <button
@@ -115,9 +115,9 @@ export function ParticipantPicker({
         </div>
       ) : null}
 
-      <div className="rounded-[18px] border border-border/70 bg-muted/40">
+      <div className="overflow-hidden rounded-[18px] border border-border/70 bg-white/75 shadow-[0_8px_18px_rgba(15,23,42,0.03)]">
         {isLoading ? (
-          <p className="px-4 py-3 text-sm text-secondary-foreground">Searching...</p>
+          <p className="px-3.5 py-3 text-sm text-secondary-foreground">Searching...</p>
         ) : results.length > 0 ? (
           <div className="divide-y divide-border/70">
             {results.map((participant) => (
@@ -125,7 +125,7 @@ export function ParticipantPicker({
                 key={participant.id}
                 suppressHydrationWarning
                 type="button"
-                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition hover:bg-white/70"
+                className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left text-sm transition hover:bg-cyan-50/45"
                 onClick={() => handleSelectParticipant(participant)}
                 disabled={disabled}
               >
@@ -140,7 +140,7 @@ export function ParticipantPicker({
             ))}
           </div>
         ) : (
-          <p className="px-4 py-3 text-sm text-secondary-foreground">
+          <p className="px-3.5 py-3 text-sm text-secondary-foreground">
             {error ?? "No people to add yet. Search by name or email."}
           </p>
         )}

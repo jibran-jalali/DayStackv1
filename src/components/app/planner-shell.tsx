@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { DateSwitcher } from "@/components/app/date-switcher";
-import { ExecutionLane } from "@/components/app/execution-lane";
+import { DashboardView } from "@/components/app/dashboard-view";
 import { PlannerHeader } from "@/components/app/planner-header";
 import { TaskForm } from "@/components/app/task-form";
 import { TaskModal } from "@/components/app/task-modal";
@@ -27,10 +27,7 @@ import {
   formatDateLabel,
   getPlannerDateMode,
   getRelativeDateLabel,
-  getTaskAnchorId,
   getTaskVisualState,
-  getTaskWindow,
-  getUpcomingTasks,
   isBlockedTask,
   isValidDateKey,
   minutesToTime,
@@ -42,13 +39,11 @@ import type {
   DashboardSnapshot,
   PlannerTask,
   TaskFormValues,
-  UserNotificationPreferencesRecord,
 } from "@/types/daystack";
 
 interface PlannerShellProps {
   displayName: string;
   email?: string;
-  initialNotificationPreferences: UserNotificationPreferencesRecord;
   userId: string;
   initialSnapshot: DashboardSnapshot;
 }
@@ -96,11 +91,6 @@ function createDefaultTask(taskDate: string, now: Date, startTimeOverride?: stri
 function getPlannerHref(taskDate: string, now: Date) {
   const todayDate = formatDateKey(now);
   return taskDate === todayDate ? "/app" : `/app?date=${taskDate}`;
-}
-
-function getSettingsHref(taskDate: string, now: Date) {
-  const todayDate = formatDateKey(now);
-  return taskDate === todayDate ? "/app/settings" : `/app/settings?date=${taskDate}`;
 }
 
 function sortTasksForPlanner(tasks: PlannerTask[]) {
@@ -162,7 +152,6 @@ function syncSnapshotWithTasks(
 export function PlannerShell({
   displayName,
   email,
-  initialNotificationPreferences,
   userId,
   initialSnapshot,
 }: PlannerShellProps) {
@@ -175,7 +164,8 @@ export function PlannerShell({
   const [composerDefaults, setComposerDefaults] = useState<TaskFormValues | null>(null);
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
   const [followToday, setFollowToday] = useState(() => initialSnapshot.taskDate === formatDateKey(new Date()));
-  const [settingsHighlighted, setSettingsHighlighted] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const isPending = busyMode !== null;
   const isSurfaceRefreshing = busyMode === "navigation";
 
@@ -195,6 +185,17 @@ export function PlannerShell({
     window.history.replaceState(window.history.state, "", getPlannerHref(taskDate, new Date()));
   }
 
+  function clearSelection() {
+    setSelectionMode(false);
+    setSelectedTaskIds([]);
+  }
+
+  function toggleTaskSelection(taskId: string) {
+    setSelectedTaskIds((current) =>
+      current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId],
+    );
+  }
+
   useEffect(() => {
     const timer = window.setInterval(() => {
       setNow(new Date());
@@ -204,6 +205,19 @@ export function PlannerShell({
   }, []);
 
   const todayDate = formatDateKey(now);
+
+  useEffect(() => {
+    if (viewMode === "list") {
+      return;
+    }
+
+    setSelectionMode(false);
+    setSelectedTaskIds([]);
+  }, [viewMode]);
+
+  useEffect(() => {
+    setSelectedTaskIds((current) => current.filter((id) => snapshot.tasks.some((task) => task.id === id)));
+  }, [snapshot.tasks]);
 
   useEffect(() => {
     if (!followToday || todayDate === snapshot.taskDate) {
@@ -241,23 +255,7 @@ export function PlannerShell({
     return () => window.clearTimeout(timer);
   }, [notice]);
 
-  useEffect(() => {
-    if (!settingsHighlighted) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setSettingsHighlighted(false);
-    }, 4200);
-
-    return () => window.clearTimeout(timer);
-  }, [settingsHighlighted]);
-
   async function handleSaveTask(values: TaskFormValues) {
-    const shouldHighlightSettings =
-      !editorTask &&
-      snapshot.tasks.length === 0 &&
-      !initialNotificationPreferences.push_enabled;
     const shouldRefreshSnapshot = values.taskDate !== snapshot.taskDate;
 
     setBusyMode(shouldRefreshSnapshot ? "navigation" : "minor");
@@ -291,10 +289,6 @@ export function PlannerShell({
         type: "success",
         message: editorTask ? "Block updated." : "Block added.",
       });
-
-      if (shouldHighlightSettings) {
-        setSettingsHighlighted(true);
-      }
     } catch (error) {
       setNotice({
         type: "error",
@@ -327,6 +321,7 @@ export function PlannerShell({
       return;
     }
 
+    clearSelection();
     setEditorTask(null);
     setComposerDefaults(null);
     setFocusedTaskId(null);
@@ -428,35 +423,65 @@ export function PlannerShell({
     })();
   }
 
-  function handleNotificationNotice(nextNotice: NonNullable<NoticeState>) {
-    setNotice(nextNotice);
-  }
+  function handleDeleteSelectedTasks() {
+    if (selectedTaskIds.length === 0) {
+      return;
+    }
 
-  async function handleNotificationAccepted(result: { acceptedTaskId: string | null; taskDate: string }) {
-    if (result.taskDate !== snapshot.taskDate) {
+    const idsToDelete = [...selectedTaskIds];
+    const confirmed = window.confirm(
+      `Delete ${idsToDelete.length} selected block${idsToDelete.length === 1 ? "" : "s"}?`,
+    );
+
+    if (!confirmed) {
       return;
     }
 
     setBusyMode("minor");
 
-    try {
-      const nextSnapshot = await fetchDashboardSnapshot(result.taskDate);
-      setSnapshot(nextSnapshot);
-      setFollowToday(result.taskDate === formatDateKey(new Date()));
+    void (async () => {
+      try {
+        let taskDate = snapshot.taskDate;
 
-      if (result.acceptedTaskId) {
-        window.setTimeout(() => {
-          handleFocusTask(result.acceptedTaskId!);
-        }, 80);
+        for (const taskId of idsToDelete) {
+          taskDate = await deleteTask(taskId);
+        }
+
+        applyTasksToCurrentSnapshot((currentTasks) =>
+          currentTasks.filter((currentTask) => !idsToDelete.includes(currentTask.id)),
+        );
+        setFollowToday(taskDate === formatDateKey(new Date()));
+        syncPlannerLocation(taskDate);
+
+        if (editorTask && idsToDelete.includes(editorTask.id)) {
+          setEditorTask(null);
+          setComposerDefaults(null);
+        }
+
+        clearSelection();
+        setNotice({
+          type: "success",
+          message: `${idsToDelete.length} block${idsToDelete.length === 1 ? "" : "s"} deleted.`,
+        });
+      } catch (error) {
+        try {
+          const refreshedSnapshot = await fetchDashboardSnapshot(snapshot.taskDate);
+          setSnapshot(refreshedSnapshot);
+          setFollowToday(snapshot.taskDate === formatDateKey(new Date()));
+          syncPlannerLocation(snapshot.taskDate);
+        } catch {
+          // Keep the current error notice; the next full refresh can recover if the snapshot reload also fails.
+        }
+
+        clearSelection();
+        setNotice({
+          type: "error",
+          message: getErrorMessage(error),
+        });
+      } finally {
+        setBusyMode(null);
       }
-    } catch (error) {
-      setNotice({
-        type: "error",
-        message: getErrorMessage(error),
-      });
-    } finally {
-      setBusyMode(null);
-    }
+    })();
   }
 
   function handleRescheduleTask(task: PlannerTask, nextStartTime: string, nextEndTime: string) {
@@ -495,35 +520,7 @@ export function PlannerShell({
     })();
   }
 
-  function handleFocusTask(taskId: string) {
-    setFocusedTaskId(taskId);
-
-    window.requestAnimationFrame(() => {
-      document.getElementById(getTaskAnchorId(taskId))?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    });
-
-    window.setTimeout(() => {
-      setFocusedTaskId((current) => (current === taskId ? null : current));
-    }, 1800);
-  }
-
   const dateMode = useMemo(() => getPlannerDateMode(snapshot.taskDate, now), [now, snapshot.taskDate]);
-  const currentWindow = useMemo(
-    () => getTaskWindow(snapshot.tasks, now, snapshot.taskDate),
-    [now, snapshot.taskDate, snapshot.tasks],
-  );
-  const queue = useMemo(() => {
-    const blockedIds = new Set(
-      [currentWindow.currentTask?.id, currentWindow.nextTask?.id].filter(Boolean),
-    );
-
-    return getUpcomingTasks(snapshot.tasks, now, snapshot.taskDate, 6)
-      .filter((task) => !blockedIds.has(task.id))
-      .slice(0, 4);
-  }, [currentWindow.currentTask?.id, currentWindow.nextTask?.id, now, snapshot.taskDate, snapshot.tasks]);
   const dateLabel = useMemo(() => formatDateLabel(snapshot.taskDate), [snapshot.taskDate]);
   const relativeDateLabel = useMemo(
     () => getRelativeDateLabel(snapshot.taskDate, now),
@@ -533,8 +530,31 @@ export function PlannerShell({
     () => snapshot.tasks.filter((task) => isBlockedTask(task)).length,
     [snapshot.tasks],
   );
-  const plannerHref = useMemo(() => getPlannerHref(snapshot.taskDate, now), [now, snapshot.taskDate]);
-  const settingsHref = useMemo(() => getSettingsHref(snapshot.taskDate, now), [now, snapshot.taskDate]);
+  const viewCopy = useMemo(() => {
+    if (viewMode === "dashboard") {
+      return {
+        description:
+          dateMode === "future"
+            ? "See progress, streak, and the first move for this plan."
+            : dateMode === "past"
+              ? "See progress, streak, and the next move for this day."
+              : "See progress, streak, and the next move in one place.",
+        eyebrow: "Command center",
+        title: "Dashboard",
+      };
+    }
+
+    return {
+      description:
+        dateMode === "future"
+          ? "Choose the day you want to structure and place blocks before it starts."
+          : dateMode === "past"
+            ? "Review the timeline for this day and what was left open."
+            : "See the schedule by time and keep the next move clear.",
+      eyebrow: "Day Plan",
+      title: "Day Plan",
+    };
+  }, [dateMode, viewMode]);
   const headerMetric = useMemo<{
     label: string;
     tone: "brand" | "default" | "success" | "warning";
@@ -601,9 +621,6 @@ export function PlannerShell({
           dateMode={dateMode}
           metricLabel={headerMetric.label}
           metricTone={headerMetric.tone}
-          plannerHref={plannerHref}
-          settingsHighlighted={settingsHighlighted}
-          settingsHref={settingsHref}
           streak={snapshot.streak}
           subtitle={
             dateMode === "future"
@@ -614,8 +631,6 @@ export function PlannerShell({
           }
           viewMode={viewMode}
           onAddTask={() => handleCreateTask()}
-          onNotice={handleNotificationNotice}
-          onTaskAccepted={handleNotificationAccepted}
           onViewChange={setViewMode}
           onSignOutError={(message) =>
             setNotice({
@@ -640,99 +655,148 @@ export function PlannerShell({
           </div>
         ) : null}
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <section className="min-w-0 space-y-4">
+        <section className="min-w-0">
+          <div
+            className={cn("glass-panel relative p-4 sm:p-5", isSurfaceRefreshing && "opacity-90")}
+            aria-busy={isSurfaceRefreshing}
+          >
             <div
-              className={cn("glass-panel relative p-4 sm:p-5", isSurfaceRefreshing && "opacity-90")}
-              aria-busy={isSurfaceRefreshing}
-            >
-              <div
-                className={cn(
-                  "pointer-events-none absolute inset-x-6 top-0 h-px bg-brand-gradient transition-opacity duration-150",
-                  isSurfaceRefreshing ? "opacity-100" : "opacity-0",
-                )}
+              className={cn(
+                "pointer-events-none absolute inset-x-6 top-0 h-px bg-brand-gradient transition-opacity duration-150",
+                isSurfaceRefreshing ? "opacity-100" : "opacity-0",
+              )}
+            />
+
+            <div className="flex flex-col gap-4 border-b border-border/70 pb-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="section-label">{viewCopy.eyebrow}</p>
+                  <h2 className="mt-1 font-display text-2xl font-semibold text-foreground sm:text-[2rem]">
+                    {viewCopy.title}
+                  </h2>
+                  <p className="mt-1.5 text-sm text-secondary-foreground">{viewCopy.description}</p>
+                </div>
+                <div className="hidden flex-wrap items-center gap-2 sm:flex">
+                  <span className="data-chip">{relativeDateLabel}</span>
+                  <span className="data-chip">
+                    {snapshot.tasks.length} block{snapshot.tasks.length === 1 ? "" : "s"}
+                  </span>
+                  {viewMode === "list" && snapshot.tasks.length > 0 && !selectionMode ? (
+                    <button
+                      suppressHydrationWarning
+                      type="button"
+                      className="inline-flex h-9 items-center justify-center rounded-full border border-border/80 bg-white/92 px-3 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_16px_32px_rgba(15,23,42,0.09)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
+                      onClick={() => setSelectionMode(true)}
+                      disabled={isPending}
+                    >
+                      Select
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              <DateSwitcher
+                dateLabel={dateLabel}
+                dateMode={dateMode}
+                isPending={isSurfaceRefreshing}
+                onSelectDate={handleSelectDate}
+                selectedDate={snapshot.taskDate}
+                todayDate={todayDate}
               />
 
-              <div className="flex flex-col gap-4 border-b border-border/70 pb-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="section-label">Day Plan</p>
-                    <h2 className="mt-1 font-display text-2xl font-semibold text-foreground sm:text-[2rem]">
-                      Day Plan
-                    </h2>
-                    <p className="mt-1.5 text-sm text-secondary-foreground">
-                      {dateMode === "future"
-                        ? "Choose the day you want to structure and place blocks before it starts."
-                        : dateMode === "past"
-                          ? "Review the timeline for this day and what was left open."
-                          : "See the schedule by time and keep the next move clear."}
-                    </p>
-                  </div>
-                  <div className="hidden flex-wrap items-center gap-2 sm:flex">
-                    <span className="data-chip">{relativeDateLabel}</span>
-                    <span className="data-chip">
-                      {snapshot.tasks.length} block{snapshot.tasks.length === 1 ? "" : "s"}
+              {viewMode === "list" && snapshot.tasks.length > 0 && !selectionMode ? (
+                <div className="sm:hidden">
+                  <button
+                    suppressHydrationWarning
+                    type="button"
+                    className="inline-flex h-10 items-center justify-center rounded-full border border-border/80 bg-white/92 px-4 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_16px_32px_rgba(15,23,42,0.09)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
+                    onClick={() => setSelectionMode(true)}
+                    disabled={isPending}
+                  >
+                    Select
+                  </button>
+                </div>
+              ) : null}
+
+              {viewMode === "list" && selectionMode ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-border/80 bg-white/86 px-3 py-2.5 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">
+                      {selectedTaskIds.length} selected
+                    </span>
+                    <span className="hidden text-xs text-secondary-foreground sm:inline">
+                      Choose the blocks you want to delete together.
                     </span>
                   </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      suppressHydrationWarning
+                      type="button"
+                      className="inline-flex h-10 items-center justify-center rounded-full border border-red-200 bg-red-50 px-4 text-sm font-semibold text-danger shadow-[0_10px_24px_rgba(239,68,68,0.1)] transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-red-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
+                      onClick={handleDeleteSelectedTasks}
+                      disabled={isPending || selectedTaskIds.length === 0}
+                    >
+                      Delete selected
+                    </button>
+                    <button
+                      suppressHydrationWarning
+                      type="button"
+                      className="inline-flex h-10 items-center justify-center rounded-full border border-border/80 bg-white/92 px-4 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_16px_32px_rgba(15,23,42,0.09)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
+                      onClick={clearSelection}
+                      disabled={isPending}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
+              ) : null}
+            </div>
 
-                <DateSwitcher
+            <div className="mt-4">
+              {viewMode === "dashboard" ? (
+                <DashboardView
                   dateLabel={dateLabel}
                   dateMode={dateMode}
-                  isPending={isSurfaceRefreshing}
-                  onSelectDate={handleSelectDate}
-                  selectedDate={snapshot.taskDate}
-                  todayDate={todayDate}
+                  isPending={isPending}
+                  now={now}
+                  onAddTask={() => handleCreateTask()}
+                  onEditTask={handleEditTask}
+                  streak={snapshot.streak}
+                  summary={snapshot.summary}
+                  taskDate={snapshot.taskDate}
+                  tasks={snapshot.tasks}
                 />
-              </div>
-
-              <div className="mt-4">
-                {viewMode === "grid" ? (
-                  <TimelineGrid
-                    focusedTaskId={focusedTaskId}
-                    tasks={snapshot.tasks}
-                    taskDate={snapshot.taskDate}
-                    now={now}
-                    resolveVisualState={(task) => getTaskVisualState(task, now, snapshot.taskDate)}
-                    isPending={isPending}
-                    onAddTask={handleCreateTask}
-                    onEditTask={handleEditTask}
-                    onRescheduleTask={handleRescheduleTask}
-                    onToggleTask={handleToggleTask}
-                  />
-                ) : (
-                  <TimelineList
-                    focusedTaskId={focusedTaskId}
-                    tasks={snapshot.tasks}
-                    resolveVisualState={(task) => getTaskVisualState(task, now, snapshot.taskDate)}
-                    isPending={isPending}
-                    onAddTask={handleCreateTask}
-                    onEditTask={handleEditTask}
-                    onDeleteTask={handleDeleteTask}
-                    onToggleTask={handleToggleTask}
-                  />
-                )}
-              </div>
+              ) : viewMode === "grid" ? (
+                <TimelineGrid
+                  focusedTaskId={focusedTaskId}
+                  tasks={snapshot.tasks}
+                  taskDate={snapshot.taskDate}
+                  now={now}
+                  resolveVisualState={(task) => getTaskVisualState(task, now, snapshot.taskDate)}
+                  isPending={isPending}
+                  onAddTask={handleCreateTask}
+                  onEditTask={handleEditTask}
+                  onRescheduleTask={handleRescheduleTask}
+                  onToggleTask={handleToggleTask}
+                />
+              ) : (
+                <TimelineList
+                  focusedTaskId={focusedTaskId}
+                  tasks={snapshot.tasks}
+                  resolveVisualState={(task) => getTaskVisualState(task, now, snapshot.taskDate)}
+                  isPending={isPending}
+                  onAddTask={handleCreateTask}
+                  onEditTask={handleEditTask}
+                  onDeleteTask={handleDeleteTask}
+                  onToggleTaskSelection={toggleTaskSelection}
+                  onToggleTask={handleToggleTask}
+                  selectedTaskIds={selectedTaskIds}
+                  selectionMode={selectionMode}
+                />
+              )}
             </div>
-          </section>
-
-          <aside className="min-w-0 xl:sticky xl:top-24 xl:self-start">
-            <ExecutionLane
-              currentTask={currentWindow.currentTask}
-              dateLabel={dateLabel}
-              dateMode={dateMode}
-              isPending={isPending}
-              nextTask={currentWindow.nextTask}
-              onEditTask={handleEditTask}
-              onFocusTask={handleFocusTask}
-              onToggleTask={handleToggleTask}
-              queue={queue}
-              streak={snapshot.streak}
-              summary={snapshot.summary}
-              tasks={snapshot.tasks}
-            />
-          </aside>
-        </div>
+          </div>
+        </section>
       </div>
 
       <TaskModal

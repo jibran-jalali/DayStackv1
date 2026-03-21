@@ -1,7 +1,6 @@
 import { PlannerShell } from "@/components/app/planner-shell";
 import { SetupNotice } from "@/components/shared/setup-notice";
 import { fetchDashboardSnapshot, fetchProfile } from "@/lib/data/daystack";
-import { fetchNotificationPreferences } from "@/lib/data/reminders";
 import { getSessionUser } from "@/lib/auth";
 import { deriveDisplayName, formatDateKey, isValidDateKey } from "@/lib/daystack";
 import { isAuthConfigured, isDatabaseConfigured } from "@/lib/env";
@@ -51,10 +50,9 @@ export default async function AppPage({ searchParams }: AppPageProps) {
   const taskDate = requestedDate && isValidDateKey(requestedDate) ? requestedDate : formatDateKey(new Date());
 
   try {
-    const [snapshot, profile, notificationPreferences] = await Promise.all([
+    const [snapshot, profile] = await Promise.all([
       fetchDashboardSnapshot(user.id, taskDate),
       fetchProfile(user.id),
-      fetchNotificationPreferences(user.id),
     ]);
 
     return (
@@ -63,7 +61,6 @@ export default async function AppPage({ searchParams }: AppPageProps) {
         email={user.email}
         displayName={deriveDisplayName(profile?.full_name, user.email)}
         initialSnapshot={snapshot}
-        initialNotificationPreferences={notificationPreferences}
       />
     );
   } catch (error) {

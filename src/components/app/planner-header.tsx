@@ -1,18 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Flame, LoaderCircle, LogOut, Plus, Settings2 } from "lucide-react";
+import { Flame, LoaderCircle, LogOut, Plus } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useTransition } from "react";
 
-import { NotificationCenter } from "@/components/app/notification-center";
 import { ViewToggle, type PlannerViewMode } from "@/components/app/view-toggle";
 import { Button } from "@/components/shared/button";
 import { logoutOneSignalUser } from "@/lib/onesignal/client";
 import { Logo } from "@/components/shared/logo";
 import { StatusChip } from "@/components/shared/status-chip";
-import { cn, getErrorMessage } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/utils";
 import type { PlannerDateMode, TaskNotificationAcceptResult } from "@/types/daystack";
 
 interface PlannerHeaderProps {
@@ -63,13 +61,8 @@ export function PlannerHeader({
   metricLabel,
   metricTone = "brand",
   onAddTask,
-  onNotice,
   onSignOutError,
-  onTaskAccepted,
   onViewChange,
-  plannerHref = "/app",
-  settingsHighlighted,
-  settingsHref = "/app/settings",
   streak,
   subtitle,
   viewMode,
@@ -119,36 +112,6 @@ export function PlannerHeader({
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-full border border-border/80 bg-white/92 p-1 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
-            <Link
-              href={plannerHref}
-              className={cn(
-                "inline-flex h-9 items-center justify-center rounded-full px-3.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                activePage === "planner"
-                  ? "bg-muted text-foreground shadow-[0_8px_18px_rgba(15,23,42,0.08)]"
-                  : "text-secondary-foreground hover:text-foreground",
-              )}
-            >
-              Plan
-            </Link>
-            <Link
-              id="settings-link"
-              href={settingsHref}
-              className={cn(
-                "inline-flex h-9 items-center justify-center gap-2 rounded-full px-3.5 text-sm font-medium transition-[background-color,color,box-shadow,transform] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                activePage === "settings"
-                  ? "bg-muted text-foreground shadow-[0_8px_18px_rgba(15,23,42,0.08)]"
-                  : "text-secondary-foreground hover:text-foreground",
-                settingsHighlighted &&
-                  activePage !== "settings" &&
-                  "bg-cyan-50 text-sky-700 shadow-[0_10px_24px_rgba(24,190,239,0.14)]",
-              )}
-            >
-              <Settings2 className="h-4 w-4" />
-              <span>Settings</span>
-            </Link>
-          </div>
-
           {activePage === "planner" && viewMode && onViewChange ? (
             <ViewToggle value={viewMode} onChange={onViewChange} />
           ) : null}
@@ -161,8 +124,6 @@ export function PlannerHeader({
               Add Block
             </Button>
           ) : null}
-
-          <NotificationCenter onNotice={onNotice} onTaskAccepted={onTaskAccepted} />
 
           <div className="flex items-center gap-2 rounded-full border border-border/80 bg-white/92 px-2 py-1.5 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(24,190,239,0.16),rgba(109,40,240,0.16))] text-sm font-semibold text-foreground">
