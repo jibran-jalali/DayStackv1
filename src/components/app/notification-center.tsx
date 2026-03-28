@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, BellRing, Check, CheckCheck, ExternalLink, LoaderCircle } from "lucide-react";
+import { Bell, BellRing, Check, CheckCheck, ExternalLink, Inbox, LoaderCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { Button, buttonVariants } from "@/components/shared/button";
@@ -11,13 +11,16 @@ import {
   fetchTaskNotifications,
   markTaskNotificationsRead,
 } from "@/lib/client/notifications";
-import { formatClockTime, formatDateKey, formatDateLabel } from "@/lib/daystack";
+import { formatClockTime, formatDateLabel } from "@/lib/daystack";
 import { cn, getErrorMessage } from "@/lib/utils";
 import type { PlannerNotification, TaskNotificationAcceptResult } from "@/types/daystack";
 
 interface NotificationCenterProps {
+  limit?: number;
+  mode?: "button" | "page";
   onNotice?: (notice: { message: string; type: "error" | "success" }) => void;
   onTaskAccepted?: (result: TaskNotificationAcceptResult) => Promise<void> | void;
+  openInboxHref?: string;
 }
 
 function getStatusTone(status: PlannerNotification["status"]) {
@@ -48,11 +51,17 @@ function getStatusLabel(status: PlannerNotification["status"]) {
   return "Pending";
 }
 
-export function NotificationCenter({ onNotice, onTaskAccepted }: NotificationCenterProps) {
+export function NotificationCenter({
+  limit = 10,
+  mode = "button",
+  onNotice,
+  onTaskAccepted,
+  openInboxHref,
+}: NotificationCenterProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [notifications, setNotifications] = useState<PlannerNotification[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(mode === "page");
   const [activeNotificationId, setActiveNotificationId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -61,18 +70,22 @@ export function NotificationCenter({ onNotice, onTaskAccepted }: NotificationCen
     [notifications],
   );
   const unreadCount = unreadIds.length;
+  const isVisible = mode === "page" || isOpen;
 
-  const loadNotifications = useCallback(async (options?: { silent?: boolean }) => {
-    try {
-      const nextNotifications = await fetchTaskNotifications();
-      setNotifications(nextNotifications);
-      setLoadError(null);
-    } catch (error) {
-      if (!options?.silent) {
-        setLoadError(getErrorMessage(error));
+  const loadNotifications = useCallback(
+    async (options?: { silent?: boolean }) => {
+      try {
+        const nextNotifications = await fetchTaskNotifications(limit);
+        setNotifications(nextNotifications);
+        setLoadError(null);
+      } catch (error) {
+        if (!options?.silent) {
+          setLoadError(getErrorMessage(error));
+        }
       }
-    }
-  }, []);
+    },
+    [limit],
+  );
 
   useEffect(() => {
     void loadNotifications();
@@ -89,6 +102,10 @@ export function NotificationCenter({ onNotice, onTaskAccepted }: NotificationCen
   }, [loadNotifications]);
 
   useEffect(() => {
+    if (mode !== "button" || !isOpen) {
+      return;
+    }
+
     function handlePointerDown(event: PointerEvent) {
       if (!panelRef.current?.contains(event.target as Node)) {
         setIsOpen(false);
@@ -101,10 +118,6 @@ export function NotificationCenter({ onNotice, onTaskAccepted }: NotificationCen
       }
     }
 
-    if (!isOpen) {
-      return;
-    }
-
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
 
@@ -112,10 +125,10 @@ export function NotificationCenter({ onNotice, onTaskAccepted }: NotificationCen
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, mode]);
 
   useEffect(() => {
-    if (!isOpen || unreadIds.length === 0) {
+    if (!isVisible || unreadIds.length === 0) {
       return;
     }
 
@@ -136,7 +149,7 @@ export function NotificationCenter({ onNotice, onTaskAccepted }: NotificationCen
         return;
       }
     });
-  }, [isOpen, unreadIds]);
+  }, [isVisible, unreadIds]);
 
   async function handleAccept(notificationId: string) {
     setActiveNotificationId(notificationId);
@@ -176,6 +189,104 @@ export function NotificationCenter({ onNotice, onTaskAccepted }: NotificationCen
     }
   }
 
+  function renderNotificationList(maxHeightClassName: string) {
+    if (loadError) {
+      return <div className="px-1 py-4 text-sm text-danger">{loadError}</div>;
+    }
+
+    if (notifications.length === 0) {
+      return (
+        <div className="px-1 py-4 text-sm text-secondary-foreground">
+          Mention notifications will show up here when someone tags you in a meeting block.
+        </div>
+      );
+    }
+
+    return (
+      <div className={cn("space-y-2 overflow-y-auto pr-1 soft-scrollbar", maxHeightClassName)}>
+        {notifications.map((notification) => {
+          const actorName = notification.actor?.fullName ?? "A DayStack user";
+          const isPendingAction = activeNotificationId === notification.id;
+
+          return (
+            <section
+              key={notification.id}
+              className={cn(
+                "rounded-[20px] border px-3.5 py-3 transition-[border-color,box-shadow,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                notification.readAt ? "border-border/70 bg-white/82" : "border-cyan-200 bg-cyan-50/56",
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">{actorName} mentioned you</p>
+                  <p className="mt-1 text-sm leading-6 text-secondary-foreground">
+                    In <span className="font-medium text-foreground">{notification.taskTitle}</span>
+                  </p>
+                </div>
+                <StatusChip label={getStatusLabel(notification.status)} tone={getStatusTone(notification.status)} />
+              </div>
+
+              <p className="mt-2 text-xs text-secondary-foreground">
+                {formatDateLabel(notification.taskDate)} at {formatClockTime(notification.startTime)} to{" "}
+                {formatClockTime(notification.endTime)}
+              </p>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {notification.status === "pending" ? (
+                  <Button size="sm" onClick={() => handleAccept(notification.id)} disabled={isPendingAction}>
+                    {isPendingAction ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    Accept
+                  </Button>
+                ) : notification.acceptedTaskDate ? (
+                  <Link
+                    href={`/app?date=${notification.acceptedTaskDate}`}
+                    className={buttonVariants({ variant: "secondary", size: "sm" })}
+                  >
+                    <CheckCheck className="h-4 w-4" />
+                    Open day
+                  </Link>
+                ) : null}
+
+                {notification.meetingLink ? (
+                  <a
+                    href={notification.meetingLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={buttonVariants({ variant: "ghost", size: "sm", className: "h-10 px-4" })}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Meeting link
+                  </a>
+                ) : null}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (mode === "page") {
+    return (
+      <section className="glass-panel overflow-hidden p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3 border-b border-border/70 pb-4">
+          <div>
+            <p className="section-label">Notifications</p>
+            <h1 className="mt-1 font-display text-2xl font-semibold text-foreground sm:text-[2rem]">
+              Meeting approvals
+            </h1>
+            <p className="mt-1.5 text-sm text-secondary-foreground">
+              Review mentions, approve meeting blocks, and jump directly into the accepted day.
+            </p>
+          </div>
+          {unreadCount > 0 ? <StatusChip label={`${unreadCount} unread`} tone="brand" /> : null}
+        </div>
+
+        <div className="mt-4">{renderNotificationList("max-h-[calc(100vh-16rem)]")}</div>
+      </section>
+    );
+  }
+
   return (
     <div ref={panelRef} className="relative">
       <Button
@@ -213,81 +324,21 @@ export function NotificationCenter({ onNotice, onTaskAccepted }: NotificationCen
               {notifications.length > 0 ? `${notifications.length} recent updates` : "No recent mentions yet."}
             </p>
           </div>
-          {unreadCount > 0 ? <StatusChip label={`${unreadCount} unread`} tone="brand" /> : null}
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 ? <StatusChip label={`${unreadCount} unread`} tone="brand" /> : null}
+            {openInboxHref ? (
+              <Link
+                href={openInboxHref}
+                className={buttonVariants({ variant: "ghost", size: "sm", className: "h-9 px-3" })}
+              >
+                <Inbox className="h-4 w-4" />
+                Inbox
+              </Link>
+            ) : null}
+          </div>
         </div>
 
-        {loadError ? (
-          <div className="px-1 py-4 text-sm text-danger">{loadError}</div>
-        ) : notifications.length === 0 ? (
-          <div className="px-1 py-4 text-sm text-secondary-foreground">
-            Mention notifications will show up here when someone tags you in a meeting block.
-          </div>
-        ) : (
-          <div className="mt-3 max-h-[24rem] space-y-2 overflow-y-auto pr-1 soft-scrollbar">
-            {notifications.map((notification) => {
-              const actorName = notification.actor?.fullName ?? "A DayStack user";
-              const isPendingAction = activeNotificationId === notification.id;
-
-              return (
-                <section
-                  key={notification.id}
-                  className={cn(
-                    "rounded-[20px] border px-3.5 py-3 transition-[border-color,box-shadow,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                    notification.readAt ? "border-border/70 bg-white/82" : "border-cyan-200 bg-cyan-50/56",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">{actorName} mentioned you</p>
-                      <p className="mt-1 text-sm leading-6 text-secondary-foreground">
-                        In <span className="font-medium text-foreground">{notification.taskTitle}</span>
-                      </p>
-                    </div>
-                    <StatusChip label={getStatusLabel(notification.status)} tone={getStatusTone(notification.status)} />
-                  </div>
-
-                  <p className="mt-2 text-xs text-secondary-foreground">
-                    {formatDateLabel(notification.taskDate)} at {formatClockTime(notification.startTime)} to{" "}
-                    {formatClockTime(notification.endTime)}
-                  </p>
-
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {notification.status === "pending" ? (
-                      <Button size="sm" onClick={() => handleAccept(notification.id)} disabled={isPendingAction}>
-                        {isPendingAction ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                        Accept
-                      </Button>
-                    ) : notification.acceptedTaskDate ? (
-                      <Link
-                        href={
-                          notification.acceptedTaskDate === formatDateKey(new Date())
-                            ? "/app"
-                            : `/app?date=${notification.acceptedTaskDate}`
-                        }
-                        className={buttonVariants({ variant: "secondary", size: "sm" })}
-                      >
-                        <CheckCheck className="h-4 w-4" />
-                        Open day
-                      </Link>
-                    ) : null}
-
-                    {notification.meetingLink ? (
-                      <a
-                        href={notification.meetingLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={buttonVariants({ variant: "ghost", size: "sm", className: "h-10 px-4" })}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        Meeting link
-                      </a>
-                    ) : null}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-        )}
+        <div className="mt-3">{renderNotificationList("max-h-[24rem]")}</div>
       </div>
     </div>
   );

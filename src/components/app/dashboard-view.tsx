@@ -16,6 +16,7 @@ interface DashboardViewProps {
   now: Date;
   onAddTask: () => void;
   onEditTask: (task: PlannerTask) => void;
+  onStartFocusTask: (task: PlannerTask) => void;
   streak: number;
   summary: DashboardSummary;
   taskDate: string;
@@ -97,6 +98,7 @@ export function DashboardView({
   now,
   onAddTask,
   onEditTask,
+  onStartFocusTask,
   streak,
   summary,
   taskDate,
@@ -188,6 +190,10 @@ export function DashboardView({
               <Button size="sm" variant="secondary" onClick={() => onEditTask(nextTask)} disabled={isPending}>
                 <ArrowRight className="h-4 w-4" />
                 Open block
+              </Button>
+              <Button size="sm" onClick={() => onStartFocusTask(nextTask)} disabled={isPending || nextTask.status === "completed"}>
+                <Sparkles className="h-4 w-4" />
+                Start focus
               </Button>
               {nextTask.task_type === "meeting" && nextTask.meeting_link ? (
                 <a

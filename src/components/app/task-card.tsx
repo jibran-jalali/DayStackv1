@@ -1,4 +1,4 @@
-import { CalendarRange, Check, CheckCircle2, PencilLine, Trash2, Users, Video } from "lucide-react";
+import { CalendarRange, Check, CheckCircle2, PencilLine, Play, Trash2, Users, Video } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/shared/button";
 import { formatClockTime, formatParticipantNames, getTaskAnchorId, isBlockedTask } from "@/lib/daystack";
@@ -13,6 +13,7 @@ interface TaskCardProps {
   isPending: boolean;
   onEdit: (task: PlannerTask) => void;
   onDelete: (task: PlannerTask) => void;
+  onStartFocusTask: (task: PlannerTask) => void;
   onToggleSelection?: (taskId: string) => void;
   onToggle: (task: PlannerTask) => void;
   selectionMode?: boolean;
@@ -48,6 +49,7 @@ export function TaskCard({
   isSelected = false,
   onDelete,
   onEdit,
+  onStartFocusTask,
   onToggle,
   onToggleSelection,
   selectionMode = false,
@@ -152,6 +154,12 @@ export function TaskCard({
             <Button size="sm" variant={task.status === "completed" ? "secondary" : "primary"} onClick={() => onToggle(task)} disabled={isPending}>
               <CheckCircle2 className="h-4 w-4" />
               {task.status === "completed" ? "Undo" : "Done"}
+            </Button>
+          ) : null}
+          {!isBlocked ? (
+            <Button size="sm" variant="secondary" onClick={() => onStartFocusTask(task)} disabled={isPending || task.status === "completed"}>
+              <Play className="h-4 w-4" />
+              Focus
             </Button>
           ) : null}
           <Button

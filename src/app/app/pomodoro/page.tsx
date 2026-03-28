@@ -1,4 +1,4 @@
-import { PlannerShell } from "@/components/app/planner-shell";
+import { PomodoroShell } from "@/components/app/pomodoro-shell";
 import { SetupNotice } from "@/components/shared/setup-notice";
 import { fetchDashboardSnapshot, fetchProfile } from "@/lib/data/daystack";
 import { getSessionUser } from "@/lib/auth";
@@ -6,7 +6,7 @@ import { deriveDisplayName, formatDateKey, isValidDateKey } from "@/lib/daystack
 import { isAuthConfigured, isDatabaseConfigured } from "@/lib/env";
 
 export const metadata = {
-  title: "Dashboard",
+  title: "Pomodoro",
 };
 
 export const dynamic = "force-dynamic";
@@ -24,11 +24,11 @@ function isSchemaMissingError(error: unknown) {
   );
 }
 
-interface AppPageProps {
+interface PomodoroPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function AppPage({ searchParams }: AppPageProps) {
+export default async function PomodoroPage({ searchParams }: PomodoroPageProps) {
   if (!isDatabaseConfigured() || !isAuthConfigured()) {
     return (
       <main className="container-shell min-h-screen py-10">
@@ -57,8 +57,7 @@ export default async function AppPage({ searchParams }: AppPageProps) {
     ]);
 
     return (
-      <PlannerShell
-        userId={user.id}
+      <PomodoroShell
         email={user.email}
         displayName={deriveDisplayName(profile?.full_name, user.email)}
         initialNowIso={initialNowIso}
@@ -66,7 +65,7 @@ export default async function AppPage({ searchParams }: AppPageProps) {
       />
     );
   } catch (error) {
-    console.error("DayStack dashboard bootstrap failed:", error);
+    console.error("DayStack pomodoro bootstrap failed:", error);
 
     if (isSchemaMissingError(error)) {
       return (
@@ -77,10 +76,10 @@ export default async function AppPage({ searchParams }: AppPageProps) {
             title="Your Postgres connection is loaded, but DayStack&rsquo;s tables are not in this database yet."
             description={
               <>
-                Run DayStack&rsquo;s database migrations before opening the planner. The app needs{" "}
-                <code>users</code>, <code>tasks</code>, <code>task_participants</code>,{" "}
-                <code>daily_summaries</code>, <code>user_notification_preferences</code>,{" "}
-                <code>task_reminders</code>, and <code>task_notifications</code> before it can load live data.
+                Run DayStack&rsquo;s database migrations before opening the timer. The app needs <code>users</code>,{" "}
+                <code>tasks</code>, <code>task_participants</code>, <code>daily_summaries</code>,{" "}
+                <code>user_notification_preferences</code>, <code>task_reminders</code>, and{" "}
+                <code>task_notifications</code> before it can load live data.
               </>
             }
           />
@@ -92,8 +91,8 @@ export default async function AppPage({ searchParams }: AppPageProps) {
       <main className="container-shell min-h-screen py-10">
         <SetupNotice
           showAction={false}
-          eyebrow="Dashboard load failed"
-          title="DayStack reached Postgres, but the dashboard data could not be loaded."
+          eyebrow="Pomodoro load failed"
+          title="DayStack reached Postgres, but the Pomodoro page could not be loaded."
           description="Check the terminal for the server-side error details, then retry the page."
         />
       </main>

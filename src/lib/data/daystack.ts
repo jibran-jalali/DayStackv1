@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, ilike, inArray, ne, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, ne, or } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { daily_summaries, task_participants, tasks, users } from "@/db/schema";
@@ -14,6 +14,7 @@ import type {
   PlannerTask,
   ProfileRecord,
   TaskFormValues,
+  TaskPropagationMode,
   TaskParticipantRecord,
   TaskRecord,
 } from "@/types/daystack";
@@ -71,6 +72,30 @@ async function fetchTaskParticipantsForTasks(
     .where(inArray(task_participants.task_id, taskIds));
 }
 
+async function fetchAcceptedCopyCountsForTasks(
+  db: DayStackDb,
+  taskIds: string[],
+): Promise<Map<string, number>> {
+  if (taskIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await db
+    .select({
+      accepted_copy_count: count(),
+      source_task_id: tasks.source_task_id,
+    })
+    .from(tasks)
+    .where(inArray(tasks.source_task_id, taskIds))
+    .groupBy(tasks.source_task_id);
+
+  return new Map(
+    rows.flatMap((row) =>
+      row.source_task_id ? [[row.source_task_id, Number(row.accepted_copy_count)] as const] : [],
+    ),
+  );
+}
+
 async function hydrateTasksWithParticipants(
   db: DayStackDb,
   taskRows: TaskRecord[],
@@ -79,14 +104,16 @@ async function hydrateTasksWithParticipants(
     return [];
   }
 
-  const participantRows = await fetchTaskParticipantsForTasks(
-    db,
-    taskRows.map((task) => task.id),
-  );
+  const taskIds = taskRows.map((task) => task.id);
+  const [participantRows, acceptedCopyCounts] = await Promise.all([
+    fetchTaskParticipantsForTasks(db, taskIds),
+    fetchAcceptedCopyCountsForTasks(db, taskIds),
+  ]);
 
   if (participantRows.length === 0) {
     return taskRows.map((task) => ({
       ...task,
+      acceptedCopiesCount: acceptedCopyCounts.get(task.id) ?? 0,
       participants: [],
     }));
   }
@@ -117,6 +144,7 @@ async function hydrateTasksWithParticipants(
 
   return taskRows.map((task) => ({
     ...task,
+    acceptedCopiesCount: acceptedCopyCounts.get(task.id) ?? 0,
     participants: participantsByTaskId.get(task.id) ?? [],
   }));
 }
@@ -140,6 +168,99 @@ async function replaceTaskParticipants(
       participant_id: participantId,
       task_id: taskId,
     })),
+  );
+}
+
+interface AcceptedCopyUpdateResult {
+  previousDate: string;
+  task: TaskRecord;
+}
+
+function getAcceptedCopyParticipantIds(sourceTaskOwnerId: string, participantIds: string[], acceptedUserId: string) {
+  return [...new Set([sourceTaskOwnerId, ...participantIds])].filter(
+    (participantId) => participantId !== acceptedUserId,
+  );
+}
+
+async function fetchAcceptedCopiesForSourceTask(db: DayStackDb, taskId: string) {
+  return db.select().from(tasks).where(eq(tasks.source_task_id, taskId));
+}
+
+async function syncAcceptedCopiesFromSourceTask(
+  db: DayStackDb,
+  sourceTask: Pick<
+    TaskRecord,
+    "end_time" | "id" | "meeting_link" | "start_time" | "task_date" | "task_type" | "title" | "user_id"
+  >,
+  participantIds: string[],
+) {
+  const acceptedCopies = await fetchAcceptedCopiesForSourceTask(db, sourceTask.id);
+
+  if (acceptedCopies.length === 0) {
+    return [];
+  }
+
+  const now = new Date().toISOString();
+  const results: AcceptedCopyUpdateResult[] = [];
+
+  for (const acceptedCopy of acceptedCopies) {
+    const [updatedCopy] = await db
+      .update(tasks)
+      .set({
+        end_time: sourceTask.end_time,
+        meeting_link: sourceTask.task_type === "meeting" ? sourceTask.meeting_link : null,
+        start_time: sourceTask.start_time,
+        task_date: sourceTask.task_date,
+        task_type: sourceTask.task_type,
+        title: sourceTask.title,
+        updated_at: now,
+      })
+      .where(eq(tasks.id, acceptedCopy.id))
+      .returning();
+
+    if (!updatedCopy) {
+      continue;
+    }
+
+    const acceptedCopyParticipantIds =
+      sourceTask.task_type === "meeting"
+        ? getAcceptedCopyParticipantIds(sourceTask.user_id, participantIds, updatedCopy.user_id)
+        : [];
+
+    await replaceTaskParticipants(db, updatedCopy.id, acceptedCopyParticipantIds);
+    results.push({
+      previousDate: acceptedCopy.task_date,
+      task: updatedCopy,
+    });
+  }
+
+  return results;
+}
+
+async function syncAcceptedCopyDependencies(updatedAcceptedCopies: AcceptedCopyUpdateResult[]) {
+  if (updatedAcceptedCopies.length === 0) {
+    return;
+  }
+
+  const summaryTargets = new Map<string, { taskDate: string; userId: string }>();
+
+  const addSummaryTarget = (userId: string, taskDate: string) => {
+    summaryTargets.set(`${userId}:${taskDate}`, {
+      taskDate,
+      userId,
+    });
+  };
+
+  await Promise.all(
+    updatedAcceptedCopies.map(async ({ previousDate, task }) => {
+      await syncTaskRemindersForTask(task.user_id, task);
+      addSummaryTarget(task.user_id, previousDate);
+      addSummaryTarget(task.user_id, task.task_date);
+    }),
+  );
+
+  await Promise.all(
+    [...summaryTargets.values()].map(({ taskDate, userId }) => syncDailySummaryForDate(userId, taskDate)),
   );
 }
 
@@ -295,10 +416,13 @@ export async function updateTask(
   userId: string,
   taskId: string,
   values: TaskFormValues,
+  propagationMode: TaskPropagationMode = "owner_only",
 ): Promise<TaskRecord> {
   const db = getRequiredDb();
   const [existingTask] = await db
-    .select({ task_date: tasks.task_date })
+    .select({
+      task_date: tasks.task_date,
+    })
     .from(tasks)
     .where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)))
     .limit(1);
@@ -323,12 +447,31 @@ export async function updateTask(
 
   const participantIds =
     values.taskType === "meeting" ? values.participants.map((participant) => participant.id) : [];
+  let updatedAcceptedCopies: AcceptedCopyUpdateResult[] = [];
+
+  if (propagationMode === "owner_and_accepted_copies") {
+    updatedAcceptedCopies = await syncAcceptedCopiesFromSourceTask(
+      db,
+      {
+        end_time: updatedTask.end_time,
+        id: updatedTask.id,
+        meeting_link: updatedTask.meeting_link,
+        start_time: updatedTask.start_time,
+        task_date: updatedTask.task_date,
+        task_type: updatedTask.task_type,
+        title: updatedTask.title,
+        user_id: updatedTask.user_id,
+      },
+      participantIds,
+    );
+  }
 
   await replaceTaskParticipants(db, taskId, participantIds);
   await Promise.all([
     syncTaskMentionNotificationsForTask(userId, updatedTask.id),
     syncTaskRemindersForTask(userId, updatedTask),
   ]);
+  await syncAcceptedCopyDependencies(updatedAcceptedCopies);
 
   if (existingTask.task_date !== values.taskDate) {
     await Promise.all([
@@ -346,10 +489,13 @@ export async function rescheduleTask(
   userId: string,
   taskId: string,
   values: Pick<TaskFormValues, "endTime" | "startTime" | "taskDate">,
+  propagationMode: TaskPropagationMode = "owner_only",
 ): Promise<TaskRecord> {
   const db = getRequiredDb();
   const [existingTask] = await db
-    .select({ task_date: tasks.task_date })
+    .select({
+      task_date: tasks.task_date,
+    })
     .from(tasks)
     .where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)))
     .limit(1);
@@ -358,21 +504,53 @@ export async function rescheduleTask(
     throw new Error("Task not found.");
   }
 
-  const [rescheduledTask] = await db
-    .update(tasks)
-    .set({
-      end_time: values.endTime,
-      start_time: values.startTime,
-      task_date: values.taskDate,
-      updated_at: new Date().toISOString(),
-    })
-    .where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)))
-    .returning();
+  const [participantRows, rescheduledTask] = await Promise.all([
+    db
+      .select({ participant_id: task_participants.participant_id })
+      .from(task_participants)
+      .where(eq(task_participants.task_id, taskId)),
+    db
+      .update(tasks)
+      .set({
+        end_time: values.endTime,
+        start_time: values.startTime,
+        task_date: values.taskDate,
+        updated_at: new Date().toISOString(),
+      })
+      .where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)))
+      .returning()
+      .then((rows) => rows[0]),
+  ]);
+
+  if (!rescheduledTask) {
+    throw new Error("Task not found.");
+  }
+
+  const participantIds = participantRows.map((participant) => participant.participant_id);
+  let updatedAcceptedCopies: AcceptedCopyUpdateResult[] = [];
+
+  if (propagationMode === "owner_and_accepted_copies") {
+    updatedAcceptedCopies = await syncAcceptedCopiesFromSourceTask(
+      db,
+      {
+        end_time: rescheduledTask.end_time,
+        id: rescheduledTask.id,
+        meeting_link: rescheduledTask.meeting_link,
+        start_time: rescheduledTask.start_time,
+        task_date: rescheduledTask.task_date,
+        task_type: rescheduledTask.task_type,
+        title: rescheduledTask.title,
+        user_id: rescheduledTask.user_id,
+      },
+      participantIds,
+    );
+  }
 
   await Promise.all([
     syncTaskMentionNotificationsForTask(userId, rescheduledTask.id),
     syncTaskRemindersForTask(userId, rescheduledTask),
   ]);
+  await syncAcceptedCopyDependencies(updatedAcceptedCopies);
 
   if (existingTask.task_date !== values.taskDate) {
     await Promise.all([

@@ -1,20 +1,23 @@
 "use client";
 
+import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Flame, LoaderCircle, LogOut, Plus } from "lucide-react";
+import { CalendarDays, Clock3, Flame, LoaderCircle, LogOut, Plus } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useTransition } from "react";
 
+import { NotificationCenter } from "@/components/app/notification-center";
 import { ViewToggle, type PlannerViewMode } from "@/components/app/view-toggle";
 import { Button } from "@/components/shared/button";
 import { logoutOneSignalUser } from "@/lib/onesignal/client";
 import { Logo } from "@/components/shared/logo";
 import { StatusChip } from "@/components/shared/status-chip";
 import { getErrorMessage } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { PlannerDateMode, TaskNotificationAcceptResult } from "@/types/daystack";
 
 interface PlannerHeaderProps {
-  activePage: "planner" | "settings";
+  activePage: "notifications" | "planner" | "pomodoro" | "settings";
   dateLabel: string;
   dateMode?: PlannerDateMode;
   displayName: string;
@@ -28,16 +31,30 @@ interface PlannerHeaderProps {
   onTaskAccepted?: (result: TaskNotificationAcceptResult) => Promise<void> | void;
   onViewChange?: (value: PlannerViewMode) => void;
   plannerHref?: string;
+  notificationsHref?: string;
+  pomodoroHref?: string;
   settingsHighlighted?: boolean;
   settingsHref?: string;
+  showNotificationCenter?: boolean;
   streak?: number;
   subtitle?: string;
   viewMode?: PlannerViewMode;
 }
 
-function getEyebrow(activePage: "planner" | "settings", dateMode?: PlannerDateMode) {
+function getEyebrow(
+  activePage: "notifications" | "planner" | "pomodoro" | "settings",
+  dateMode?: PlannerDateMode,
+) {
   if (activePage === "settings") {
     return "Preferences";
+  }
+
+  if (activePage === "notifications") {
+    return "Inbox";
+  }
+
+  if (activePage === "pomodoro") {
+    return "Focus timer";
   }
 
   if (dateMode === "future") {
@@ -61,13 +78,22 @@ export function PlannerHeader({
   metricLabel,
   metricTone = "brand",
   onAddTask,
+  onNotice,
   onSignOutError,
+  onTaskAccepted,
+  plannerHref = "/app",
+  notificationsHref,
   onViewChange,
+  pomodoroHref = "/app/pomodoro",
+  showNotificationCenter = false,
   streak,
   subtitle,
   viewMode,
 }: PlannerHeaderProps) {
   const [isPending, startTransition] = useTransition();
+
+  const navPillClass =
+    "inline-flex h-10 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)]";
 
   function handleSignOut() {
     startTransition(async () => {
@@ -113,7 +139,43 @@ export function PlannerHeader({
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex flex-wrap items-center gap-2">
           {activePage === "planner" && viewMode && onViewChange ? (
-            <ViewToggle value={viewMode} onChange={onViewChange} />
+            <>
+              <ViewToggle value={viewMode} onChange={onViewChange} />
+              <Link
+                href={pomodoroHref}
+                className={cn(
+                  navPillClass,
+                  "border-border/80 bg-white/92 text-secondary-foreground hover:-translate-y-0.5 hover:bg-white hover:text-foreground hover:shadow-[0_16px_32px_rgba(15,23,42,0.09)]",
+                )}
+              >
+                <Clock3 className="h-4 w-4" />
+                Pomodoro
+              </Link>
+            </>
+          ) : null}
+
+          {activePage === "pomodoro" ? (
+            <>
+              <Link
+                href={plannerHref}
+                className={cn(
+                  navPillClass,
+                  "border-border/80 bg-white/92 text-secondary-foreground hover:-translate-y-0.5 hover:bg-white hover:text-foreground hover:shadow-[0_16px_32px_rgba(15,23,42,0.09)]",
+                )}
+              >
+                <CalendarDays className="h-4 w-4" />
+                Plan
+              </Link>
+              <span
+                className={cn(
+                  navPillClass,
+                  "border-transparent bg-brand-gradient text-white shadow-[0_14px_28px_rgba(23,102,214,0.2)]",
+                )}
+              >
+                <Clock3 className="h-4 w-4" />
+                Pomodoro
+              </span>
+            </>
           ) : null}
         </div>
 
@@ -123,6 +185,14 @@ export function PlannerHeader({
               <Plus className="h-4 w-4" />
               Add Block
             </Button>
+          ) : null}
+
+          {showNotificationCenter ? (
+            <NotificationCenter
+              openInboxHref={notificationsHref}
+              onNotice={onNotice}
+              onTaskAccepted={onTaskAccepted}
+            />
           ) : null}
 
           <div className="flex items-center gap-2 rounded-full border border-border/80 bg-white/92 px-2 py-1.5 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">

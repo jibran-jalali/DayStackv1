@@ -8,7 +8,7 @@ import { PlannerHeader } from "@/components/app/planner-header";
 import { ReminderSettingsPanel } from "@/components/app/reminder-settings-panel";
 import { useNotificationSettings } from "@/components/app/use-notification-settings";
 import { buttonVariants } from "@/components/shared/button";
-import { formatDateKey, formatDateLabel } from "@/lib/daystack";
+import { formatDateLabel } from "@/lib/daystack";
 import type { UserNotificationPreferencesRecord } from "@/types/daystack";
 
 interface SettingsShellProps {
@@ -76,9 +76,7 @@ function getBrowserStatusContent(
 }
 
 function getPlannerHref(returnDate?: string) {
-  const todayDate = formatDateKey(new Date());
-
-  if (!returnDate || returnDate === todayDate) {
+  if (!returnDate) {
     return "/app";
   }
 
@@ -86,9 +84,7 @@ function getPlannerHref(returnDate?: string) {
 }
 
 function getSettingsHref(returnDate?: string) {
-  const todayDate = formatDateKey(new Date());
-
-  if (!returnDate || returnDate === todayDate) {
+  if (!returnDate) {
     return "/app/settings";
   }
 

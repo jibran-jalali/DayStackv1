@@ -263,9 +263,7 @@ export async function syncTaskMentionNotificationsForTask(
         ]
       : [];
   const nextRecipientIdSet = new Set(nextRecipientIds);
-  const acceptedRows = existingRows.filter(
-    (notification) => notification.status === "accepted" && nextRecipientIdSet.has(notification.user_id),
-  );
+  const acceptedRows = existingRows.filter((notification) => notification.status === "accepted");
   const upsertRows = nextRecipientIds
     .filter((recipientId) => !acceptedRows.some((notification) => notification.user_id === recipientId))
     .map((recipientId) => ({

@@ -13,6 +13,7 @@ interface TimelineListProps {
   onAddTask: (startTime?: string) => void;
   onEditTask: (task: PlannerTask) => void;
   onDeleteTask: (task: PlannerTask) => void;
+  onStartFocusTask: (task: PlannerTask) => void;
   onToggleTaskSelection: (taskId: string) => void;
   onToggleTask: (task: PlannerTask) => void;
   selectedTaskIds: string[];
@@ -27,6 +28,7 @@ export function TimelineList({
   onAddTask,
   onEditTask,
   onDeleteTask,
+  onStartFocusTask,
   onToggleTaskSelection,
   onToggleTask,
   selectedTaskIds,
@@ -57,6 +59,7 @@ export function TimelineList({
           isPending={isPending}
           onEdit={onEditTask}
           onDelete={onDeleteTask}
+          onStartFocusTask={onStartFocusTask}
           onToggleSelection={onToggleTaskSelection}
           onToggle={onToggleTask}
           isSelected={selectedTaskIds.includes(task.id)}

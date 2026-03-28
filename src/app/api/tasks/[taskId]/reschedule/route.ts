@@ -7,6 +7,7 @@ import { rescheduleTask } from "@/lib/data/daystack";
 const rescheduleSchema = z
   .object({
     endTime: z.string().regex(/^\d{2}:\d{2}$/),
+    propagationMode: z.enum(["owner_only", "owner_and_accepted_copies"]).optional(),
     startTime: z.string().regex(/^\d{2}:\d{2}$/),
     taskDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   })
@@ -14,6 +15,8 @@ const rescheduleSchema = z
     message: "End time must be later than the start time.",
     path: ["endTime"],
   });
+
+const propagationModeSchema = z.enum(["owner_only", "owner_and_accepted_copies"]);
 
 export async function PATCH(
   request: Request,
@@ -42,10 +45,17 @@ export async function PATCH(
     );
   }
 
+  const propagationMode = propagationModeSchema.safeParse(parsed.data.propagationMode ?? "owner_only");
+
   const { taskId } = await context.params;
 
   try {
-    const task = await rescheduleTask(user.id, taskId, parsed.data);
+    const task = await rescheduleTask(
+      user.id,
+      taskId,
+      parsed.data,
+      propagationMode.success ? propagationMode.data : "owner_only",
+    );
 
     return NextResponse.json({
       task,

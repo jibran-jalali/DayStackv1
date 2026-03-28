@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarRange, CheckCircle2, GripVertical, Plus, Users, Video } from "lucide-react";
+import { CalendarRange, CheckCircle2, GripVertical, Play, Plus, Users, Video } from "lucide-react";
 
 import { Button } from "@/components/shared/button";
 import {
@@ -22,6 +22,7 @@ interface TimelineGridProps {
   onAddTask: (startTime?: string) => void;
   onEditTask: (task: PlannerTask) => void;
   onRescheduleTask: (task: PlannerTask, nextStartTime: string, nextEndTime: string) => void;
+  onStartFocusTask: (task: PlannerTask) => void;
   onToggleTask: (task: PlannerTask) => void;
   resolveVisualState: (task: PlannerTask) => TaskVisualState;
   taskDate: string;
@@ -209,6 +210,7 @@ export function TimelineGrid({
   onAddTask,
   onEditTask,
   onRescheduleTask,
+  onStartFocusTask,
   onToggleTask,
   resolveVisualState,
   taskDate,
@@ -501,6 +503,20 @@ export function TimelineGrid({
                         isMicro ? "gap-0.5" : density === "compact" ? "gap-1.5" : "gap-1.5",
                       )}
                     >
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className={controlButtonClass}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onStartFocusTask(task);
+                        }}
+                        disabled={isPending || task.status === "completed" || isBlocked}
+                        aria-label={`Start focus for ${task.title}`}
+                      >
+                        <Play className={cn(isMicro ? "h-3 w-3" : "h-4 w-4")} />
+                      </Button>
+
                       <Button
                         size="sm"
                         variant="ghost"

@@ -23,6 +23,7 @@ export type TaskType = TaskRecord["task_type"];
 export type ReminderType = TaskReminderRecord["reminder_type"];
 export type ReminderStatus = TaskReminderRecord["status"];
 export type TaskNotificationStatus = TaskNotificationRecord["status"];
+export type TaskPropagationMode = "owner_only" | "owner_and_accepted_copies";
 
 export interface ParticipantProfile {
   email?: string | null;
@@ -41,6 +42,7 @@ export type NotificationSupportState =
 export type NotificationPlatform = "android" | "desktop" | "ios" | "unknown";
 
 export interface PlannerTask extends TaskRecord {
+  acceptedCopiesCount: number;
   participants: ParticipantProfile[];
 }
 

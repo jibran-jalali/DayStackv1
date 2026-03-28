@@ -1,4 +1,4 @@
-import type { DashboardSnapshot, TaskFormValues, TaskRecord } from "@/types/daystack";
+import type { DashboardSnapshot, TaskFormValues, TaskPropagationMode, TaskRecord } from "@/types/daystack";
 
 import { requestJson } from "@/lib/client/request";
 
@@ -35,7 +35,11 @@ export async function createTask(values: TaskFormValues): Promise<TaskRecord> {
   return payload.task;
 }
 
-export async function updateTask(taskId: string, values: TaskFormValues): Promise<TaskRecord> {
+export async function updateTask(
+  taskId: string,
+  values: TaskFormValues,
+  propagationMode: TaskPropagationMode = "owner_only",
+): Promise<TaskRecord> {
   const payload = await requestJson<{ task: TaskRecord }>(
     `/api/tasks/${taskId}`,
     {
@@ -44,7 +48,10 @@ export async function updateTask(taskId: string, values: TaskFormValues): Promis
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify(values),
+      body: JSON.stringify({
+        ...values,
+        propagationMode,
+      }),
     },
     "Task update failed.",
   );
@@ -55,6 +62,7 @@ export async function updateTask(taskId: string, values: TaskFormValues): Promis
 export async function rescheduleTask(
   taskId: string,
   values: Pick<TaskFormValues, "endTime" | "startTime" | "taskDate">,
+  propagationMode: TaskPropagationMode = "owner_only",
 ): Promise<TaskRecord> {
   const payload = await requestJson<{ task: TaskRecord }>(
     `/api/tasks/${taskId}/reschedule`,
@@ -64,7 +72,10 @@ export async function rescheduleTask(
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify(values),
+      body: JSON.stringify({
+        ...values,
+        propagationMode,
+      }),
     },
     "Task reschedule failed.",
   );

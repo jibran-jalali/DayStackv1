@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { DateSwitcher } from "@/components/app/date-switcher";
 import { DashboardView } from "@/components/app/dashboard-view";
@@ -39,11 +40,14 @@ import type {
   DashboardSnapshot,
   PlannerTask,
   TaskFormValues,
+  TaskNotificationAcceptResult,
+  TaskPropagationMode,
 } from "@/types/daystack";
 
 interface PlannerShellProps {
   displayName: string;
   email?: string;
+  initialNowIso: string;
   userId: string;
   initialSnapshot: DashboardSnapshot;
 }
@@ -91,6 +95,25 @@ function createDefaultTask(taskDate: string, now: Date, startTimeOverride?: stri
 function getPlannerHref(taskDate: string, now: Date) {
   const todayDate = formatDateKey(now);
   return taskDate === todayDate ? "/app" : `/app?date=${taskDate}`;
+}
+
+function getPomodoroHref(taskDate: string, now: Date, params?: Record<string, string>) {
+  const todayDate = formatDateKey(now);
+  const searchParams = new URLSearchParams();
+
+  if (taskDate !== todayDate) {
+    searchParams.set("date", taskDate);
+  }
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      searchParams.set(key, value);
+    });
+  }
+
+  const query = searchParams.toString();
+
+  return query ? `/app/pomodoro?${query}` : "/app/pomodoro";
 }
 
 function sortTasksForPlanner(tasks: PlannerTask[]) {
@@ -149,21 +172,36 @@ function syncSnapshotWithTasks(
   };
 }
 
+function resolvePropagationMode(task: PlannerTask, actionLabel: string): TaskPropagationMode {
+  if (task.task_type !== "meeting" || task.acceptedCopiesCount === 0) {
+    return "owner_only";
+  }
+
+  const updateAcceptedCopies = window.confirm(
+    `${task.acceptedCopiesCount} accepted cop${task.acceptedCopiesCount === 1 ? "y is" : "ies are"} linked to this meeting. Click OK to ${actionLabel} both your block and the accepted copies, or Cancel to change only your block.`,
+  );
+
+  return updateAcceptedCopies ? "owner_and_accepted_copies" : "owner_only";
+}
+
 export function PlannerShell({
   displayName,
   email,
+  initialNowIso,
   userId,
   initialSnapshot,
 }: PlannerShellProps) {
+  const router = useRouter();
+  const initialNow = useMemo(() => new Date(initialNowIso), [initialNowIso]);
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [busyMode, setBusyMode] = useState<BusyMode>(null);
   const [notice, setNotice] = useState<NoticeState>(null);
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState(initialNow);
   const [viewMode, setViewMode] = useState<PlannerViewMode>("grid");
   const [editorTask, setEditorTask] = useState<PlannerTask | null>(null);
   const [composerDefaults, setComposerDefaults] = useState<TaskFormValues | null>(null);
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
-  const [followToday, setFollowToday] = useState(() => initialSnapshot.taskDate === formatDateKey(new Date()));
+  const [followToday, setFollowToday] = useState(() => initialSnapshot.taskDate === formatDateKey(initialNow));
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const isPending = busyMode !== null;
@@ -256,16 +294,21 @@ export function PlannerShell({
   }, [notice]);
 
   async function handleSaveTask(values: TaskFormValues) {
-    const shouldRefreshSnapshot = values.taskDate !== snapshot.taskDate;
+    const propagationMode = editorTask
+      ? resolvePropagationMode(editorTask, "edit")
+      : "owner_only";
+    const shouldRefreshSnapshot =
+      values.taskDate !== snapshot.taskDate || propagationMode === "owner_and_accepted_copies";
 
     setBusyMode(shouldRefreshSnapshot ? "navigation" : "minor");
 
     try {
       const savedTask = editorTask
-        ? await updateTask(editorTask.id, values)
+        ? await updateTask(editorTask.id, values, propagationMode)
         : await createTask(values);
 
       const nextPlannerTask: PlannerTask = {
+        acceptedCopiesCount: editorTask?.acceptedCopiesCount ?? 0,
         ...savedTask,
         participants: values.taskType === "meeting" ? values.participants : [],
       };
@@ -486,6 +529,7 @@ export function PlannerShell({
 
   function handleRescheduleTask(task: PlannerTask, nextStartTime: string, nextEndTime: string) {
     const previousSnapshot = snapshot;
+    const propagationMode = resolvePropagationMode(task, "reschedule");
     const optimisticTasks = sortTasksForPlanner(
       snapshot.tasks.map((currentTask) =>
         currentTask.id === task.id
@@ -503,11 +547,20 @@ export function PlannerShell({
 
     void (async () => {
       try {
-        await rescheduleTask(task.id, {
-          endTime: nextEndTime,
-          startTime: nextStartTime,
-          taskDate: snapshot.taskDate,
-        });
+        await rescheduleTask(
+          task.id,
+          {
+            endTime: nextEndTime,
+            startTime: nextStartTime,
+            taskDate: snapshot.taskDate,
+          },
+          propagationMode,
+        );
+
+        if (propagationMode === "owner_and_accepted_copies") {
+          const refreshedSnapshot = await fetchDashboardSnapshot(snapshot.taskDate);
+          setSnapshot(refreshedSnapshot);
+        }
       } catch (error) {
         setSnapshot(previousSnapshot);
         setNotice({
@@ -520,8 +573,41 @@ export function PlannerShell({
     })();
   }
 
+  function handleStartFocusTask(task: PlannerTask) {
+    router.push(
+      getPomodoroHref(task.task_date, new Date(), {
+        autostart: "1",
+        taskId: task.id,
+      }),
+    );
+  }
+
+  async function handleNotificationAccepted(result: TaskNotificationAcceptResult) {
+    if (result.taskDate !== snapshot.taskDate) {
+      return;
+    }
+
+    try {
+      const refreshedSnapshot = await fetchDashboardSnapshot(snapshot.taskDate);
+      setSnapshot(refreshedSnapshot);
+    } catch (error) {
+      setNotice({
+        type: "error",
+        message: getErrorMessage(error),
+      });
+    }
+  }
+
   const dateMode = useMemo(() => getPlannerDateMode(snapshot.taskDate, now), [now, snapshot.taskDate]);
   const dateLabel = useMemo(() => formatDateLabel(snapshot.taskDate), [snapshot.taskDate]);
+  const pomodoroHref = useMemo(
+    () => getPomodoroHref(snapshot.taskDate, now),
+    [now, snapshot.taskDate],
+  );
+  const notificationsHref = useMemo(
+    () => (snapshot.taskDate === todayDate ? "/app/notifications" : `/app/notifications?date=${snapshot.taskDate}`),
+    [snapshot.taskDate, todayDate],
+  );
   const relativeDateLabel = useMemo(
     () => getRelativeDateLabel(snapshot.taskDate, now),
     [now, snapshot.taskDate],
@@ -621,6 +707,8 @@ export function PlannerShell({
           dateMode={dateMode}
           metricLabel={headerMetric.label}
           metricTone={headerMetric.tone}
+          notificationsHref={notificationsHref}
+          showNotificationCenter
           streak={snapshot.streak}
           subtitle={
             dateMode === "future"
@@ -630,7 +718,10 @@ export function PlannerShell({
                 : "Plan and execute in one surface."
           }
           viewMode={viewMode}
+          pomodoroHref={pomodoroHref}
           onAddTask={() => handleCreateTask()}
+          onNotice={setNotice}
+          onTaskAccepted={handleNotificationAccepted}
           onViewChange={setViewMode}
           onSignOutError={(message) =>
             setNotice({
@@ -761,6 +852,7 @@ export function PlannerShell({
                   now={now}
                   onAddTask={() => handleCreateTask()}
                   onEditTask={handleEditTask}
+                  onStartFocusTask={handleStartFocusTask}
                   streak={snapshot.streak}
                   summary={snapshot.summary}
                   taskDate={snapshot.taskDate}
@@ -777,6 +869,7 @@ export function PlannerShell({
                   onAddTask={handleCreateTask}
                   onEditTask={handleEditTask}
                   onRescheduleTask={handleRescheduleTask}
+                  onStartFocusTask={handleStartFocusTask}
                   onToggleTask={handleToggleTask}
                 />
               ) : (
@@ -788,6 +881,7 @@ export function PlannerShell({
                   onAddTask={handleCreateTask}
                   onEditTask={handleEditTask}
                   onDeleteTask={handleDeleteTask}
+                  onStartFocusTask={handleStartFocusTask}
                   onToggleTaskSelection={toggleTaskSelection}
                   onToggleTask={handleToggleTask}
                   selectedTaskIds={selectedTaskIds}
