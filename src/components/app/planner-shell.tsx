@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 
 import { DateSwitcher } from "@/components/app/date-switcher";
 import { DashboardView } from "@/components/app/dashboard-view";
+import { LeaderboardView } from "@/components/app/leaderboard-view";
 import { PlannerHeader } from "@/components/app/planner-header";
+import { RecurringBlocksView } from "@/components/app/recurring-blocks-view";
+import { RecurringScopeModal } from "@/components/app/recurring-scope-modal";
 import { TaskForm } from "@/components/app/task-form";
 import { TaskModal } from "@/components/app/task-modal";
 import { TimelineGrid } from "@/components/app/timeline-grid";
@@ -13,10 +16,12 @@ import { TimelineList } from "@/components/app/timeline-list";
 import type { PlannerViewMode } from "@/components/app/view-toggle";
 import {
   createTask,
+  deleteRecurringSeries,
   deleteTask,
   fetchDashboardSnapshot,
   rescheduleTask,
   toggleTaskStatus,
+  updateRecurringSeries,
   updateTask,
 } from "@/lib/client/daystack";
 import {
@@ -39,6 +44,8 @@ import type {
   DailySummaryRecord,
   DashboardSnapshot,
   PlannerTask,
+  RecurringBlockSummary,
+  RecurringTaskScope,
   TaskFormValues,
   TaskNotificationAcceptResult,
   TaskPropagationMode,
@@ -61,6 +68,21 @@ type NoticeState =
 
 type BusyMode = "minor" | "navigation" | null;
 
+type RecurringScopeRequest =
+  | {
+      actionLabel: string;
+      resolve: (scope: RecurringTaskScope | null) => void;
+      task: PlannerTask;
+    }
+  | null;
+
+type RecurringSeriesEditorState =
+  | {
+      block: RecurringBlockSummary;
+      fromDate: string;
+    }
+  | null;
+
 function roundTime(now: Date) {
   const next = new Date(now);
   const roundedMinutes = ceilMinutesToInterval(now.getHours() * 60 + now.getMinutes(), 15);
@@ -82,6 +104,7 @@ function createDefaultTask(taskDate: string, now: Date, startTimeOverride?: stri
   const startTime = getDefaultStartTime(taskDate, now, startTimeOverride);
 
   return {
+    blockMode: "one_time",
     title: "",
     taskDate,
     startTime,
@@ -89,6 +112,7 @@ function createDefaultTask(taskDate: string, now: Date, startTimeOverride?: stri
     taskType: "generic",
     meetingLink: "",
     participants: [],
+    weekdays: [],
   };
 }
 
@@ -199,11 +223,13 @@ export function PlannerShell({
   const [now, setNow] = useState(initialNow);
   const [viewMode, setViewMode] = useState<PlannerViewMode>("grid");
   const [editorTask, setEditorTask] = useState<PlannerTask | null>(null);
+  const [recurringSeriesEditor, setRecurringSeriesEditor] = useState<RecurringSeriesEditorState>(null);
   const [composerDefaults, setComposerDefaults] = useState<TaskFormValues | null>(null);
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
   const [followToday, setFollowToday] = useState(() => initialSnapshot.taskDate === formatDateKey(initialNow));
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [recurringScopeRequest, setRecurringScopeRequest] = useState<RecurringScopeRequest>(null);
   const isPending = busyMode !== null;
   const isSurfaceRefreshing = busyMode === "navigation";
 
@@ -232,6 +258,40 @@ export function PlannerShell({
     setSelectedTaskIds((current) =>
       current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId],
     );
+  }
+
+  function requestRecurringScope(task: PlannerTask, actionLabel: string) {
+    if (!task.recurring_rule_id) {
+      return Promise.resolve<RecurringTaskScope | null>("occurrence_only");
+    }
+
+    return new Promise<RecurringTaskScope | null>((resolve) => {
+      setRecurringScopeRequest({
+        actionLabel,
+        resolve,
+        task,
+      });
+    });
+  }
+
+  function handleCloseRecurringScope() {
+    setRecurringScopeRequest((current) => {
+      if (current) {
+        current.resolve(null);
+      }
+
+      return null;
+    });
+  }
+
+  function handleChooseRecurringScope(scope: RecurringTaskScope) {
+    setRecurringScopeRequest((current) => {
+      if (current) {
+        current.resolve(scope);
+      }
+
+      return null;
+    });
   }
 
   useEffect(() => {
@@ -294,23 +354,38 @@ export function PlannerShell({
   }, [notice]);
 
   async function handleSaveTask(values: TaskFormValues) {
+    const recurrenceScope = editorTask ? await requestRecurringScope(editorTask, "change") : "occurrence_only";
+
+    if (editorTask && !recurrenceScope) {
+      return;
+    }
+
     const propagationMode = editorTask
       ? resolvePropagationMode(editorTask, "edit")
       : "owner_only";
+    const isRecurringCreate = !editorTask && values.blockMode === "recurring";
+    const isRecurringSeriesEdit = Boolean(
+      editorTask?.recurring_rule_id && recurrenceScope !== "occurrence_only",
+    );
     const shouldRefreshSnapshot =
-      values.taskDate !== snapshot.taskDate || propagationMode === "owner_and_accepted_copies";
+      values.taskDate !== snapshot.taskDate ||
+      propagationMode === "owner_and_accepted_copies" ||
+      isRecurringCreate ||
+      isRecurringSeriesEdit;
 
     setBusyMode(shouldRefreshSnapshot ? "navigation" : "minor");
 
     try {
       const savedTask = editorTask
-        ? await updateTask(editorTask.id, values, propagationMode)
+        ? await updateTask(editorTask.id, values, propagationMode, recurrenceScope ?? "occurrence_only")
         : await createTask(values);
 
       const nextPlannerTask: PlannerTask = {
         acceptedCopiesCount: editorTask?.acceptedCopiesCount ?? 0,
         ...savedTask,
         participants: values.taskType === "meeting" ? values.participants : [],
+        recurringSeriesId: editorTask?.recurringSeriesId ?? null,
+        recurringWeekdays: editorTask?.recurringWeekdays ?? [],
       };
 
       if (shouldRefreshSnapshot) {
@@ -343,20 +418,98 @@ export function PlannerShell({
   }
 
   function handleEditTask(task: PlannerTask) {
+    setRecurringSeriesEditor(null);
     setEditorTask(task);
     setComposerDefaults(null);
     setNotice(null);
   }
 
+  function handleEditRecurringBlock(block: RecurringBlockSummary) {
+    setEditorTask(null);
+    setComposerDefaults(null);
+    setRecurringSeriesEditor({
+      block,
+      fromDate: getRecurringSeriesEditDate(block),
+    });
+    setNotice(null);
+  }
+
   function handleCreateTask(startTime?: string) {
     setEditorTask(null);
+    setRecurringSeriesEditor(null);
     setComposerDefaults(createDefaultTask(snapshot.taskDate, now, startTime));
     setNotice(null);
   }
 
   function handleCancelEditor() {
     setEditorTask(null);
+    setRecurringSeriesEditor(null);
     setComposerDefaults(null);
+  }
+
+  async function handleSaveRecurringBlock(values: TaskFormValues) {
+    if (!recurringSeriesEditor) {
+      return;
+    }
+
+    setBusyMode("navigation");
+
+    try {
+      await updateRecurringSeries(recurringSeriesEditor.block.seriesId, values);
+      const nextSnapshot = await fetchDashboardSnapshot(snapshot.taskDate);
+      setSnapshot(nextSnapshot);
+      setRecurringSeriesEditor(null);
+      setComposerDefaults(null);
+      setNotice({
+        type: "success",
+        message: "Recurring block updated.",
+      });
+    } catch (error) {
+      setNotice({
+        type: "error",
+        message: getErrorMessage(error),
+      });
+    } finally {
+      setBusyMode(null);
+    }
+  }
+
+  function handleDeleteRecurringBlock(block: RecurringBlockSummary) {
+    const fromDate = getRecurringSeriesEditDate(block);
+    const confirmed = window.confirm(
+      `Delete "${block.title}" from ${formatDateLabel(fromDate)} onward? Past blocks will stay in your history.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setBusyMode("navigation");
+
+    void (async () => {
+      try {
+        await deleteRecurringSeries(block.seriesId, fromDate);
+        const refreshedSnapshot = await fetchDashboardSnapshot(snapshot.taskDate);
+        setSnapshot(refreshedSnapshot);
+
+        if (recurringSeriesEditor?.block.seriesId === block.seriesId) {
+          setRecurringSeriesEditor(null);
+        }
+
+        setComposerDefaults(null);
+        setNotice({
+          type: "success",
+          message: "Recurring block deleted.",
+        });
+      } catch (error) {
+        setNotice({
+          type: "error",
+          message: getErrorMessage(error),
+        });
+      } finally {
+        setBusyMode(null);
+      }
+    })();
   }
 
   function handleSelectDate(nextDate: string) {
@@ -366,6 +519,7 @@ export function PlannerShell({
 
     clearSelection();
     setEditorTask(null);
+    setRecurringSeriesEditor(null);
     setComposerDefaults(null);
     setFocusedTaskId(null);
     setNotice(null);
@@ -390,21 +544,39 @@ export function PlannerShell({
   }
 
   function handleDeleteTask(task: PlannerTask) {
-    const confirmed = window.confirm(`Delete "${task.title}"?`);
-
-    if (!confirmed) {
-      return;
-    }
-
-    const previousSnapshot = snapshot;
-    setBusyMode("minor");
-
     void (async () => {
+      const recurrenceScope = await requestRecurringScope(task, "delete");
+
+      if (!recurrenceScope) {
+        return;
+      }
+
+      const confirmed = window.confirm(
+        recurrenceScope === "occurrence_only"
+          ? `Delete "${task.title}"?`
+          : `Delete "${task.title}" and apply it to the selected recurring scope?`,
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      const previousSnapshot = snapshot;
+      const shouldRefreshSnapshot = Boolean(task.recurring_rule_id && recurrenceScope !== "occurrence_only");
+      setBusyMode(shouldRefreshSnapshot ? "navigation" : "minor");
+
       try {
-        const taskDate = await deleteTask(task.id);
-        applyTasksToCurrentSnapshot((currentTasks) =>
-          currentTasks.filter((currentTask) => currentTask.id !== task.id),
-        );
+        const taskDate = await deleteTask(task.id, recurrenceScope);
+
+        if (shouldRefreshSnapshot) {
+          const refreshedSnapshot = await fetchDashboardSnapshot(snapshot.taskDate);
+          setSnapshot(refreshedSnapshot);
+        } else {
+          applyTasksToCurrentSnapshot((currentTasks) =>
+            currentTasks.filter((currentTask) => currentTask.id !== task.id),
+          );
+        }
+
         setFollowToday(taskDate === formatDateKey(new Date()));
         syncPlannerLocation(taskDate);
 
@@ -528,24 +700,36 @@ export function PlannerShell({
   }
 
   function handleRescheduleTask(task: PlannerTask, nextStartTime: string, nextEndTime: string) {
-    const previousSnapshot = snapshot;
-    const propagationMode = resolvePropagationMode(task, "reschedule");
-    const optimisticTasks = sortTasksForPlanner(
-      snapshot.tasks.map((currentTask) =>
-        currentTask.id === task.id
-          ? {
-              ...currentTask,
-              end_time: nextEndTime,
-              start_time: nextStartTime,
-            }
-          : currentTask,
-      ),
-    );
-
-    applyTasksToCurrentSnapshot(optimisticTasks);
-    setBusyMode("minor");
-
     void (async () => {
+      const recurrenceScope = await requestRecurringScope(task, "reschedule");
+
+      if (!recurrenceScope) {
+        return;
+      }
+
+      const previousSnapshot = snapshot;
+      const propagationMode = resolvePropagationMode(task, "reschedule");
+      const canUseOptimisticUpdate =
+        propagationMode !== "owner_and_accepted_copies" && recurrenceScope === "occurrence_only";
+
+      if (canUseOptimisticUpdate) {
+        const optimisticTasks = sortTasksForPlanner(
+          snapshot.tasks.map((currentTask) =>
+            currentTask.id === task.id
+              ? {
+                  ...currentTask,
+                  end_time: nextEndTime,
+                  start_time: nextStartTime,
+                }
+              : currentTask,
+          ),
+        );
+
+        applyTasksToCurrentSnapshot(optimisticTasks);
+      }
+
+      setBusyMode(canUseOptimisticUpdate ? "minor" : "navigation");
+
       try {
         await rescheduleTask(
           task.id,
@@ -555,9 +739,10 @@ export function PlannerShell({
             taskDate: snapshot.taskDate,
           },
           propagationMode,
+          recurrenceScope,
         );
 
-        if (propagationMode === "owner_and_accepted_copies") {
+        if (!canUseOptimisticUpdate) {
           const refreshedSnapshot = await fetchDashboardSnapshot(snapshot.taskDate);
           setSnapshot(refreshedSnapshot);
         }
@@ -617,6 +802,22 @@ export function PlannerShell({
     [snapshot.tasks],
   );
   const viewCopy = useMemo(() => {
+    if (viewMode === "recurring") {
+      return {
+        description: "See every recurring block already in your weekly rhythm and change the series without another page load.",
+        eyebrow: "Weekly rhythm",
+        title: "Recurring Blocks",
+      };
+    }
+
+    if (viewMode === "leaderboard") {
+      return {
+        description: "See the strongest current streaks across DayStack without leaving the planner surface.",
+        eyebrow: "Competition",
+        title: "Leaderboard",
+      };
+    }
+
     if (viewMode === "dashboard") {
       return {
         description:
@@ -645,6 +846,25 @@ export function PlannerShell({
     label: string;
     tone: "brand" | "default" | "success" | "warning";
   }>(() => {
+    if (viewMode === "recurring") {
+      return {
+        label:
+          snapshot.recurringBlocks.length > 0
+            ? `${snapshot.recurringBlocks.length} recurring`
+            : "No series",
+        tone: snapshot.recurringBlocks.length > 0 ? "brand" : "default",
+      };
+    }
+
+    if (viewMode === "leaderboard") {
+      const topStreak = snapshot.leaderboard[0]?.currentStreak ?? 0;
+
+      return {
+        label: topStreak > 0 ? `${topStreak} day best` : "Top 10",
+        tone: topStreak > 0 ? "brand" : "default",
+      };
+    }
+
     if (dateMode === "future") {
       return {
         label:
@@ -678,12 +898,21 @@ export function PlannerShell({
             ? "warning"
             : "default",
     };
-  }, [blockedCount, dateMode, snapshot.summary.executionScore, snapshot.summary.totalTasks]);
-  const isComposerOpen = editorTask !== null || composerDefaults !== null;
-  const formValues = useMemo(
+  }, [
+    blockedCount,
+    dateMode,
+    snapshot.leaderboard,
+    snapshot.recurringBlocks.length,
+    snapshot.summary.executionScore,
+    snapshot.summary.totalTasks,
+    viewMode,
+  ]);
+  const isComposerOpen = editorTask !== null || recurringSeriesEditor !== null || composerDefaults !== null;
+  const formValues = useMemo<TaskFormValues>(
     () =>
       editorTask
         ? {
+            blockMode: editorTask.recurring_rule_id ? "recurring" : "one_time",
             title: editorTask.title,
             taskDate: editorTask.task_date,
             startTime: editorTask.start_time.slice(0, 5),
@@ -691,9 +920,22 @@ export function PlannerShell({
             taskType: editorTask.task_type,
             meetingLink: editorTask.meeting_link ?? "",
             participants: editorTask.participants,
+            weekdays: editorTask.recurringWeekdays,
           }
+        : recurringSeriesEditor
+          ? {
+              blockMode: "recurring",
+              title: recurringSeriesEditor.block.title,
+              taskDate: recurringSeriesEditor.fromDate,
+              startTime: recurringSeriesEditor.block.startTime.slice(0, 5),
+              endTime: recurringSeriesEditor.block.endTime.slice(0, 5),
+              taskType: recurringSeriesEditor.block.taskType,
+              meetingLink: recurringSeriesEditor.block.meetingLink ?? "",
+              participants: recurringSeriesEditor.block.participants,
+              weekdays: recurringSeriesEditor.block.weekdays,
+            }
         : composerDefaults ?? createDefaultTask(snapshot.taskDate, now),
-    [composerDefaults, editorTask, now, snapshot.taskDate],
+    [composerDefaults, editorTask, now, recurringSeriesEditor, snapshot.taskDate],
   );
 
   return (
@@ -770,7 +1012,9 @@ export function PlannerShell({
                 <div className="hidden flex-wrap items-center gap-2 sm:flex">
                   <span className="data-chip">{relativeDateLabel}</span>
                   <span className="data-chip">
-                    {snapshot.tasks.length} block{snapshot.tasks.length === 1 ? "" : "s"}
+                    {viewMode === "recurring"
+                      ? `${snapshot.recurringBlocks.length} recurring`
+                      : `${snapshot.tasks.length} block${snapshot.tasks.length === 1 ? "" : "s"}`}
                   </span>
                   {viewMode === "list" && snapshot.tasks.length > 0 && !selectionMode ? (
                     <button
@@ -858,6 +1102,15 @@ export function PlannerShell({
                   taskDate={snapshot.taskDate}
                   tasks={snapshot.tasks}
                 />
+              ) : viewMode === "recurring" ? (
+                <RecurringBlocksView
+                  blocks={snapshot.recurringBlocks}
+                  isPending={isPending}
+                  onDeleteBlock={handleDeleteRecurringBlock}
+                  onEditBlock={handleEditRecurringBlock}
+                />
+              ) : viewMode === "leaderboard" ? (
+                <LeaderboardView currentUserId={userId} entries={snapshot.leaderboard} />
               ) : viewMode === "grid" ? (
                 <TimelineGrid
                   focusedTaskId={focusedTaskId}
@@ -895,25 +1148,46 @@ export function PlannerShell({
 
       <TaskModal
         open={isComposerOpen}
-        title={editorTask ? "Edit block" : "Add block"}
+        title={editorTask || recurringSeriesEditor ? "Edit block" : "Add block"}
         description={
-          editorTask
-            ? "Adjust the timing, date, or details for this block."
-            : `Add the next focused block for ${formatDateLabel(formValues.taskDate)}.`
+          recurringSeriesEditor
+            ? `Changes will apply from ${formatDateLabel(formValues.taskDate)} onward for this recurring block.`
+            : editorTask
+              ? "Adjust the timing, date, or details for this block."
+              : `Add the next focused block for ${formatDateLabel(formValues.taskDate)}.`
         }
+        eyebrow={recurringSeriesEditor ? "Recurring series" : undefined}
         onClose={handleCancelEditor}
       >
         <TaskForm
-          key={`${editorTask?.id ?? formValues.startTime}-${snapshot.taskDate}-${isComposerOpen ? "open" : "closed"}`}
+          key={`${editorTask?.id ?? recurringSeriesEditor?.block.seriesId ?? formValues.startTime}-${snapshot.taskDate}-${isComposerOpen ? "open" : "closed"}`}
           currentUserId={userId}
-          mode={editorTask ? "edit" : "create"}
+          mode={editorTask || recurringSeriesEditor ? "edit" : "create"}
           initialValues={formValues}
           isPending={isPending}
           onCancel={handleCancelEditor}
-          onDelete={editorTask ? () => handleDeleteTask(editorTask) : undefined}
-          onSubmit={handleSaveTask}
+          onDelete={
+            recurringSeriesEditor
+              ? () => handleDeleteRecurringBlock(recurringSeriesEditor.block)
+              : editorTask
+                ? () => handleDeleteTask(editorTask)
+                : undefined
+          }
+          onSubmit={recurringSeriesEditor ? handleSaveRecurringBlock : handleSaveTask}
         />
       </TaskModal>
+
+      <RecurringScopeModal
+        open={recurringScopeRequest !== null}
+        taskTitle={recurringScopeRequest?.task.title ?? "this block"}
+        actionLabel={recurringScopeRequest?.actionLabel ?? "change"}
+        onChoose={handleChooseRecurringScope}
+        onClose={handleCloseRecurringScope}
+      />
     </main>
   );
+}
+
+function getRecurringSeriesEditDate(block: RecurringBlockSummary) {
+  return block.nextOccurrenceDate ?? block.effectiveStartDate;
 }

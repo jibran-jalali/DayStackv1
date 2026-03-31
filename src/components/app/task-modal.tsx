@@ -9,12 +9,22 @@ import { cn } from "@/lib/utils";
 interface TaskModalProps {
   children: ReactNode;
   description: string;
+  eyebrow?: string;
+  maxWidthClassName?: string;
   onClose: () => void;
   open: boolean;
   title: string;
 }
 
-export function TaskModal({ children, description, onClose, open, title }: TaskModalProps) {
+export function TaskModal({
+  children,
+  description,
+  eyebrow = "Task editor",
+  maxWidthClassName = "max-w-[42rem]",
+  onClose,
+  open,
+  title,
+}: TaskModalProps) {
   useEffect(() => {
     if (!open) {
       return;
@@ -60,15 +70,16 @@ export function TaskModal({ children, description, onClose, open, title }: TaskM
             aria-modal="true"
             aria-label={title}
             className={cn(
-              "relative flex w-full max-w-[42rem] flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white/96 shadow-[0_28px_84px_rgba(15,23,42,0.16)] transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              "relative flex w-full flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white/96 shadow-[0_28px_84px_rgba(15,23,42,0.16)] transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
               "max-h-[calc(100dvh-1.25rem)] sm:max-h-[calc(100dvh-2.5rem)]",
+              maxWidthClassName,
               open ? "translate-y-0 scale-100 opacity-100" : "translate-y-4 scale-[0.985] opacity-95",
             )}
           >
             <div className="border-b border-border/80 px-5 py-4 sm:px-6 sm:py-[1.125rem]">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="section-label">Task editor</p>
+                  <p className="section-label">{eyebrow}</p>
                   <h2 className="mt-1 font-display text-[1.65rem] font-semibold tracking-tight text-foreground">{title}</h2>
                   <p className="mt-1 text-sm leading-6 text-secondary-foreground">{description}</p>
                 </div>

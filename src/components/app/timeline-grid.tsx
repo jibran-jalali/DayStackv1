@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarRange, CheckCircle2, GripVertical, Play, Plus, Users, Video } from "lucide-react";
+import { CalendarRange, CheckCircle2, GripVertical, Play, Plus, Repeat, Users, Video } from "lucide-react";
 
 import { Button } from "@/components/shared/button";
 import {
@@ -456,6 +456,12 @@ export function TimelineGrid({
                         >
                           {task.title}
                         </p>
+                        {task.recurring_rule_id && !isMicro ? (
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-200 bg-amber-50/82 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700">
+                            <Repeat className="h-3 w-3" />
+                            Recurring
+                          </span>
+                        ) : null}
                       </div>
                       {!isMicro ? (
                         <div

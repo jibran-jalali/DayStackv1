@@ -1,4 +1,4 @@
-import { CalendarRange, Check, CheckCircle2, PencilLine, Play, Trash2, Users, Video } from "lucide-react";
+import { CalendarRange, Check, CheckCircle2, PencilLine, Play, Repeat, Trash2, Users, Video } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/shared/button";
 import { formatClockTime, formatParticipantNames, getTaskAnchorId, isBlockedTask } from "@/lib/daystack";
@@ -102,9 +102,18 @@ export function TaskCard({
                 Blocked
               </span>
             ) : null}
+            {task.recurring_rule_id ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+                <Repeat className="h-3 w-3" />
+                Recurring
+              </span>
+            ) : null}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-secondary-foreground">
             <span>Tap to edit.</span>
+            {task.recurring_rule_id ? (
+              <span>Part of a repeating weekly schedule.</span>
+            ) : null}
             {isMeeting && task.participants.length > 0 ? (
               <span className="inline-flex items-center gap-1.5">
                 <Users className="h-3.5 w-3.5" />

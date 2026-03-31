@@ -14,10 +14,12 @@ import {
   X,
 } from "lucide-react";
 
+import { LeaderboardView } from "@/components/app/leaderboard-view";
 import { Reveal } from "@/components/marketing/reveal";
 import { Button, buttonVariants } from "@/components/shared/button";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/utils";
+import type { LeaderboardEntry } from "@/types/daystack";
 
 const problemPoints = [
   {
@@ -182,7 +184,11 @@ function StatementBand({
   );
 }
 
-export function LandingPage() {
+interface LandingPageProps {
+  leaderboard: LeaderboardEntry[];
+}
+
+export function LandingPage({ leaderboard }: LandingPageProps) {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -341,6 +347,10 @@ export function LandingPage() {
             <HeroRhythm />
           </Reveal>
         </div>
+
+        <Reveal delay={180} className="mt-8 sm:mt-10">
+          <LeaderboardView entries={leaderboard} mode="website" />
+        </Reveal>
       </section>
 
       <section id="problem" className="container-shell py-18 sm:py-24 lg:py-28">

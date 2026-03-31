@@ -3,6 +3,9 @@ import type { InferSelectModel } from "drizzle-orm";
 
 import type {
   daily_summaries,
+  recurring_rule_exceptions,
+  recurring_rule_participants,
+  recurring_rules,
   task_notifications,
   task_participants,
   task_reminders,
@@ -19,11 +22,16 @@ export type TaskParticipantRecord = InferSelectModel<typeof task_participants>;
 export type UserNotificationPreferencesRecord = InferSelectModel<typeof user_notification_preferences>;
 export type TaskReminderRecord = InferSelectModel<typeof task_reminders>;
 export type TaskNotificationRecord = InferSelectModel<typeof task_notifications>;
+export type RecurringRuleRecord = InferSelectModel<typeof recurring_rules>;
+export type RecurringRuleParticipantRecord = InferSelectModel<typeof recurring_rule_participants>;
+export type RecurringRuleExceptionRecord = InferSelectModel<typeof recurring_rule_exceptions>;
 export type TaskType = TaskRecord["task_type"];
 export type ReminderType = TaskReminderRecord["reminder_type"];
 export type ReminderStatus = TaskReminderRecord["status"];
 export type TaskNotificationStatus = TaskNotificationRecord["status"];
 export type TaskPropagationMode = "owner_only" | "owner_and_accepted_copies";
+export type TaskMode = "one_time" | "recurring";
+export type RecurringTaskScope = "occurrence_only" | "this_and_future";
 
 export interface ParticipantProfile {
   email?: string | null;
@@ -44,6 +52,8 @@ export type NotificationPlatform = "android" | "desktop" | "ios" | "unknown";
 export interface PlannerTask extends TaskRecord {
   acceptedCopiesCount: number;
   participants: ParticipantProfile[];
+  recurringSeriesId: string | null;
+  recurringWeekdays: number[];
 }
 
 export interface PlannerNotification {
@@ -111,8 +121,14 @@ const participantSchema = z.object({
   fullName: z.string().trim().min(1, "Use a valid participant."),
 });
 
+function getWeekdayFromDateKey(taskDate: string) {
+  const [year, month, day] = taskDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
 export const taskFormSchema = z
   .object({
+    blockMode: z.enum(["one_time", "recurring"]).default("one_time"),
     title: z
       .string()
       .trim()
@@ -129,6 +145,9 @@ export const taskFormSchema = z
       .optional()
       .or(z.literal("")),
     participants: z.array(participantSchema).max(8, "Keep the participant list focused.").default([]),
+    weekdays: z
+      .array(z.number().int().min(0, "Use a valid weekday.").max(6, "Use a valid weekday."))
+      .default([]),
   })
   .refine((values) => values.endTime > values.startTime, {
     message: "End time must be later than the start time.",
@@ -159,7 +178,35 @@ export const taskFormSchema = z
   .refine((values) => (values.taskType === "meeting" ? true : values.participants.length === 0), {
     message: "Participants are only available for meeting blocks.",
     path: ["participants"],
-  });
+  })
+  .refine((values) => (values.blockMode === "recurring" ? values.weekdays.length > 0 : true), {
+    message: "Pick at least one weekday for a recurring block.",
+    path: ["weekdays"],
+  })
+  .refine(
+    (values) => {
+      if (values.blockMode !== "recurring") {
+        return values.weekdays.length === 0;
+      }
+
+      return new Set(values.weekdays).size === values.weekdays.length;
+    },
+    {
+      message: "Each weekday should only be selected once.",
+      path: ["weekdays"],
+    },
+  )
+  .refine(
+    (values) => (
+      values.blockMode === "recurring"
+        ? values.weekdays.includes(getWeekdayFromDateKey(values.taskDate))
+        : true
+    ),
+    {
+      message: "Include the selected date's weekday so the recurring block can start on that day.",
+      path: ["weekdays"],
+    },
+  );
 
 export type LoginValues = z.infer<typeof loginSchema>;
 export type SignupValues = z.infer<typeof signupSchema>;
@@ -175,10 +222,35 @@ export interface DashboardSummary {
   summaryLine: string;
 }
 
+export interface LeaderboardEntry {
+  userId: string;
+  rank: number;
+  displayName: string;
+  publicLabel: string;
+  currentStreak: number;
+  latestExecutionScore: number;
+}
+
+export interface RecurringBlockSummary {
+  seriesId: string;
+  title: string;
+  taskType: TaskType;
+  meetingLink: string | null;
+  startTime: string;
+  endTime: string;
+  weekdays: number[];
+  participants: ParticipantProfile[];
+  effectiveStartDate: string;
+  effectiveEndDate: string | null;
+  nextOccurrenceDate: string | null;
+}
+
 export interface DashboardSnapshot {
   taskDate: string;
   tasks: PlannerTask[];
   recentSummaries: DailySummaryRecord[];
+  leaderboard: LeaderboardEntry[];
+  recurringBlocks: RecurringBlockSummary[];
   summary: DashboardSummary;
   streak: number;
 }

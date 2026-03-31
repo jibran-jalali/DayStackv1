@@ -8,6 +8,7 @@ const rescheduleSchema = z
   .object({
     endTime: z.string().regex(/^\d{2}:\d{2}$/),
     propagationMode: z.enum(["owner_only", "owner_and_accepted_copies"]).optional(),
+    recurrenceScope: z.enum(["occurrence_only", "this_and_future"]).optional(),
     startTime: z.string().regex(/^\d{2}:\d{2}$/),
     taskDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   })
@@ -17,6 +18,7 @@ const rescheduleSchema = z
   });
 
 const propagationModeSchema = z.enum(["owner_only", "owner_and_accepted_copies"]);
+const recurrenceScopeSchema = z.enum(["occurrence_only", "this_and_future"]);
 
 export async function PATCH(
   request: Request,
@@ -46,6 +48,7 @@ export async function PATCH(
   }
 
   const propagationMode = propagationModeSchema.safeParse(parsed.data.propagationMode ?? "owner_only");
+  const recurrenceScope = recurrenceScopeSchema.safeParse(parsed.data.recurrenceScope ?? "occurrence_only");
 
   const { taskId } = await context.params;
 
@@ -55,6 +58,7 @@ export async function PATCH(
       taskId,
       parsed.data,
       propagationMode.success ? propagationMode.data : "owner_only",
+      recurrenceScope.success ? recurrenceScope.data : "occurrence_only",
     );
 
     return NextResponse.json({

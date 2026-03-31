@@ -181,10 +181,12 @@ export function PlannerHeader({
 
         <div className="flex flex-wrap items-center justify-end gap-2">
           {activePage === "planner" && onAddTask ? (
-            <Button size="sm" className="min-w-[8.25rem]" onClick={onAddTask}>
-              <Plus className="h-4 w-4" />
-              Add Block
-            </Button>
+            <>
+              <Button size="sm" className="min-w-[8.25rem]" onClick={onAddTask}>
+                <Plus className="h-4 w-4" />
+                Add Block
+              </Button>
+            </>
           ) : null}
 
           {showNotificationCenter ? (
