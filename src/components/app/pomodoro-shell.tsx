@@ -4,8 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Clock3 } from "lucide-react";
 
+import { MobileBottomNav } from "@/components/app/mobile-bottom-nav";
+import { MobileWorkspaceHeader } from "@/components/app/mobile-workspace-header";
 import { PlannerHeader } from "@/components/app/planner-header";
 import { PomodoroPanel } from "@/components/app/pomodoro-panel";
+import { useActionFeedback } from "@/components/app/use-action-feedback";
 import { usePomodoro } from "@/components/app/use-pomodoro";
 import { fetchDashboardSnapshot } from "@/lib/client/daystack";
 import { formatDateKey, formatDateLabel } from "@/lib/daystack";
@@ -37,6 +40,11 @@ function getPomodoroHref(taskDate: string, now: Date) {
   return taskDate === todayDate ? "/app/pomodoro" : `/app/pomodoro?date=${taskDate}`;
 }
 
+function getSettingsHref(taskDate: string, now: Date) {
+  const todayDate = formatDateKey(now);
+  return taskDate === todayDate ? "/app/settings" : `/app/settings?date=${taskDate}`;
+}
+
 export function PomodoroShell({ displayName, email, initialNowIso, initialSnapshot }: PomodoroShellProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -49,6 +57,9 @@ export function PomodoroShell({ displayName, email, initialNowIso, initialSnapsh
   const pomodoro = usePomodoro({
     taskDate: snapshot.taskDate,
     tasks: snapshot.tasks,
+  });
+  const { playActionFeedback } = useActionFeedback({
+    onNotice: setNotice,
   });
 
   useEffect(() => {
@@ -165,6 +176,10 @@ export function PomodoroShell({ displayName, email, initialNowIso, initialSnapsh
     () => getPomodoroHref(snapshot.taskDate, now),
     [now, snapshot.taskDate],
   );
+  const settingsHref = useMemo(
+    () => getSettingsHref(snapshot.taskDate, now),
+    [now, snapshot.taskDate],
+  );
   const notificationsHref = useMemo(
     () =>
       snapshot.taskDate === formatDateKey(now)
@@ -174,7 +189,69 @@ export function PomodoroShell({ displayName, email, initialNowIso, initialSnapsh
   );
 
   return (
-    <main className="container-shell min-h-screen py-4 sm:py-6">
+    <main className="min-h-screen">
+      <div className="mobile-app-shell mobile-safe-x min-h-screen pb-[calc(var(--mobile-bottom-nav-height)+1.75rem+env(safe-area-inset-bottom))] lg:hidden">
+        <MobileWorkspaceHeader
+          title="Focus"
+          subtitle={dateLabel}
+          metricLabel={pomodoro.state.phase === "break" ? "Break live" : "Focus timer"}
+          metricTone={pomodoro.state.phase === "break" ? "success" : "brand"}
+          secondaryMetricLabel={`${snapshot.tasks.length} block${snapshot.tasks.length === 1 ? "" : "s"}`}
+        />
+
+        {notice ? (
+          <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+8.75rem)] z-40 flex justify-center lg:hidden">
+            <div className="mobile-shell-width mx-auto">
+              <div
+                aria-live="polite"
+                className={`pointer-events-auto min-w-[16rem] rounded-full border px-4 py-2.5 text-sm shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl ${
+                  notice.type === "success"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-red-200 bg-red-50 text-danger"
+                }`}
+              >
+                {notice.message}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mobile-shell-width mobile-stack mx-auto pt-4">
+          <div className="mobile-card p-4">
+            <PomodoroPanel
+              variant="page"
+              formattedRemaining={pomodoro.formattedRemaining}
+              onOpenWindow={handleOpenPomodoroWindow}
+              onPause={pomodoro.pause}
+              onReset={pomodoro.reset}
+              onResume={pomodoro.resume}
+              onSkipBreak={pomodoro.skipBreak}
+              onStart={pomodoro.start}
+              onUnlinkTask={pomodoro.unlinkTask}
+              state={pomodoro.state}
+            />
+          </div>
+
+          <section className="mobile-card p-4">
+            <p className="section-label">Pomodoro flow</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">Stay in sync with your plan</p>
+            <p className="mt-1 text-sm text-secondary-foreground">
+              Start focus from any block, keep the timer linked, and pop it out when you want a dedicated floating surface.
+            </p>
+          </section>
+        </div>
+
+        <MobileBottomNav
+          activeTab="pomodoro"
+          notificationsHref={notificationsHref}
+          onPlayNavigate={() => playActionFeedback("navigate")}
+          plannerHref={plannerHref}
+          pomodoroHref={pomodoroHref}
+          settingsHref={settingsHref}
+        />
+      </div>
+
+      <div className="container-shell hidden min-h-screen py-4 sm:py-6 lg:block">
       <div className="space-y-4 sm:space-y-5">
         <PlannerHeader
           activePage="pomodoro"
@@ -187,6 +264,7 @@ export function PomodoroShell({ displayName, email, initialNowIso, initialSnapsh
           notificationsHref={notificationsHref}
           plannerHref={plannerHref}
           pomodoroHref={pomodoroHref}
+          settingsHref={settingsHref}
           showNotificationCenter
           subtitle="Run focused rounds in a dedicated surface and keep the mini timer in sync."
           onNotice={setNotice}
@@ -233,6 +311,7 @@ export function PomodoroShell({ displayName, email, initialNowIso, initialSnapsh
             </div>
           </div>
         </section>
+      </div>
       </div>
     </main>
   );

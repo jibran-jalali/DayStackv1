@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth";
-import { fetchNotificationPreferences } from "@/lib/data/reminders";
-import { isOneSignalServerConfigured, sendOneSignalNotification } from "@/lib/onesignal/server";
+import { formatDateKey } from "@/lib/daystack";
+import { getAppBaseUrl } from "@/lib/env";
+import { isEmailServerConfigured, sendTaskReminderEmail } from "@/lib/email/server";
 
 export async function POST(request: Request) {
-  if (!isOneSignalServerConfigured()) {
+  if (!isEmailServerConfigured()) {
     return NextResponse.json(
       {
-        error: "Add NEXT_PUBLIC_ONESIGNAL_APP_ID and ONESIGNAL_REST_API_KEY before sending test notifications.",
+        error: "Configure SMTP email before sending a test email.",
       },
       { status: 503 },
     );
@@ -19,31 +20,45 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json(
       {
-        error: "Sign in before sending a test notification.",
+        error: "Sign in before sending a test email.",
       },
       { status: 401 },
     );
   }
 
-  const preferences = await fetchNotificationPreferences(user.id);
-
-  if (!preferences.push_enabled) {
+  if (!user.email) {
     return NextResponse.json(
       {
-        error: "Enable reminders on this browser before sending a test notification.",
+        error: "Your account needs an email address before a test email can be sent.",
       },
       { status: 400 },
     );
   }
 
-  await sendOneSignalNotification({
-    body: "Your browser is connected and ready for DayStack reminders.",
-    externalIds: [user.id],
-    heading: "DayStack test notification",
-    url: `${new URL(request.url).origin}/app`,
+  const now = new Date();
+  const startTime = now.toTimeString().slice(0, 5);
+  const end = new Date(now.getTime() + 30 * 60 * 1000);
+  const endTime = end.toTimeString().slice(0, 5);
+  const appUrl = new URL("/app", process.env.NEXTAUTH_URL?.trim() ? getAppBaseUrl() : new URL(request.url).origin).toString();
+
+  await sendTaskReminderEmail({
+    appUrl,
+    leadMinutes: 15,
+    recipient: {
+      email: user.email,
+      full_name: user.full_name,
+    },
+    task: {
+      end_time: endTime,
+      meeting_link: null,
+      start_time: startTime,
+      task_date: formatDateKey(now),
+      task_type: "generic",
+      title: "DayStack test reminder",
+    },
   });
 
   return NextResponse.json({
-    message: "Test notification sent.",
+    message: "Test email sent.",
   });
 }

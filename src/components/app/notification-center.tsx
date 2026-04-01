@@ -16,9 +16,14 @@ import { cn, getErrorMessage } from "@/lib/utils";
 import type { PlannerNotification, TaskNotificationAcceptResult } from "@/types/daystack";
 
 interface NotificationCenterProps {
+  compact?: boolean;
+  initialNotifications?: PlannerNotification[];
+  isActive?: boolean;
   limit?: number;
   mode?: "button" | "page";
   onNotice?: (notice: { message: string; type: "error" | "success" }) => void;
+  onOpenDay?: (taskDate: string) => void;
+  onOpenInbox?: () => void;
   onTaskAccepted?: (result: TaskNotificationAcceptResult) => Promise<void> | void;
   openInboxHref?: string;
 }
@@ -52,14 +57,21 @@ function getStatusLabel(status: PlannerNotification["status"]) {
 }
 
 export function NotificationCenter({
+  compact = false,
+  initialNotifications,
+  isActive = true,
   limit = 10,
   mode = "button",
   onNotice,
+  onOpenDay,
+  onOpenInbox,
   onTaskAccepted,
   openInboxHref,
 }: NotificationCenterProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const [notifications, setNotifications] = useState<PlannerNotification[]>([]);
+  const [notifications, setNotifications] = useState<PlannerNotification[]>(
+    () => initialNotifications ?? [],
+  );
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(mode === "page");
   const [activeNotificationId, setActiveNotificationId] = useState<string | null>(null);
@@ -70,7 +82,7 @@ export function NotificationCenter({
     [notifications],
   );
   const unreadCount = unreadIds.length;
-  const isVisible = mode === "page" || isOpen;
+  const isVisible = mode === "page" ? isActive : isOpen;
 
   const loadNotifications = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -88,10 +100,18 @@ export function NotificationCenter({
   );
 
   useEffect(() => {
+    if (mode === "page" && !isActive) {
+      return;
+    }
+
     void loadNotifications();
-  }, [loadNotifications]);
+  }, [isActive, loadNotifications, mode]);
 
   useEffect(() => {
+    if (mode === "page" && !isActive) {
+      return;
+    }
+
     const intervalId = window.setInterval(() => {
       if (document.visibilityState === "visible") {
         void loadNotifications({ silent: true });
@@ -99,7 +119,7 @@ export function NotificationCenter({
     }, 30_000);
 
     return () => window.clearInterval(intervalId);
-  }, [loadNotifications]);
+  }, [isActive, loadNotifications, mode]);
 
   useEffect(() => {
     if (mode !== "button" || !isOpen) {
@@ -203,7 +223,7 @@ export function NotificationCenter({
     }
 
     return (
-      <div className={cn("space-y-2 overflow-y-auto pr-1 soft-scrollbar", maxHeightClassName)}>
+      <div className={cn("space-y-2.5 overflow-y-auto soft-scrollbar", maxHeightClassName)}>
         {notifications.map((notification) => {
           const actorName = notification.actor?.fullName ?? "A DayStack user";
           const isPendingAction = activeNotificationId === notification.id;
@@ -216,7 +236,7 @@ export function NotificationCenter({
                 notification.readAt ? "border-border/70 bg-white/82" : "border-cyan-200 bg-cyan-50/56",
               )}
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-foreground">{actorName} mentioned you</p>
                   <p className="mt-1 text-sm leading-6 text-secondary-foreground">
@@ -231,20 +251,50 @@ export function NotificationCenter({
                 {formatClockTime(notification.endTime)}
               </p>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap sm:items-center">
                 {notification.status === "pending" ? (
-                  <Button size="sm" onClick={() => handleAccept(notification.id)} disabled={isPendingAction}>
+                  <Button
+                    size="sm"
+                    className={compact ? "w-full justify-center sm:w-auto" : undefined}
+                    onClick={() => handleAccept(notification.id)}
+                    disabled={isPendingAction}
+                  >
                     {isPendingAction ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                     Accept
                   </Button>
                 ) : notification.acceptedTaskDate ? (
-                  <Link
-                    href={`/app?date=${notification.acceptedTaskDate}`}
-                    className={buttonVariants({ variant: "secondary", size: "sm" })}
-                  >
-                    <CheckCheck className="h-4 w-4" />
-                    Open day
-                  </Link>
+                  onOpenDay ? (
+                    <button
+                      type="button"
+                      className={buttonVariants({
+                        variant: "secondary",
+                        size: "sm",
+                        className: compact ? "w-full justify-center sm:w-auto" : undefined,
+                      })}
+                      onClick={() => {
+                        if (mode === "button") {
+                          setIsOpen(false);
+                        }
+
+                        onOpenDay(notification.acceptedTaskDate!);
+                      }}
+                    >
+                      <CheckCheck className="h-4 w-4" />
+                      Open day
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/app?date=${notification.acceptedTaskDate}`}
+                      className={buttonVariants({
+                        variant: "secondary",
+                        size: "sm",
+                        className: compact ? "w-full justify-center sm:w-auto" : undefined,
+                      })}
+                    >
+                      <CheckCheck className="h-4 w-4" />
+                      Open day
+                    </Link>
+                  )
                 ) : null}
 
                 {notification.meetingLink ? (
@@ -252,7 +302,11 @@ export function NotificationCenter({
                     href={notification.meetingLink}
                     target="_blank"
                     rel="noreferrer"
-                    className={buttonVariants({ variant: "ghost", size: "sm", className: "h-10 px-4" })}
+                    className={buttonVariants({
+                      variant: "ghost",
+                      size: "sm",
+                      className: cn("h-10 px-4", compact && "w-full justify-center sm:w-auto"),
+                    })}
                   >
                     <ExternalLink className="h-4 w-4" />
                     Meeting link
@@ -267,9 +321,27 @@ export function NotificationCenter({
   }
 
   if (mode === "page") {
+    if (compact) {
+      return (
+        <section className="space-y-3">
+          <div className="flex flex-col gap-2 px-1 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="section-label">Notifications</p>
+              <p className="mt-1 text-sm text-secondary-foreground">
+                Review meeting approvals and jump straight into the linked day.
+              </p>
+            </div>
+            {unreadCount > 0 ? <StatusChip label={`${unreadCount} unread`} tone="brand" /> : null}
+          </div>
+
+          {renderNotificationList("")}
+        </section>
+      );
+    }
+
     return (
       <section className="glass-panel overflow-hidden p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3 border-b border-border/70 pb-4">
+        <div className="flex flex-col gap-3 border-b border-border/70 pb-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="section-label">Notifications</p>
             <h1 className="mt-1 font-display text-2xl font-semibold text-foreground sm:text-[2rem]">
@@ -305,7 +377,7 @@ export function NotificationCenter({
       >
         {unreadCount > 0 ? <BellRing className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
         {unreadCount > 0 ? (
-          <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand-gradient px-1.5 text-[10px] font-semibold text-white shadow-[0_8px_18px_rgba(23,102,214,0.24)]">
+          <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand-gradient px-1.5 text-[10px] font-semibold text-white shadow-[var(--shadow-brand-sm)]">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         ) : null}
@@ -317,7 +389,7 @@ export function NotificationCenter({
           isOpen ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-2 opacity-0",
         )}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-border/70 px-1 pb-3">
+        <div className="flex flex-col gap-3 border-b border-border/70 px-1 pb-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="section-label">Notifications</p>
             <p className="mt-1 text-sm text-secondary-foreground">
@@ -326,7 +398,19 @@ export function NotificationCenter({
           </div>
           <div className="flex items-center gap-2">
             {unreadCount > 0 ? <StatusChip label={`${unreadCount} unread`} tone="brand" /> : null}
-            {openInboxHref ? (
+            {onOpenInbox ? (
+              <button
+                type="button"
+                className={buttonVariants({ variant: "ghost", size: "sm", className: "h-9 px-3" })}
+                onClick={() => {
+                  setIsOpen(false);
+                  onOpenInbox();
+                }}
+              >
+                <Inbox className="h-4 w-4" />
+                Inbox
+              </button>
+            ) : openInboxHref ? (
               <Link
                 href={openInboxHref}
                 className={buttonVariants({ variant: "ghost", size: "sm", className: "h-9 px-3" })}

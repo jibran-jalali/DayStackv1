@@ -32,22 +32,13 @@ export type TaskNotificationStatus = TaskNotificationRecord["status"];
 export type TaskPropagationMode = "owner_only" | "owner_and_accepted_copies";
 export type TaskMode = "one_time" | "recurring";
 export type RecurringTaskScope = "occurrence_only" | "this_and_future";
+export type WorkspaceTab = "notifications" | "plan" | "settings";
 
 export interface ParticipantProfile {
   email?: string | null;
   id: string;
   fullName: string;
 }
-
-export type NotificationSupportState =
-  | "available"
-  | "missing-config"
-  | "needs-install"
-  | "permission-denied"
-  | "subscribed"
-  | "unsupported";
-
-export type NotificationPlatform = "android" | "desktop" | "ios" | "unknown";
 
 export interface PlannerTask extends TaskRecord {
   acceptedCopiesCount: number;
@@ -79,20 +70,6 @@ export interface TaskNotificationAcceptResult {
   acceptedTaskId: string | null;
   outcome: "accepted" | "already_accepted" | "task_missing";
   taskDate: string;
-}
-
-export interface OneSignalSubscriptionState {
-  browserLabel: string;
-  configured: boolean;
-  isStandalone: boolean;
-  permissionGranted: boolean;
-  permissionStatus: NotificationPermission | "unsupported";
-  platform: NotificationPlatform;
-  ready: boolean;
-  supportState: NotificationSupportState;
-  supported: boolean;
-  subscribed: boolean;
-  subscriptionId: string | null;
 }
 
 export const emailSchema = z.string().trim().email("Enter a valid email address.");
@@ -258,6 +235,7 @@ export interface DashboardSnapshot {
 export interface DueTaskReminder {
   reminder: TaskReminderRecord;
   preferences: UserNotificationPreferencesRecord;
+  recipient: Pick<UserRecord, "email" | "full_name" | "id">;
   task: Pick<
     TaskRecord,
     "end_time" | "id" | "meeting_link" | "start_time" | "status" | "task_date" | "task_type" | "title" | "user_id"

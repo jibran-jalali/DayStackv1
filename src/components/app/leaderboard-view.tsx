@@ -33,6 +33,7 @@ export function LeaderboardView({
   entries,
   mode = "app",
 }: LeaderboardViewProps) {
+  const isWebsite = mode === "website";
   const leader = entries[0] ?? null;
   const leaderName = mode === "website" ? leader?.publicLabel : leader?.displayName;
   const showLeaderCelebration =
@@ -49,9 +50,23 @@ export function LeaderboardView({
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
-      <section className="relative overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(135deg,rgba(24,190,239,0.12),rgba(109,40,240,0.12))] p-5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] sm:p-6">
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-[18rem] bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.34),transparent_70%)]" />
+    <div className={cn("mx-auto space-y-5", isWebsite ? "max-w-[1180px]" : "max-w-5xl")}>
+      <section
+        className={cn(
+          "relative overflow-hidden rounded-[28px] border p-5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] sm:p-6",
+          isWebsite
+            ? "border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,248,252,0.94))]"
+            : "border-white/70 bg-[linear-gradient(135deg,rgba(24,190,239,0.12),rgba(109,40,240,0.12))]",
+        )}
+      >
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-y-0 right-0",
+            isWebsite
+              ? "w-[22rem] bg-[radial-gradient(circle_at_center,rgba(24,190,239,0.12),transparent_72%)]"
+              : "w-[18rem] bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.34),transparent_70%)]",
+          )}
+        />
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             {showLeaderCelebration ? (
@@ -62,10 +77,15 @@ export function LeaderboardView({
             ) : null}
             <p className="section-label">Global streak leaderboard</p>
             <div>
-              <h2 className="font-display text-3xl font-semibold text-foreground sm:text-[2.6rem]">
+              <h2
+                className={cn(
+                  "font-display font-semibold text-foreground",
+                  isWebsite ? "text-[2rem] tracking-[-0.05em] sm:text-[2.9rem]" : "text-3xl sm:text-[2.6rem]",
+                )}
+              >
                 {leaderName}
               </h2>
-              <p className="mt-1 text-sm text-secondary-foreground">
+              <p className={cn("mt-1 text-sm text-secondary-foreground", isWebsite && "max-w-xl")}>
                 Leading the board with the longest active streak right now.
               </p>
             </div>
@@ -83,7 +103,12 @@ export function LeaderboardView({
         </div>
       </section>
 
-      <section className="glass-panel overflow-hidden p-4 sm:p-5">
+      <section
+        className={cn(
+          "overflow-hidden rounded-[28px] border p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)] sm:p-5",
+          isWebsite ? "border-white/80 bg-white/92" : "glass-panel",
+        )}
+      >
         <div className="flex items-start justify-between gap-3 border-b border-border/70 pb-4">
           <div>
             <p className="section-label">Top 10</p>
@@ -108,7 +133,9 @@ export function LeaderboardView({
                 className={cn(
                   "flex flex-col gap-3 rounded-[22px] border px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)] transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] sm:flex-row sm:items-center sm:justify-between",
                   entry.rank === 1
-                    ? "border-cyan-200 bg-cyan-50/72"
+                    ? isWebsite
+                      ? "border-[rgba(24,190,239,0.16)] bg-[rgba(24,190,239,0.06)]"
+                      : "border-cyan-200 bg-cyan-50/72"
                     : "border-border/70 bg-white/86",
                   isCurrentUser && "ring-2 ring-[var(--ring)]",
                 )}

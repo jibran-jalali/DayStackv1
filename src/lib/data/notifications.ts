@@ -8,10 +8,13 @@ import {
   task_notifications,
   task_participants,
   tasks,
+  user_notification_preferences,
   users,
 } from "@/db/schema";
 import { syncTaskRemindersForTask } from "@/lib/data/reminders";
 import { buildSummary, deriveDisplayName } from "@/lib/daystack";
+import { getAppBaseUrl } from "@/lib/env";
+import { isEmailServerConfigured, sendMeetingMentionEmail } from "@/lib/email/server";
 import type {
   ParticipantProfile,
   PlannerNotification,
@@ -54,6 +57,12 @@ function createNotificationSnapshot(
     task_title: task.title,
     task_type: task.task_type,
   };
+}
+
+function buildNotificationsAppUrl(taskDate: string) {
+  const url = new URL("/app/notifications", getAppBaseUrl());
+  url.searchParams.set("date", taskDate);
+  return url.toString();
 }
 
 async function syncAcceptedTaskSummary(userId: string, taskDate: string) {
@@ -263,7 +272,17 @@ export async function syncTaskMentionNotificationsForTask(
         ]
       : [];
   const nextRecipientIdSet = new Set(nextRecipientIds);
+  const existingRowsByUserId = new Map(existingRows.map((notification) => [notification.user_id, notification]));
   const acceptedRows = existingRows.filter((notification) => notification.status === "accepted");
+  const recipientsToEmail = nextRecipientIds.filter((recipientId) => {
+    const existingNotification = existingRowsByUserId.get(recipientId);
+
+    return (
+      !existingNotification ||
+      existingNotification.status === "dismissed" ||
+      existingNotification.status === "expired"
+    );
+  });
   const upsertRows = nextRecipientIds
     .filter((recipientId) => !acceptedRows.some((notification) => notification.user_id === recipientId))
     .map((recipientId) => ({
@@ -324,9 +343,77 @@ export async function syncTaskMentionNotificationsForTask(
         read_at: new Date().toISOString(),
         status: "dismissed",
         updated_at: new Date().toISOString(),
-      })
+        })
       .where(inArray(task_notifications.id, dismissedIds));
   }
+
+  if (task.task_type !== "meeting" || recipientsToEmail.length === 0 || !isEmailServerConfigured()) {
+    return;
+  }
+
+  const [actorRows, recipientRows, preferenceRows] = await Promise.all([
+    db
+      .select({
+        email: users.email,
+        full_name: users.full_name,
+        id: users.id,
+      })
+      .from(users)
+      .where(eq(users.id, actorUserId))
+      .limit(1),
+    db
+      .select({
+        email: users.email,
+        full_name: users.full_name,
+        id: users.id,
+      })
+      .from(users)
+      .where(inArray(users.id, recipientsToEmail)),
+    db
+      .select({
+        meeting_mention_email_enabled: user_notification_preferences.meeting_mention_email_enabled,
+        user_id: user_notification_preferences.user_id,
+      })
+      .from(user_notification_preferences)
+      .where(inArray(user_notification_preferences.user_id, recipientsToEmail)),
+  ]);
+
+  const actor = actorRows[0];
+
+  if (!actor) {
+    return;
+  }
+
+  const recipientPreferencesByUserId = new Map(
+    preferenceRows.map((preference) => [preference.user_id, preference.meeting_mention_email_enabled]),
+  );
+  const recipients = recipientRows.filter(
+    (recipient) => recipientPreferencesByUserId.get(recipient.id) === true,
+  );
+
+  if (recipients.length === 0) {
+    return;
+  }
+
+  const emailResults = await Promise.allSettled(
+    recipients.map((recipient) =>
+      sendMeetingMentionEmail({
+        actor,
+        appUrl: buildNotificationsAppUrl(task.task_date),
+        recipient,
+        task,
+      }),
+    ),
+  );
+
+  emailResults.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.error(
+        `DayStack meeting mention email failed for recipient ${recipients[index]?.id ?? "unknown"}:`,
+        result.reason,
+      );
+    }
+  });
 }
 
 export async function expireTaskMentionNotifications(actorUserId: string, taskId: string) {

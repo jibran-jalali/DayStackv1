@@ -1,5 +1,7 @@
-export interface OneSignalEnv {
-  appId: string;
+export interface EmailServerEnv {
+  appPassword: string;
+  fromName: string;
+  user: string;
 }
 
 function normalizeEnvValue(value: string | undefined) {
@@ -46,18 +48,31 @@ export function isAuthConfigured() {
   return Boolean(process.env.AUTH_SECRET?.trim());
 }
 
-export function getOneSignalEnv(): OneSignalEnv | null {
-  const appId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID?.trim();
+export function getEmailServerEnv(): EmailServerEnv | null {
+  const user =
+    normalizeEnvValue(process.env.GMAIL_SMTP_USER) ??
+    normalizeEnvValue(process.env.EMAIL_SMTP_USER) ??
+    normalizeEnvValue(process.env.EMAIL_FROM_ADDRESS);
+  const rawPassword =
+    normalizeEnvValue(process.env.GMAIL_SMTP_APP_PASSWORD) ??
+    normalizeEnvValue(process.env.EMAIL_SMTP_PASSWORD);
+  const appPassword = rawPassword?.replace(/\s+/g, "") ?? null;
 
-  if (!appId) {
+  if (!user || !appPassword) {
     return null;
   }
 
   return {
-    appId,
+    appPassword,
+    fromName: normalizeEnvValue(process.env.EMAIL_FROM_NAME) ?? "DayStack",
+    user,
   };
 }
 
-export function isOneSignalConfigured() {
-  return Boolean(getOneSignalEnv());
+export function isEmailConfigured() {
+  return Boolean(getEmailServerEnv());
+}
+
+export function getAppBaseUrl() {
+  return normalizeEnvValue(process.env.NEXTAUTH_URL) ?? "http://localhost:3000";
 }

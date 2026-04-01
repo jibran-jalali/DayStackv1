@@ -1,9 +1,12 @@
 import { PlannerShell } from "@/components/app/planner-shell";
 import { SetupNotice } from "@/components/shared/setup-notice";
-import { fetchDashboardSnapshot, fetchProfile } from "@/lib/data/daystack";
+import { fetchDashboardSnapshot } from "@/lib/data/daystack";
 import { getSessionUser } from "@/lib/auth";
 import { deriveDisplayName, formatDateKey, isValidDateKey } from "@/lib/daystack";
+import { fetchTaskNotifications } from "@/lib/data/notifications";
+import { fetchNotificationPreferences } from "@/lib/data/reminders";
 import { isAuthConfigured, isDatabaseConfigured } from "@/lib/env";
+import type { WorkspaceTab } from "@/types/daystack";
 
 export const metadata = {
   title: "Dashboard",
@@ -28,6 +31,14 @@ interface AppPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
+function getWorkspaceTab(value: string | undefined): WorkspaceTab {
+  if (value === "notifications" || value === "settings") {
+    return value;
+  }
+
+  return "plan";
+}
+
 export default async function AppPage({ searchParams }: AppPageProps) {
   if (!isDatabaseConfigured() || !isAuthConfigured()) {
     return (
@@ -47,24 +58,22 @@ export default async function AppPage({ searchParams }: AppPageProps) {
   const requestedDate = Array.isArray(resolvedSearchParams.date)
     ? resolvedSearchParams.date[0]
     : resolvedSearchParams.date;
+  const requestedTab = Array.isArray(resolvedSearchParams.tab)
+    ? resolvedSearchParams.tab[0]
+    : resolvedSearchParams.tab;
   const initialNowIso = new Date().toISOString();
   const taskDate = requestedDate && isValidDateKey(requestedDate) ? requestedDate : formatDateKey(new Date());
+  const initialTab = getWorkspaceTab(requestedTab);
+  let snapshot;
+  let notificationPreferences;
+  let notifications;
 
   try {
-    const [snapshot, profile] = await Promise.all([
+    [snapshot, notificationPreferences, notifications] = await Promise.all([
       fetchDashboardSnapshot(user.id, taskDate),
-      fetchProfile(user.id),
+      fetchNotificationPreferences(user.id),
+      fetchTaskNotifications(user.id, 40),
     ]);
-
-    return (
-      <PlannerShell
-        userId={user.id}
-        email={user.email}
-        displayName={deriveDisplayName(profile?.full_name, user.email)}
-        initialNowIso={initialNowIso}
-        initialSnapshot={snapshot}
-      />
-    );
   } catch (error) {
     console.error("DayStack dashboard bootstrap failed:", error);
 
@@ -99,4 +108,17 @@ export default async function AppPage({ searchParams }: AppPageProps) {
       </main>
     );
   }
+
+  return (
+    <PlannerShell
+      userId={user.id}
+      email={user.email}
+      displayName={deriveDisplayName(user.full_name, user.email)}
+      initialNotificationPreferences={notificationPreferences}
+      initialNotifications={notifications}
+      initialNowIso={initialNowIso}
+      initialSnapshot={snapshot}
+      initialTab={initialTab}
+    />
+  );
 }

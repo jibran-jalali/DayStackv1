@@ -6,10 +6,9 @@ import { fetchNotificationPreferences, updateNotificationPreferences } from "@/l
 
 const preferenceUpdateSchema = z
   .object({
-    push_enabled: z.boolean().optional(),
-    remind_5_min_before: z.boolean().optional(),
-    remind_at_start: z.boolean().optional(),
-    remind_overdue: z.boolean().optional(),
+    email_enabled: z.boolean().optional(),
+    meeting_mention_email_enabled: z.boolean().optional(),
+    email_reminder_lead_minutes: z.number().int().min(0).max(1440).optional(),
   })
   .refine((values) => Object.values(values).some((value) => value !== undefined), {
     message: "At least one notification preference must be provided.",

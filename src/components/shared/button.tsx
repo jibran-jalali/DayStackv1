@@ -7,12 +7,12 @@ type ButtonSize = "sm" | "md" | "lg";
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-brand-gradient text-white shadow-[0_16px_34px_rgba(23,102,214,0.22)] hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_20px_42px_rgba(23,102,214,0.28)] active:scale-[0.985]",
+    "bg-brand-gradient text-white shadow-[var(--shadow-brand-md)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-brand-lg)] active:translate-y-px active:scale-[0.99] active:shadow-[var(--shadow-brand-sm)]",
   secondary:
-    "border border-border/80 bg-white/92 text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] hover:-translate-y-0.5 hover:scale-[1.005] hover:bg-white hover:shadow-[0_16px_32px_rgba(15,23,42,0.09)] active:scale-[0.985]",
-  ghost: "bg-transparent text-secondary-foreground hover:bg-white/72 active:scale-[0.985]",
+    "border border-border/80 bg-white/92 text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_16px_32px_rgba(15,23,42,0.08)] active:translate-y-0",
+  ghost: "bg-transparent text-secondary-foreground hover:bg-white/72 active:translate-y-0",
   danger:
-    "border border-red-200 bg-red-50 text-danger shadow-[0_10px_24px_rgba(239,68,68,0.1)] hover:-translate-y-0.5 hover:bg-red-100 active:scale-[0.985]",
+    "border border-red-200 bg-red-50 text-danger shadow-[0_10px_24px_rgba(239,68,68,0.1)] hover:-translate-y-0.5 hover:bg-red-100 active:translate-y-0",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -31,7 +31,7 @@ export function buttonVariants({
   className?: string;
 } = {}) {
   return cn(
-    "inline-flex items-center justify-center gap-2 font-semibold transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:scale-100 disabled:opacity-60",
+    "inline-flex items-center justify-center gap-2 font-semibold transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60",
     variantStyles[variant],
     sizeStyles[size],
     className,

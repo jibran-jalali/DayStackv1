@@ -36,7 +36,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
     >
       <span
         className={cn(
-          "pointer-events-none absolute inset-y-1 left-1 rounded-full bg-brand-gradient shadow-[0_14px_28px_rgba(23,102,214,0.2)] transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          "pointer-events-none absolute inset-y-1 left-1 rounded-full bg-brand-gradient shadow-[var(--shadow-brand-pill)] transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
         )}
         style={{
           width: `calc((100% - 0.5rem) / ${options.length})`,

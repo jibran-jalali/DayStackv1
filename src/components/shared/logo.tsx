@@ -13,7 +13,10 @@ export function Logo({ className, href = "/", priority = false }: LogoProps) {
   return (
     <Link
       href={href}
-      className={cn("inline-flex items-center rounded-full px-1 py-1 transition hover:opacity-90", className)}
+      className={cn(
+        "inline-flex items-center rounded-full px-1 py-1 transition-opacity duration-200 hover:opacity-90 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)]",
+        className,
+      )}
       aria-label="DayStack home"
     >
       <Image

@@ -177,7 +177,7 @@ export function PomodoroPanel({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(24,190,239,0.08),transparent)]" />
 
       <div className="relative">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="section-label">Pomodoro</p>
             <p className="mt-1 font-display text-[2.4rem] font-semibold tracking-tight text-foreground sm:text-[2.8rem]">
@@ -185,7 +185,7 @@ export function PomodoroPanel({
             </p>
             <p className="mt-1 text-sm text-secondary-foreground">{getPhaseLine(state)}</p>
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
             <StatusChip label={isBreak ? "Break" : "Focus"} tone={isBreak ? "success" : "brand"} icon={Clock3} />
             <StatusChip
               label={`${state.completedWorkSessions} cycle${state.completedWorkSessions === 1 ? "" : "s"}`}
@@ -198,13 +198,13 @@ export function PomodoroPanel({
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/70">
             {state.mode === "task-linked" ? "Linked task" : "Mode"}
           </p>
-          <div className="mt-2 flex items-start justify-between gap-3">
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <p className="min-w-0 text-sm font-semibold text-foreground">{getTaskLine(state.linkedTask)}</p>
             {state.linkedTask ? (
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 shrink-0 rounded-full px-3"
+                className="h-8 w-full shrink-0 rounded-full px-3 sm:w-auto"
                 onClick={onUnlinkTask}
               >
                 <Link2Off className="h-4 w-4" />
@@ -214,38 +214,38 @@ export function PomodoroPanel({
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
           {isRunning ? (
-            <Button size="sm" className="min-w-[8rem]" onClick={onPause}>
+            <Button size="sm" className="w-full sm:min-w-[8rem] sm:w-auto" onClick={onPause}>
               <Pause className="h-4 w-4" />
               {primaryButtonLabel}
             </Button>
           ) : state.status === "paused" ? (
-            <Button size="sm" className="min-w-[8rem]" onClick={onResume}>
+            <Button size="sm" className="w-full sm:min-w-[8rem] sm:w-auto" onClick={onResume}>
               <Play className="h-4 w-4" />
               {primaryButtonLabel}
             </Button>
           ) : (
-            <Button size="sm" className="min-w-[8rem]" onClick={onStart}>
+            <Button size="sm" className="w-full sm:min-w-[8rem] sm:w-auto" onClick={onStart}>
               <Play className="h-4 w-4" />
               {primaryButtonLabel}
             </Button>
           )}
 
-          <Button size="sm" variant="secondary" onClick={onReset}>
+          <Button size="sm" variant="secondary" className="w-full sm:w-auto" onClick={onReset}>
             <RotateCcw className="h-4 w-4" />
             Reset
           </Button>
 
           {isBreak ? (
-            <Button size="sm" variant="ghost" onClick={onSkipBreak}>
+            <Button size="sm" variant="ghost" className="w-full sm:w-auto" onClick={onSkipBreak}>
               <SkipForward className="h-4 w-4" />
               Skip break
             </Button>
           ) : null}
 
           {onOpenWindow ? (
-            <Button size="sm" variant="ghost" onClick={onOpenWindow}>
+            <Button size="sm" variant="ghost" className="w-full sm:w-auto" onClick={onOpenWindow}>
               <SquareArrowOutUpRight className="h-4 w-4" />
               Pop out
             </Button>

@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, ShieldAlert, ShieldCheck, Smartphone } from "lucide-react";
+import { Bell, Mail } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { EmailSettingsPanel } from "@/components/app/email-settings-panel";
 import { PlannerHeader } from "@/components/app/planner-header";
-import { ReminderSettingsPanel } from "@/components/app/reminder-settings-panel";
 import { useNotificationSettings } from "@/components/app/use-notification-settings";
 import { buttonVariants } from "@/components/shared/button";
 import { formatDateLabel } from "@/lib/daystack";
@@ -16,7 +16,6 @@ interface SettingsShellProps {
   email?: string;
   initialNotificationPreferences: UserNotificationPreferencesRecord;
   returnDate?: string;
-  userId: string;
 }
 
 type NoticeState =
@@ -25,55 +24,6 @@ type NoticeState =
       message: string;
     }
   | null;
-
-function getBrowserStatusContent(
-  state: ReturnType<typeof useNotificationSettings>["notificationState"],
-) {
-  switch (state.supportState) {
-    case "needs-install":
-      return {
-        icon: Smartphone,
-        title: "Install DayStack on iPhone first",
-        body: "Web push on iPhone and iPad works from the Home Screen app, not from a normal browser tab.",
-        tone: "brand" as const,
-      };
-    case "permission-denied":
-      return {
-        icon: ShieldAlert,
-        title: "Notifications are blocked",
-        body: `Allow notifications for DayStack in ${state.browserLabel} settings, then return here.`,
-        tone: "warning" as const,
-      };
-    case "unsupported":
-      return {
-        icon: ShieldAlert,
-        title: "Push is unavailable here",
-        body: `${state.browserLabel} cannot receive DayStack web push notifications in this context.`,
-        tone: "default" as const,
-      };
-    case "subscribed":
-      return {
-        icon: ShieldCheck,
-        title: "This browser is ready",
-        body: "Test notification sends a push to this subscribed browser only.",
-        tone: "success" as const,
-      };
-    case "available":
-      return {
-        icon: ShieldCheck,
-        title: "This browser can receive reminders",
-        body: "Enable reminders to subscribe this device and start sending task nudges here.",
-        tone: "brand" as const,
-      };
-    default:
-      return {
-        icon: ShieldCheck,
-        title: "Reminders need setup",
-        body: "Connect browser notifications here once your device supports push and OneSignal is configured.",
-        tone: "default" as const,
-      };
-  }
-}
 
 function getPlannerHref(returnDate?: string) {
   if (!returnDate) {
@@ -91,26 +41,32 @@ function getSettingsHref(returnDate?: string) {
   return `/app/settings?date=${returnDate}`;
 }
 
+function getNotificationsHref(returnDate?: string) {
+  if (!returnDate) {
+    return "/app/notifications";
+  }
+
+  return `/app/notifications?date=${returnDate}`;
+}
+
 export function SettingsShell({
   displayName,
   email,
   initialNotificationPreferences,
   returnDate,
-  userId,
 }: SettingsShellProps) {
   const [notice, setNotice] = useState<NoticeState>(null);
 
   const {
     isNotificationPending,
     notificationPreferences,
-    notificationState,
     sendTestNotification,
-    togglePushReminders,
-    toggleReminderSetting,
+    toggleEmailReminders,
+    toggleMeetingMentionEmails,
+    updateEmailReminderLeadMinutes,
   } = useNotificationSettings({
     initialPreferences: initialNotificationPreferences,
     onNotice: setNotice,
-    userId,
   });
 
   useEffect(() => {
@@ -126,9 +82,12 @@ export function SettingsShell({
   }, [notice]);
 
   const plannerHref = useMemo(() => getPlannerHref(returnDate), [returnDate]);
+  const notificationsHref = useMemo(() => getNotificationsHref(returnDate), [returnDate]);
   const settingsHref = useMemo(() => getSettingsHref(returnDate), [returnDate]);
-  const remindersActive = notificationPreferences.push_enabled && notificationState.subscribed;
-  const browserStatus = useMemo(() => getBrowserStatusContent(notificationState), [notificationState]);
+  const activeChannelCount = [
+    notificationPreferences.email_enabled,
+    notificationPreferences.meeting_mention_email_enabled,
+  ].filter(Boolean).length;
 
   return (
     <main className="container-shell min-h-screen py-4 sm:py-6">
@@ -138,9 +97,10 @@ export function SettingsShell({
           dateLabel="Notifications & reminders"
           displayName={displayName}
           email={email}
-          metricIcon={Bell}
-          metricLabel={remindersActive ? "Reminders on" : "Reminders off"}
-          metricTone={remindersActive ? "brand" : "default"}
+          metricIcon={activeChannelCount > 0 ? Mail : Bell}
+          metricLabel={activeChannelCount > 0 ? `${activeChannelCount} channel${activeChannelCount === 1 ? "" : "s"} on` : "All alerts off"}
+          metricTone={activeChannelCount > 0 ? "brand" : "default"}
+          notificationsHref={notificationsHref}
           plannerHref={plannerHref}
           settingsHref={settingsHref}
           subtitle="Manage how DayStack nudges the plan."
@@ -173,20 +133,22 @@ export function SettingsShell({
             <div className="border-b border-border/70 pb-4">
               <p className="section-label">Notifications</p>
               <h1 className="mt-1 font-display text-2xl font-semibold text-foreground sm:text-[2rem]">
-                Reminder preferences
+                Notification settings
               </h1>
               <p className="mt-1.5 text-sm text-secondary-foreground">
-                Choose which reminders show up on this browser and test the connection in one place.
+                Configure email reminders, meeting-tag emails, and a quick delivery test from one place.
               </p>
             </div>
 
-            <div className="mt-4">
-              <ReminderSettingsPanel
+            <div className="mt-4 space-y-4">
+              <EmailSettingsPanel
+                key={`email-settings-${notificationPreferences.email_reminder_lead_minutes}`}
+                accountEmail={email}
                 isBusy={isNotificationPending}
-                notificationState={notificationState}
                 onSendTest={sendTestNotification}
-                onTogglePush={togglePushReminders}
-                onToggleSetting={toggleReminderSetting}
+                onSaveLeadMinutes={updateEmailReminderLeadMinutes}
+                onToggleEmail={toggleEmailReminders}
+                onToggleMeetingMentionEmail={toggleMeetingMentionEmails}
                 preferences={notificationPreferences}
               />
             </div>
@@ -213,22 +175,14 @@ export function SettingsShell({
 
             <section className="rounded-[22px] border border-border/70 bg-white/82 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
               <div className="flex items-start gap-3">
-                <span
-                  className={`inline-flex h-10 w-10 items-center justify-center rounded-full ${
-                    browserStatus.tone === "success"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : browserStatus.tone === "warning"
-                        ? "bg-amber-100 text-amber-700"
-                        : browserStatus.tone === "brand"
-                          ? "bg-cyan-50 text-sky-700"
-                          : "bg-muted text-secondary-foreground"
-                  }`}
-                >
-                  <browserStatus.icon className="h-5 w-5" />
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-cyan-50 text-sky-700">
+                  <Mail className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">{browserStatus.title}</p>
-                  <p className="mt-1 text-sm text-secondary-foreground">{browserStatus.body}</p>
+                  <p className="text-sm font-semibold text-foreground">Email uses your account address</p>
+                  <p className="mt-1 text-sm text-secondary-foreground">
+                    DayStack sends reminder and meeting-tag emails to {email ?? "your signed-in email"} once those toggles are enabled.
+                  </p>
                 </div>
               </div>
             </section>

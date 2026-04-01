@@ -61,10 +61,9 @@ export async function POST(request: Request) {
 
     await tx.insert(user_notification_preferences).values({
       user_id: userId,
-      push_enabled: false,
-      remind_5_min_before: true,
-      remind_at_start: true,
-      remind_overdue: false,
+      email_enabled: false,
+      meeting_mention_email_enabled: false,
+      email_reminder_lead_minutes: 15,
       created_at: now,
       updated_at: now,
     });

@@ -1,22 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f6f8fc;
-  --foreground: #1e1b22;
+  --background: #f7f9fc;
+  --foreground: #131a24;
   --card: #ffffff;
-  --card-foreground: #1e1b22;
-  --muted: #eef3f8;
-  --muted-foreground: #64748b;
-  --secondary-foreground: #475569;
-  --border: #e2e8f0;
+  --card-foreground: #131a24;
+  --muted: #eff3f8;
+  --muted-foreground: #6b7280;
+  --secondary-foreground: #586272;
+  --border: #dbe3ed;
   --ring: rgba(24, 190, 239, 0.32);
+  --gradient-brand: linear-gradient(135deg, #18beef 0%, #6d28f0 100%);
+  --shadow-brand-sm: 0 12px 24px rgba(83, 78, 222, 0.18);
+  --shadow-brand-md: 0 16px 34px rgba(83, 78, 222, 0.22);
+  --shadow-brand-lg: 0 20px 42px rgba(83, 78, 222, 0.28);
+  --shadow-brand-pill: 0 14px 28px rgba(83, 78, 222, 0.2);
+  --mobile-shell-max-width: 27rem;
+  --mobile-bottom-nav-height: 5.75rem;
   --primary: #1496e8;
   --primary-strong: #6d28f0;
   --primary-foreground: #ffffff;
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
-  --shadow-soft: 0 18px 48px rgba(20, 30, 56, 0.08);
+  --shadow-soft: 0 18px 48px rgba(15, 23, 42, 0.08);
   --shadow-card: 0 14px 34px rgba(15, 23, 42, 0.07);
   --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -53,7 +60,7 @@ body {
   background:
     radial-gradient(circle at top left, rgba(24, 190, 239, 0.14), transparent 30%),
     radial-gradient(circle at top right, rgba(109, 40, 240, 0.12), transparent 26%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(246, 248, 252, 0.98));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 249, 252, 0.99));
   color: var(--foreground);
   font-family: var(--font-inter), sans-serif;
   text-rendering: optimizeLegibility;
@@ -158,7 +165,7 @@ button:disabled {
 }
 
 .fade-in-up {
-  animation: fade-in-up 0.7s ease both;
+  animation: fade-in-up 0.55s ease both;
 }
 
 .float-slow {
@@ -189,7 +196,7 @@ button:disabled {
 @keyframes fade-in-up {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(12px);
   }
 
   to {
@@ -282,7 +289,7 @@ button:disabled {
 }
 
 @utility bg-brand-gradient {
-  background: linear-gradient(135deg, #18beef 0%, #6d28f0 100%);
+  background: var(--gradient-brand);
 }
 
 @utility input-shell {
@@ -294,7 +301,39 @@ button:disabled {
 }
 
 @utility data-chip {
-  @apply inline-flex items-center gap-2 rounded-full border border-border/80 bg-white/86 px-3 py-1.5 text-xs font-semibold text-secondary-foreground shadow-[0_10px_24px_rgba(15,23,42,0.06)];
+  @apply inline-flex items-center gap-2 rounded-full border border-border/80 bg-white/90 px-3 py-1.5 text-xs font-semibold text-secondary-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)];
+}
+
+@utility mobile-app-shell {
+  background:
+    radial-gradient(circle at top center, rgba(24, 190, 239, 0.14), transparent 34%),
+    radial-gradient(circle at top right, rgba(109, 40, 240, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(252, 253, 255, 0.98), rgba(244, 247, 252, 0.98));
+}
+
+@utility mobile-safe-x {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+@utility mobile-shell-width {
+  width: min(100%, var(--mobile-shell-max-width));
+}
+
+@utility mobile-stack {
+  @apply space-y-4;
+}
+
+@utility mobile-surface {
+  @apply rounded-[28px] border border-white/70 bg-white/92 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl;
+}
+
+@utility mobile-card {
+  @apply rounded-[26px] border border-border/70 bg-white/96 shadow-[0_16px_34px_rgba(15,23,42,0.07)];
+}
+
+@utility mobile-nav-shell {
+  @apply rounded-[28px] border border-white/75 bg-white/92 shadow-[0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-xl;
 }
 
 @media (prefers-reduced-motion: reduce) {

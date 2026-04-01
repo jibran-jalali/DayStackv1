@@ -1,20 +1,129 @@
 import { NextResponse } from "next/server";
 
 import {
-  buildReminderCopy,
   fetchDueTaskReminders,
+  isEmailReminderType,
   updateTaskReminderStatus,
 } from "@/lib/data/reminders";
 import { getSessionUser } from "@/lib/auth";
-import { isOneSignalServerConfigured, sendOneSignalNotification } from "@/lib/onesignal/server";
+import { getAppBaseUrl } from "@/lib/env";
+import { isEmailServerConfigured, sendTaskReminderEmail } from "@/lib/email/server";
 
 export const runtime = "nodejs";
 
+function getBaseAppUrl(request: Request) {
+  if (process.env.NEXTAUTH_URL?.trim()) {
+    return getAppBaseUrl();
+  }
+
+  return new URL(request.url).origin;
+}
+
+function buildPlannerAppUrl(baseUrl: string, taskDate: string) {
+  const url = new URL("/app", baseUrl);
+  url.searchParams.set("date", taskDate);
+  return url.toString();
+}
+
+async function processReminder(
+  dueReminder: Awaited<ReturnType<typeof fetchDueTaskReminders>>[number],
+  options: {
+    appBaseUrl: string;
+    emailConfigured: boolean;
+    userId?: string;
+  },
+) {
+  const statusOptions = options.userId ? { userId: options.userId } : undefined;
+
+  await updateTaskReminderStatus(dueReminder.reminder.id, "processing", statusOptions);
+
+  if (dueReminder.task.status === "completed") {
+    await updateTaskReminderStatus(dueReminder.reminder.id, "skipped", statusOptions);
+    return "skipped" as const;
+  }
+
+  if (isEmailReminderType(dueReminder.reminder.reminder_type)) {
+    if (!dueReminder.preferences.email_enabled) {
+      await updateTaskReminderStatus(dueReminder.reminder.id, "skipped", statusOptions);
+      return "skipped" as const;
+    }
+
+    if (!options.emailConfigured || !dueReminder.recipient.email) {
+      await updateTaskReminderStatus(dueReminder.reminder.id, "failed", statusOptions);
+      return "failed" as const;
+    }
+
+    await sendTaskReminderEmail({
+      appUrl: buildPlannerAppUrl(options.appBaseUrl, dueReminder.task.task_date),
+      leadMinutes: dueReminder.preferences.email_reminder_lead_minutes,
+      recipient: dueReminder.recipient,
+      task: dueReminder.task,
+    });
+
+    await updateTaskReminderStatus(dueReminder.reminder.id, "sent", {
+      ...statusOptions,
+      sentAt: new Date().toISOString(),
+    });
+    return "sent" as const;
+  }
+
+  await updateTaskReminderStatus(dueReminder.reminder.id, "skipped", statusOptions);
+  return "skipped" as const;
+}
+
+async function dispatchDueReminders({
+  appBaseUrl,
+  emailConfigured,
+  limit,
+  userId,
+}: {
+  appBaseUrl: string;
+  emailConfigured: boolean;
+  limit: number;
+  userId?: string;
+}) {
+  const reminders = await fetchDueTaskReminders({
+    limit,
+    userId,
+  });
+  let sent = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const dueReminder of reminders) {
+    try {
+      const result = await processReminder(dueReminder, {
+        appBaseUrl,
+        emailConfigured,
+        userId,
+      });
+
+      if (result === "sent") {
+        sent += 1;
+      } else {
+        skipped += 1;
+      }
+    } catch {
+      await updateTaskReminderStatus(dueReminder.reminder.id, "failed", userId ? { userId } : undefined);
+      failed += 1;
+    }
+  }
+
+  return {
+    failed,
+    processed: reminders.length,
+    sent,
+    skipped,
+  };
+}
+
 export async function POST(request: Request) {
-  if (!isOneSignalServerConfigured()) {
+  const emailConfigured = isEmailServerConfigured();
+
+  if (!emailConfigured) {
     return NextResponse.json(
       {
-        error: "OneSignal is not configured on the server.",
+        error: "SMTP email is not configured on the server.",
       },
       { status: 503 },
     );
@@ -23,58 +132,16 @@ export async function POST(request: Request) {
   const cronSecret = process.env.CRON_SECRET?.trim();
   const authorization = request.headers.get("authorization");
   const isCronRequest = Boolean(cronSecret && authorization === `Bearer ${cronSecret}`);
-  const appUrl = `${new URL(request.url).origin}/app`;
+  const appBaseUrl = getBaseAppUrl(request);
 
   if (isCronRequest) {
-    const reminders = await fetchDueTaskReminders({
-      limit: 50,
-    });
-
-    let sent = 0;
-    let skipped = 0;
-    let failed = 0;
-
-    for (const dueReminder of reminders) {
-      try {
-        await updateTaskReminderStatus(dueReminder.reminder.id, "processing");
-
-        if (!dueReminder.preferences.push_enabled || dueReminder.task.status === "completed") {
-          await updateTaskReminderStatus(dueReminder.reminder.id, "skipped");
-          skipped += 1;
-          continue;
-        }
-
-        const copy = buildReminderCopy(dueReminder.task, dueReminder.reminder.reminder_type);
-
-        await sendOneSignalNotification({
-          body: copy.body,
-          data: {
-            reminderId: dueReminder.reminder.id,
-            reminderType: dueReminder.reminder.reminder_type,
-            taskDate: dueReminder.task.task_date,
-            taskId: dueReminder.task.id,
-          },
-          externalIds: [dueReminder.reminder.user_id],
-          heading: copy.title,
-          url: appUrl,
-        });
-
-        await updateTaskReminderStatus(dueReminder.reminder.id, "sent", {
-          sentAt: new Date().toISOString(),
-        });
-        sent += 1;
-      } catch {
-        await updateTaskReminderStatus(dueReminder.reminder.id, "failed");
-        failed += 1;
-      }
-    }
-
-    return NextResponse.json({
-      failed,
-      processed: reminders.length,
-      sent,
-      skipped,
-    });
+    return NextResponse.json(
+      await dispatchDueReminders({
+        appBaseUrl,
+        emailConfigured,
+        limit: 50,
+      }),
+    );
   }
 
   const user = await getSessionUser();
@@ -88,61 +155,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const reminders = await fetchDueTaskReminders({
-    limit: 20,
-    userId: user.id,
-  });
-
-  let sent = 0;
-  let skipped = 0;
-  let failed = 0;
-
-  for (const dueReminder of reminders) {
-    try {
-      await updateTaskReminderStatus(dueReminder.reminder.id, "processing", {
-        userId: user.id,
-      });
-
-      if (!dueReminder.preferences.push_enabled || dueReminder.task.status === "completed") {
-        await updateTaskReminderStatus(dueReminder.reminder.id, "skipped", {
-          userId: user.id,
-        });
-        skipped += 1;
-        continue;
-      }
-
-      const copy = buildReminderCopy(dueReminder.task, dueReminder.reminder.reminder_type);
-
-      await sendOneSignalNotification({
-        body: copy.body,
-        data: {
-          reminderId: dueReminder.reminder.id,
-          reminderType: dueReminder.reminder.reminder_type,
-          taskDate: dueReminder.task.task_date,
-          taskId: dueReminder.task.id,
-        },
-        externalIds: [dueReminder.reminder.user_id],
-        heading: copy.title,
-        url: appUrl,
-      });
-
-      await updateTaskReminderStatus(dueReminder.reminder.id, "sent", {
-        sentAt: new Date().toISOString(),
-        userId: user.id,
-      });
-      sent += 1;
-    } catch {
-      await updateTaskReminderStatus(dueReminder.reminder.id, "failed", {
-        userId: user.id,
-      });
-      failed += 1;
-    }
-  }
-
-  return NextResponse.json({
-    failed,
-    processed: reminders.length,
-    sent,
-    skipped,
-  });
+  return NextResponse.json(
+    await dispatchDueReminders({
+      appBaseUrl,
+      emailConfigured,
+      limit: 20,
+      userId: user.id,
+    }),
+  );
 }

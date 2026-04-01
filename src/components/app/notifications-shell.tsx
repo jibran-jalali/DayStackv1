@@ -31,6 +31,14 @@ function getPlannerHref(returnDate?: string) {
   return `/app?date=${returnDate}`;
 }
 
+function getSettingsHref(returnDate?: string) {
+  if (!returnDate) {
+    return "/app/settings";
+  }
+
+  return `/app/settings?date=${returnDate}`;
+}
+
 export function NotificationsShell({
   displayName,
   email,
@@ -38,6 +46,7 @@ export function NotificationsShell({
 }: NotificationsShellProps) {
   const [notice, setNotice] = useState<NoticeState>(null);
   const plannerHref = useMemo(() => getPlannerHref(returnDate), [returnDate]);
+  const settingsHref = useMemo(() => getSettingsHref(returnDate), [returnDate]);
 
   useEffect(() => {
     if (notice?.type !== "success") {
@@ -85,6 +94,8 @@ export function NotificationsShell({
           metricIcon={Bell}
           metricLabel="Meeting mentions"
           metricTone="brand"
+          plannerHref={plannerHref}
+          settingsHref={settingsHref}
           subtitle="Approve meeting blocks and open the linked schedule in one place."
           onNotice={setNotice}
           onSignOutError={(message) =>

@@ -249,7 +249,7 @@ export function TaskForm({
                 className={cn(
                   "relative flex min-h-[5rem] items-start gap-3 rounded-[18px] border px-3.5 py-3 text-left transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
                   isActive
-                    ? "border-primary/30 bg-cyan-50/78 shadow-[0_14px_28px_rgba(24,190,239,0.1)]"
+                    ? "border-primary/20 bg-[linear-gradient(135deg,rgba(24,190,239,0.14),rgba(109,40,240,0.08))] shadow-[var(--shadow-brand-sm)]"
                     : "border-border/80 bg-white/94 hover:border-primary/20 hover:bg-white",
                 )}
                 onClick={() => setTaskType(option.value as TaskFormValues["taskType"])}
@@ -258,7 +258,7 @@ export function TaskForm({
                 <span
                   className={cn(
                     "absolute right-3 top-3 h-2.5 w-2.5 rounded-full border",
-                    isActive ? "border-primary bg-primary shadow-[0_0_0_4px_rgba(24,190,239,0.12)]" : "border-border/90 bg-white",
+                    isActive ? "border-transparent bg-brand-gradient shadow-[0_0_0_4px_rgba(24,190,239,0.12)]" : "border-border/90 bg-white",
                   )}
                 />
                 <span
@@ -313,7 +313,7 @@ export function TaskForm({
                 className={cn(
                   "relative flex min-h-[5rem] items-start gap-3 rounded-[18px] border px-3.5 py-3 text-left transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
                   isActive
-                    ? "border-primary/30 bg-cyan-50/78 shadow-[0_14px_28px_rgba(24,190,239,0.1)]"
+                    ? "border-primary/20 bg-[linear-gradient(135deg,rgba(24,190,239,0.14),rgba(109,40,240,0.08))] shadow-[var(--shadow-brand-sm)]"
                     : "border-border/80 bg-white/94 hover:border-primary/20 hover:bg-white",
                   !canChangeMode ? "cursor-default opacity-95" : "",
                 )}
@@ -323,7 +323,7 @@ export function TaskForm({
                 <span
                   className={cn(
                     "absolute right-3 top-3 h-2.5 w-2.5 rounded-full border",
-                    isActive ? "border-primary bg-primary shadow-[0_0_0_4px_rgba(24,190,239,0.12)]" : "border-border/90 bg-white",
+                    isActive ? "border-transparent bg-brand-gradient shadow-[0_0_0_4px_rgba(24,190,239,0.12)]" : "border-border/90 bg-white",
                   )}
                 />
                 <span
@@ -547,7 +547,7 @@ export function TaskForm({
           <Button type="button" variant="secondary" onClick={onCancel} disabled={isPending} className="min-w-[7.5rem]">
             Cancel
           </Button>
-          <Button type="submit" disabled={isPending} className="min-w-[8.5rem] shadow-[0_18px_34px_rgba(23,102,214,0.24)]">
+          <Button type="submit" disabled={isPending} className="min-w-[8.5rem]">
             {mode === "create" ? "Save block" : "Update block"}
           </Button>
         </div>

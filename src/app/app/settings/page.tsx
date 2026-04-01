@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { isValidDateKey } from "@/lib/daystack";
 
 export const metadata = {
-  title: "Dashboard",
+  title: "Settings",
 };
 
 interface SettingsPageProps {
@@ -15,10 +15,13 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   const requestedDate = Array.isArray(resolvedSearchParams.date)
     ? resolvedSearchParams.date[0]
     : resolvedSearchParams.date;
+  const search = new URLSearchParams({
+    tab: "settings",
+  });
 
   if (requestedDate && isValidDateKey(requestedDate)) {
-    redirect(`/app?date=${requestedDate}`);
+    search.set("date", requestedDate);
   }
 
-  redirect("/app");
+  redirect(`/app?${search.toString()}`);
 }

@@ -64,14 +64,14 @@ export function TaskModal({
       />
 
       <div className="absolute inset-0 overflow-y-auto">
-        <div className="flex min-h-full items-center justify-center p-2.5 sm:p-5">
+        <div className="flex min-h-full items-end justify-center p-0 sm:items-center sm:p-5">
           <div
             role="dialog"
             aria-modal="true"
             aria-label={title}
             className={cn(
-              "relative flex w-full flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white/96 shadow-[0_28px_84px_rgba(15,23,42,0.16)] transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
-              "max-h-[calc(100dvh-1.25rem)] sm:max-h-[calc(100dvh-2.5rem)]",
+              "relative flex w-full flex-col overflow-hidden border border-white/70 bg-white/96 shadow-[0_28px_84px_rgba(15,23,42,0.16)] transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              "h-[min(100dvh,100%)] max-h-[100dvh] rounded-t-[30px] sm:h-auto sm:max-h-[calc(100dvh-2.5rem)] sm:rounded-[28px]",
               maxWidthClassName,
               open ? "translate-y-0 scale-100 opacity-100" : "translate-y-4 scale-[0.985] opacity-95",
             )}

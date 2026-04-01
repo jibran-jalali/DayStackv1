@@ -39,17 +39,17 @@ export function TimelineList({
       <button
         suppressHydrationWarning
         type="button"
-        className="w-full rounded-[22px] border border-dashed border-border/90 bg-muted/40 p-4 text-left transition-[border-color,background-color,box-shadow] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-primary/35 hover:bg-cyan-50/35"
+        className="mobile-card w-full border-dashed bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(243,247,252,0.92))] p-5 text-left transition-[border-color,background-color,box-shadow,transform] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-primary/35"
         onClick={() => onAddTask()}
       >
-        <p className="text-sm font-semibold text-foreground">Your day is open.</p>
+        <p className="text-base font-semibold tracking-tight text-foreground">Your day is open.</p>
         <p className="mt-1 text-sm text-secondary-foreground">Add the first block and the schedule will take shape.</p>
       </button>
     );
   }
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3.5">
       {tasks.map((task) => (
         <TaskCard
           key={task.id}
@@ -69,7 +69,7 @@ export function TimelineList({
 
       <Button
         variant="secondary"
-        className="mt-2 w-full justify-start rounded-[20px] border-dashed bg-muted/38 text-secondary-foreground hover:border-primary/30 hover:bg-cyan-50/30"
+        className="mt-2 h-12 w-full justify-start rounded-[22px] border-dashed bg-white/92 text-secondary-foreground shadow-[0_14px_30px_rgba(15,23,42,0.06)] hover:border-primary/30 hover:bg-[linear-gradient(135deg,rgba(24,190,239,0.08),rgba(109,40,240,0.04))]"
         onClick={() => onAddTask(tasks.at(-1)?.end_time.slice(0, 5))}
       >
         <Plus className="h-4 w-4" />

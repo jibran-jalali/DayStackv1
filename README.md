@@ -7,7 +7,7 @@ DayStack is a timeline-based daily execution planner built on:
 - TypeScript
 - Vercel Postgres-compatible PostgreSQL
 - Auth.js credentials auth
-- OneSignal web push
+- Gmail SMTP reminder emails
 
 ## Core features
 
@@ -18,7 +18,7 @@ DayStack is a timeline-based daily execution planner built on:
 - Execution score and streak tracking
 - Meeting blocks with participant mentions
 - In-app notification center
-- Reminder preferences plus OneSignal test push
+- Reminder preferences plus test email delivery
 - Reminder dispatch route for Vercel Cron
 - Internal admin console at `/admin`
 
@@ -31,8 +31,6 @@ Required:
 ```bash
 POSTGRES_URL=
 AUTH_SECRET=
-NEXT_PUBLIC_ONESIGNAL_APP_ID=
-ONESIGNAL_REST_API_KEY=
 ADMIN_USERNAME=
 ADMIN_PASSWORD=
 ```
@@ -42,6 +40,9 @@ Optional:
 ```bash
 POSTGRES_URL_NON_POOLING=
 NEXTAUTH_URL=http://localhost:3000
+GMAIL_SMTP_USER=
+GMAIL_SMTP_APP_PASSWORD=
+EMAIL_FROM_NAME=DayStack
 CRON_SECRET=
 ADMIN_SESSION_SECRET=
 ```
@@ -97,6 +98,6 @@ For scheduled reminders, configure Vercel Cron to `POST /api/reminders/dispatch`
 
 ## Notes
 
-- Notification delivery still uses OneSignal.
+- Notification delivery is email-based.
 - The app no longer depends on Supabase for auth, data access, admin operations, or realtime updates.
 - Notification refresh is polling-based rather than realtime subscription based.

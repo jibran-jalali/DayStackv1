@@ -118,7 +118,7 @@ export function RecurringBlocksView({
               <div className="mt-4 space-y-3">
                 <div className="rounded-[20px] border border-cyan-200/65 bg-cyan-50/44 px-3.5 py-3">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-gradient text-white shadow-[0_14px_28px_rgba(23,102,214,0.18)]">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-gradient text-white shadow-[var(--shadow-brand-pill)]">
                       <Repeat className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">

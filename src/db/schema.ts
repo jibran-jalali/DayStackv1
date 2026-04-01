@@ -17,7 +17,7 @@ import { sql } from "drizzle-orm";
 export const userStatusEnum = pgEnum("user_status", ["active", "disabled"]);
 export const taskTypeEnum = pgEnum("task_type", ["generic", "meeting", "blocked"]);
 export const taskStatusEnum = pgEnum("task_status", ["pending", "completed"]);
-export const reminderTypeEnum = pgEnum("reminder_type", ["5_minutes_before", "at_start", "overdue"]);
+export const reminderTypeEnum = pgEnum("reminder_type", ["5_minutes_before", "at_start", "overdue", "email_before_start"]);
 export const reminderStatusEnum = pgEnum("reminder_status", ["pending", "processing", "sent", "skipped", "failed"]);
 export const taskNotificationTypeEnum = pgEnum("task_notification_type", ["task_mention"]);
 export const taskNotificationStatusEnum = pgEnum("task_notification_status", ["pending", "accepted", "dismissed", "expired"]);
@@ -223,17 +223,29 @@ export const daily_summaries = pgTable(
   (table) => [uniqueIndex("daily_summaries_user_date_idx").on(table.user_id, table.summary_date)],
 );
 
-export const user_notification_preferences = pgTable("user_notification_preferences", {
-  user_id: uuid("user_id")
-    .primaryKey()
-    .references(() => users.id, { onDelete: "cascade" }),
-  push_enabled: boolean("push_enabled").notNull().default(false),
-  remind_at_start: boolean("remind_at_start").notNull().default(true),
-  remind_5_min_before: boolean("remind_5_min_before").notNull().default(true),
-  remind_overdue: boolean("remind_overdue").notNull().default(false),
-  created_at: timestampColumn("created_at"),
-  updated_at: timestampColumn("updated_at"),
-});
+export const user_notification_preferences = pgTable(
+  "user_notification_preferences",
+  {
+    user_id: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    push_enabled: boolean("push_enabled").notNull().default(false),
+    email_enabled: boolean("email_enabled").notNull().default(false),
+    meeting_mention_email_enabled: boolean("meeting_mention_email_enabled").notNull().default(false),
+    email_reminder_lead_minutes: integer("email_reminder_lead_minutes").notNull().default(15),
+    remind_at_start: boolean("remind_at_start").notNull().default(true),
+    remind_5_min_before: boolean("remind_5_min_before").notNull().default(true),
+    remind_overdue: boolean("remind_overdue").notNull().default(false),
+    created_at: timestampColumn("created_at"),
+    updated_at: timestampColumn("updated_at"),
+  },
+  (table) => [
+    check(
+      "user_notification_preferences_email_lead_range_chk",
+      sql`${table.email_reminder_lead_minutes} >= 0 and ${table.email_reminder_lead_minutes} <= 1440`,
+    ),
+  ],
+);
 
 export const task_reminders = pgTable(
   "task_reminders",

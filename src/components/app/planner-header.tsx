@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { CalendarDays, Clock3, Flame, LoaderCircle, LogOut, Plus } from "lucide-react";
+import { Bell, CalendarDays, Clock3, Flame, LoaderCircle, LogOut, Plus, Settings2 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useTransition } from "react";
 
 import { NotificationCenter } from "@/components/app/notification-center";
 import { ViewToggle, type PlannerViewMode } from "@/components/app/view-toggle";
 import { Button } from "@/components/shared/button";
-import { logoutOneSignalUser } from "@/lib/onesignal/client";
 import { Logo } from "@/components/shared/logo";
 import { StatusChip } from "@/components/shared/status-chip";
 import { getErrorMessage } from "@/lib/utils";
@@ -27,6 +26,10 @@ interface PlannerHeaderProps {
   metricTone?: "brand" | "default" | "success" | "warning";
   onAddTask?: () => void;
   onNotice?: (notice: { message: string; type: "error" | "success" }) => void;
+  onOpenNotifications?: () => void;
+  onOpenPlanner?: () => void;
+  onOpenSettings?: () => void;
+  onOpenTaskDay?: (taskDate: string) => void;
   onSignOutError: (message: string) => void;
   onTaskAccepted?: (result: TaskNotificationAcceptResult) => Promise<void> | void;
   onViewChange?: (value: PlannerViewMode) => void;
@@ -79,12 +82,17 @@ export function PlannerHeader({
   metricTone = "brand",
   onAddTask,
   onNotice,
+  onOpenNotifications,
+  onOpenPlanner,
+  onOpenSettings,
+  onOpenTaskDay,
   onSignOutError,
   onTaskAccepted,
   plannerHref = "/app",
   notificationsHref,
   onViewChange,
   pomodoroHref = "/app/pomodoro",
+  settingsHref = "/app/settings",
   showNotificationCenter = false,
   streak,
   subtitle,
@@ -93,13 +101,57 @@ export function PlannerHeader({
   const [isPending, startTransition] = useTransition();
 
   const navPillClass =
-    "inline-flex h-10 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)]";
+    "inline-flex h-10 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] active:scale-[0.99]";
+
+  function renderNavPill({
+    active = false,
+    href,
+    icon: Icon,
+    label,
+    onClick,
+  }: {
+    active?: boolean;
+    href?: string;
+    icon: LucideIcon;
+    label: string;
+    onClick?: () => void;
+  }) {
+    const className = cn(
+      navPillClass,
+      active
+        ? "border-transparent bg-brand-gradient text-white shadow-[var(--shadow-brand-pill)]"
+        : "border-border/80 bg-white/92 text-secondary-foreground hover:-translate-y-0.5 hover:bg-white hover:text-foreground hover:shadow-[0_16px_32px_rgba(15,23,42,0.09)]",
+    );
+
+    if (active) {
+      return (
+        <span className={className}>
+          <Icon className="h-4 w-4" />
+          {label}
+        </span>
+      );
+    }
+
+    if (onClick) {
+      return (
+        <button type="button" className={className} onClick={onClick}>
+          <Icon className="h-4 w-4" />
+          {label}
+        </button>
+      );
+    }
+
+    return (
+      <Link href={href ?? "#"} className={className}>
+        <Icon className="h-4 w-4" />
+        {label}
+      </Link>
+    );
+  }
 
   function handleSignOut() {
     startTransition(async () => {
       try {
-        await logoutOneSignalUser().catch(() => undefined);
-
         await signOut({
           redirect: false,
           callbackUrl: "/login",
@@ -138,45 +190,40 @@ export function PlannerHeader({
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex flex-wrap items-center gap-2">
-          {activePage === "planner" && viewMode && onViewChange ? (
-            <>
-              <ViewToggle value={viewMode} onChange={onViewChange} />
-              <Link
-                href={pomodoroHref}
-                className={cn(
-                  navPillClass,
-                  "border-border/80 bg-white/92 text-secondary-foreground hover:-translate-y-0.5 hover:bg-white hover:text-foreground hover:shadow-[0_16px_32px_rgba(15,23,42,0.09)]",
-                )}
-              >
-                <Clock3 className="h-4 w-4" />
-                Pomodoro
-              </Link>
-            </>
-          ) : null}
+          {viewMode && onViewChange ? (
+            <ViewToggle value={viewMode} onChange={onViewChange} />
+          ) : (
+            renderNavPill({
+              active: activePage === "planner",
+              href: plannerHref,
+              icon: CalendarDays,
+              label: "Plan",
+              onClick: activePage === "planner" ? undefined : onOpenPlanner,
+            })
+          )}
 
-          {activePage === "pomodoro" ? (
-            <>
-              <Link
-                href={plannerHref}
-                className={cn(
-                  navPillClass,
-                  "border-border/80 bg-white/92 text-secondary-foreground hover:-translate-y-0.5 hover:bg-white hover:text-foreground hover:shadow-[0_16px_32px_rgba(15,23,42,0.09)]",
-                )}
-              >
-                <CalendarDays className="h-4 w-4" />
-                Plan
-              </Link>
-              <span
-                className={cn(
-                  navPillClass,
-                  "border-transparent bg-brand-gradient text-white shadow-[0_14px_28px_rgba(23,102,214,0.2)]",
-                )}
-              >
-                <Clock3 className="h-4 w-4" />
-                Pomodoro
-              </span>
-            </>
-          ) : null}
+          {renderNavPill({
+            active: activePage === "notifications",
+            href: notificationsHref ?? "/app/notifications",
+            icon: Bell,
+            label: "Notifications",
+            onClick: activePage === "notifications" ? undefined : onOpenNotifications,
+          })}
+
+          {renderNavPill({
+            active: activePage === "settings",
+            href: settingsHref,
+            icon: Settings2,
+            label: "Settings",
+            onClick: activePage === "settings" ? undefined : onOpenSettings,
+          })}
+
+          {renderNavPill({
+            active: activePage === "pomodoro",
+            href: pomodoroHref,
+            icon: Clock3,
+            label: "Pomodoro",
+          })}
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -192,6 +239,8 @@ export function PlannerHeader({
           {showNotificationCenter ? (
             <NotificationCenter
               openInboxHref={notificationsHref}
+              onOpenDay={onOpenTaskDay}
+              onOpenInbox={onOpenNotifications}
               onNotice={onNotice}
               onTaskAccepted={onTaskAccepted}
             />
