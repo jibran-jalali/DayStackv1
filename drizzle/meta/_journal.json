@@ -36,6 +36,13 @@
       "when": 1775072318709,
       "tag": "0004_aspiring_fat_cobra",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1775115670600,
+      "tag": "0005_lucky_fantastic_four",
+      "breakpoints": true
     }
   ]
 }

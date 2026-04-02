@@ -1351,6 +1351,7 @@ export function PlannerShell({
               email={email}
               isBusy={isNotificationPending}
               notificationPreferences={notificationPreferences}
+              onNotice={setNotice}
               onOpenPlanner={() => handleOpenWorkspaceTab("plan")}
               onSendTest={sendTestNotification}
               onSaveLeadMinutes={updateEmailReminderLeadMinutes}
@@ -1603,6 +1604,7 @@ export function PlannerShell({
             email={email}
             isBusy={isNotificationPending}
             notificationPreferences={notificationPreferences}
+            onNotice={setNotice}
             onOpenPlanner={() => handleOpenWorkspaceTab("plan")}
             onSendTest={sendTestNotification}
             onSaveLeadMinutes={updateEmailReminderLeadMinutes}

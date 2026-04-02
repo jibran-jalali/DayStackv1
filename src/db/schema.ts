@@ -91,6 +91,39 @@ export const tasks = pgTable(
   ],
 );
 
+export const api_keys = pgTable(
+  "api_keys",
+  {
+    id: uuid("id").primaryKey(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    key_prefix: text("key_prefix").notNull(),
+    key_hash: text("key_hash").notNull(),
+    last_used_at: timestamp("last_used_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    expires_at: timestamp("expires_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    revoked_at: timestamp("revoked_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    created_at: timestampColumn("created_at"),
+    updated_at: timestampColumn("updated_at"),
+  },
+  (table) => [
+    uniqueIndex("api_keys_key_hash_uidx").on(table.key_hash),
+    index("api_keys_user_created_idx").on(table.user_id, table.created_at),
+    index("api_keys_user_revoked_idx").on(table.user_id, table.revoked_at),
+    check("api_keys_label_not_blank_chk", sql`length(trim(${table.label})) > 0`),
+  ],
+);
+
 export const recurring_templates = pgTable(
   "recurring_templates",
   {

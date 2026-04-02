@@ -77,6 +77,7 @@ The Drizzle schema lives in [src/db/schema.ts](/D:/DayStack/src/db/schema.ts) an
 Main tables:
 
 - `users`
+- `api_keys`
 - `tasks`
 - `task_participants`
 - `daily_summaries`
@@ -95,6 +96,53 @@ Recommended setup:
 5. Deploy.
 
 For scheduled reminders, configure Vercel Cron to `POST /api/reminders/dispatch` with `Authorization: Bearer <CRON_SECRET>`.
+
+## Automation API
+
+DayStack now includes a first-party automation API for Zapier-style integrations.
+
+How it works:
+
+1. Open `Settings` inside the app.
+2. Create an API key in the `Automation API` section.
+3. Use that key as `Authorization: Bearer <YOUR_DAYSTACK_API_KEY>` when calling `/api/v1/...`.
+
+Available endpoints:
+
+- `GET /api/v1/me`
+- `GET /api/v1/dashboard?date=YYYY-MM-DD`
+- `GET /api/v1/tasks?date=YYYY-MM-DD`
+- `POST /api/v1/tasks`
+- `PATCH /api/v1/tasks/:taskId`
+- `DELETE /api/v1/tasks/:taskId`
+- `PATCH /api/v1/tasks/:taskId/status`
+- `PATCH /api/v1/tasks/:taskId/reschedule`
+- `GET /api/v1/participants/search?q=name`
+
+Example:
+
+```bash
+curl -X POST "https://your-app.vercel.app/api/v1/tasks" \
+  -H "Authorization: Bearer YOUR_DAYSTACK_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "blockMode": "one_time",
+    "title": "Follow up with client",
+    "taskDate": "2026-04-02",
+    "startTime": "14:00",
+    "endTime": "14:30",
+    "taskType": "generic",
+    "meetingLink": "",
+    "participants": [],
+    "weekdays": []
+  }'
+```
+
+Vercel note:
+
+- No extra Vercel environment variables are required for automation keys.
+- API keys are stored in the database, not in Vercel env vars.
+- You do need to apply the latest Drizzle migration in production so the new `api_keys` table exists.
 
 ## Notes
 

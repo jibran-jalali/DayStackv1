@@ -3,6 +3,7 @@
 import { CalendarDays, LogOut, Mail } from "lucide-react";
 
 import { ActionFeedbackPanel } from "@/components/app/action-feedback-panel";
+import { AutomationKeysPanel } from "@/components/app/automation-keys-panel";
 import { EmailSettingsPanel } from "@/components/app/email-settings-panel";
 import { buttonVariants } from "@/components/shared/button";
 import { formatDateLabel } from "@/lib/daystack";
@@ -15,6 +16,7 @@ interface WorkspaceSettingsContentProps {
   email?: string;
   isBusy: boolean;
   notificationPreferences: UserNotificationPreferencesRecord;
+  onNotice?: (notice: { message: string; type: "error" | "success" }) => void;
   onOpenPlanner: () => void;
   onSignOut?: () => void;
   onSendTest: () => void;
@@ -32,6 +34,7 @@ export function WorkspaceSettingsContent({
   email,
   isBusy,
   notificationPreferences,
+  onNotice,
   onOpenPlanner,
   onSignOut,
   onSendTest,
@@ -55,6 +58,7 @@ export function WorkspaceSettingsContent({
         />
 
         <ActionFeedbackPanel enabled={actionSoundsEnabled} onToggle={onToggleActionSounds} />
+        <AutomationKeysPanel compact onNotice={onNotice} />
 
         <section className="mobile-card p-4">
           <p className="section-label">Account</p>
@@ -119,6 +123,7 @@ export function WorkspaceSettingsContent({
           />
 
           <ActionFeedbackPanel enabled={actionSoundsEnabled} onToggle={onToggleActionSounds} />
+          <AutomationKeysPanel onNotice={onNotice} />
         </div>
       </section>
 

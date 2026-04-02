@@ -3,6 +3,7 @@ import type { InferSelectModel } from "drizzle-orm";
 
 import type {
   daily_summaries,
+  api_keys,
   recurring_rule_exceptions,
   recurring_rule_participants,
   recurring_rules,
@@ -17,6 +18,7 @@ import type {
 export type UserRecord = InferSelectModel<typeof users>;
 export type TaskRecord = InferSelectModel<typeof tasks>;
 export type DailySummaryRecord = InferSelectModel<typeof daily_summaries>;
+export type ApiKeyRecord = InferSelectModel<typeof api_keys>;
 export type ProfileRecord = UserRecord;
 export type TaskParticipantRecord = InferSelectModel<typeof task_participants>;
 export type UserNotificationPreferencesRecord = InferSelectModel<typeof user_notification_preferences>;
@@ -33,6 +35,16 @@ export type TaskPropagationMode = "owner_only" | "owner_and_accepted_copies";
 export type TaskMode = "one_time" | "recurring";
 export type RecurringTaskScope = "occurrence_only" | "this_and_future";
 export type WorkspaceTab = "notifications" | "plan" | "settings";
+
+export interface AutomationApiKeySummary {
+  createdAt: string;
+  expiresAt: string | null;
+  id: string;
+  keyPrefix: string;
+  label: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
 
 export interface ParticipantProfile {
   email?: string | null;
