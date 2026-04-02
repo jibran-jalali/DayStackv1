@@ -190,64 +190,68 @@ export function PomodoroShell({ displayName, email, initialNowIso, initialSnapsh
 
   return (
     <main className="min-h-screen">
-      <div className="mobile-app-shell mobile-safe-x min-h-screen pb-[calc(var(--mobile-bottom-nav-height)+1.75rem+env(safe-area-inset-bottom))] lg:hidden">
-        <MobileWorkspaceHeader
+      <div className="mobile-app-shell mobile-safe-x mobile-viewport-shell overflow-hidden lg:hidden">
+        <div className="flex h-full flex-col">
+          <div className="soft-scrollbar flex-1 overflow-y-auto overscroll-y-contain">
+            <MobileWorkspaceHeader
           title="Focus"
           subtitle={dateLabel}
           metricLabel={pomodoro.state.phase === "break" ? "Break live" : "Focus timer"}
           metricTone={pomodoro.state.phase === "break" ? "success" : "brand"}
           secondaryMetricLabel={`${snapshot.tasks.length} block${snapshot.tasks.length === 1 ? "" : "s"}`}
-        />
+            />
 
-        {notice ? (
-          <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+8.75rem)] z-40 flex justify-center lg:hidden">
-            <div className="mobile-shell-width mx-auto">
-              <div
-                aria-live="polite"
-                className={`pointer-events-auto min-w-[16rem] rounded-full border px-4 py-2.5 text-sm shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl ${
-                  notice.type === "success"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                    : "border-red-200 bg-red-50 text-danger"
-                }`}
-              >
-                {notice.message}
+            {notice ? (
+              <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+8.75rem)] z-40 flex justify-center lg:hidden">
+                <div className="mobile-shell-width mx-auto">
+                  <div
+                    aria-live="polite"
+                    className={`pointer-events-auto min-w-[16rem] rounded-full border px-4 py-2.5 text-sm shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl ${
+                      notice.type === "success"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-red-200 bg-red-50 text-danger"
+                    }`}
+                  >
+                    {notice.message}
+                  </div>
+                </div>
               </div>
+            ) : null}
+
+            <div className="mobile-shell-width mobile-stack mx-auto pb-4 pt-4">
+              <div className="mobile-card p-4">
+                <PomodoroPanel
+                  variant="page"
+                  formattedRemaining={pomodoro.formattedRemaining}
+                  onOpenWindow={handleOpenPomodoroWindow}
+                  onPause={pomodoro.pause}
+                  onReset={pomodoro.reset}
+                  onResume={pomodoro.resume}
+                  onSkipBreak={pomodoro.skipBreak}
+                  onStart={pomodoro.start}
+                  onUnlinkTask={pomodoro.unlinkTask}
+                  state={pomodoro.state}
+                />
+              </div>
+
+              <section className="mobile-card p-4">
+                <p className="section-label">Pomodoro flow</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">Stay in sync with your plan</p>
+                <p className="mt-1 text-sm text-secondary-foreground">
+                  Start focus from any block, keep the timer linked, and pop it out when you want a dedicated floating surface.
+                </p>
+              </section>
             </div>
           </div>
-        ) : null}
 
-        <div className="mobile-shell-width mobile-stack mx-auto pt-4">
-          <div className="mobile-card p-4">
-            <PomodoroPanel
-              variant="page"
-              formattedRemaining={pomodoro.formattedRemaining}
-              onOpenWindow={handleOpenPomodoroWindow}
-              onPause={pomodoro.pause}
-              onReset={pomodoro.reset}
-              onResume={pomodoro.resume}
-              onSkipBreak={pomodoro.skipBreak}
-              onStart={pomodoro.start}
-              onUnlinkTask={pomodoro.unlinkTask}
-              state={pomodoro.state}
-            />
-          </div>
-
-          <section className="mobile-card p-4">
-            <p className="section-label">Pomodoro flow</p>
-            <p className="mt-2 text-sm font-semibold text-foreground">Stay in sync with your plan</p>
-            <p className="mt-1 text-sm text-secondary-foreground">
-              Start focus from any block, keep the timer linked, and pop it out when you want a dedicated floating surface.
-            </p>
-          </section>
+          <MobileBottomNav
+            activeTab={null}
+            notificationsHref={notificationsHref}
+            onPlayNavigate={() => playActionFeedback("navigate")}
+            plannerHref={plannerHref}
+            settingsHref={settingsHref}
+          />
         </div>
-
-        <MobileBottomNav
-          activeTab={null}
-          notificationsHref={notificationsHref}
-          onPlayNavigate={() => playActionFeedback("navigate")}
-          plannerHref={plannerHref}
-          settingsHref={settingsHref}
-        />
       </div>
 
       <div className="container-shell hidden min-h-screen py-4 sm:py-6 lg:block">

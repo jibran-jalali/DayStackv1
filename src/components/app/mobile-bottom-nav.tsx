@@ -51,8 +51,8 @@ export function MobileBottomNav({
   settingsHref = "/app?tab=settings",
 }: MobileBottomNavProps) {
   return (
-    <div className="mobile-safe-x pointer-events-none fixed inset-x-0 bottom-0 z-40 pb-[calc(0.85rem+env(safe-area-inset-bottom))] lg:hidden">
-      <nav className="mobile-shell-width mobile-nav-shell pointer-events-auto mx-auto flex items-center gap-1.5 px-1.5 py-2">
+    <div className="mobile-safe-x shrink-0 pb-[calc(0.85rem+env(safe-area-inset-bottom))] pt-3 lg:hidden">
+      <nav className="mobile-shell-width mobile-nav-shell mx-auto flex items-center gap-1.5 px-1.5 py-2">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.key;

@@ -322,6 +322,11 @@ button:disabled {
     linear-gradient(180deg, rgba(252, 253, 255, 0.98), rgba(244, 247, 252, 0.98));
 }
 
+@utility mobile-viewport-shell {
+  min-height: 100svh;
+  height: 100svh;
+}
+
 @utility mobile-safe-x {
   padding-left: max(1rem, env(safe-area-inset-left));
   padding-right: max(1rem, env(safe-area-inset-right));
