@@ -101,7 +101,7 @@ export function PlannerHeader({
   const [isPending, startTransition] = useTransition();
 
   const navPillClass =
-    "inline-flex h-10 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] active:scale-[0.99]";
+    "ui-pressable inline-flex h-10 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold shadow-[0_10px_24px_rgba(15,23,42,0.05)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] active:scale-[0.995]";
 
   function renderNavPill({
     active = false,
@@ -120,7 +120,7 @@ export function PlannerHeader({
       navPillClass,
       active
         ? "border-transparent bg-brand-gradient text-white shadow-[var(--shadow-brand-pill)]"
-        : "border-border/80 bg-white/92 text-secondary-foreground hover:-translate-y-0.5 hover:bg-white hover:text-foreground hover:shadow-[0_16px_32px_rgba(15,23,42,0.09)]",
+        : "border-border/80 bg-white/92 text-secondary-foreground hover:bg-white hover:text-foreground",
     );
 
     if (active) {

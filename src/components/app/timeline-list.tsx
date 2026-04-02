@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/shared/button";
@@ -20,7 +21,7 @@ interface TimelineListProps {
   selectionMode: boolean;
 }
 
-export function TimelineList({
+function TimelineListComponent({
   focusedTaskId,
   tasks,
   resolveVisualState,
@@ -78,3 +79,17 @@ export function TimelineList({
     </div>
   );
 }
+
+function areTimelineListPropsEqual(left: TimelineListProps, right: TimelineListProps) {
+  return (
+    left.focusedTaskId === right.focusedTaskId &&
+    left.tasks === right.tasks &&
+    left.resolveVisualState === right.resolveVisualState &&
+    left.isPending === right.isPending &&
+    left.onAddTask === right.onAddTask &&
+    left.selectedTaskIds === right.selectedTaskIds &&
+    left.selectionMode === right.selectionMode
+  );
+}
+
+export const TimelineList = memo(TimelineListComponent, areTimelineListPropsEqual);

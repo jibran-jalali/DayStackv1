@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Crown, Flame, Gauge, Star, Trophy } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
@@ -28,7 +29,7 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-export function LeaderboardView({
+function LeaderboardViewComponent({
   currentUserId,
   entries,
   mode = "app",
@@ -131,7 +132,7 @@ export function LeaderboardView({
               <article
                 key={entry.userId}
                 className={cn(
-                  "flex flex-col gap-3 rounded-[22px] border px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)] transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] sm:flex-row sm:items-center sm:justify-between",
+                  "flex flex-col gap-3 rounded-[22px] border px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)] transition-[box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] sm:flex-row sm:items-center sm:justify-between",
                   entry.rank === 1
                     ? isWebsite
                       ? "border-[rgba(24,190,239,0.16)] bg-[rgba(24,190,239,0.06)]"
@@ -171,3 +172,9 @@ export function LeaderboardView({
     </div>
   );
 }
+
+function areLeaderboardViewPropsEqual(left: LeaderboardViewProps, right: LeaderboardViewProps) {
+  return left.currentUserId === right.currentUserId && left.entries === right.entries && left.mode === right.mode;
+}
+
+export const LeaderboardView = memo(LeaderboardViewComponent, areLeaderboardViewPropsEqual);

@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/shared/button";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,10 @@ export function TaskModal({
   open,
   title,
 }: TaskModalProps) {
+  const surfaceRef = useRef<HTMLDivElement | null>(null);
+  const [mobileViewportHeight, setMobileViewportHeight] = useState<number | null>(null);
+  const [mobileKeyboardInset, setMobileKeyboardInset] = useState(0);
+
   useEffect(() => {
     if (!open) {
       return;
@@ -47,6 +51,103 @@ export function TaskModal({
     };
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function updateViewportMetrics() {
+      const isCompactViewport = window.innerWidth < 640;
+
+      if (!isCompactViewport) {
+        setMobileViewportHeight(null);
+        setMobileKeyboardInset(0);
+        return;
+      }
+
+      const viewport = window.visualViewport;
+
+      if (!viewport) {
+        setMobileViewportHeight(window.innerHeight);
+        setMobileKeyboardInset(0);
+        return;
+      }
+
+      const nextViewportHeight = Math.max(0, Math.round(viewport.height));
+      const nextKeyboardInset = Math.max(
+        0,
+        Math.round(window.innerHeight - viewport.height - viewport.offsetTop),
+      );
+
+      setMobileViewportHeight(nextViewportHeight);
+      setMobileKeyboardInset(nextKeyboardInset);
+    }
+
+    updateViewportMetrics();
+
+    const viewport = window.visualViewport;
+    window.addEventListener("resize", updateViewportMetrics);
+    viewport?.addEventListener("resize", updateViewportMetrics);
+    viewport?.addEventListener("scroll", updateViewportMetrics);
+
+    return () => {
+      window.removeEventListener("resize", updateViewportMetrics);
+      viewport?.removeEventListener("resize", updateViewportMetrics);
+      viewport?.removeEventListener("scroll", updateViewportMetrics);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !surfaceRef.current) {
+      return;
+    }
+
+    function handleFocusIn(event: FocusEvent) {
+      if (window.innerWidth >= 640) {
+        return;
+      }
+
+      const target = event.target;
+
+      if (!(target instanceof HTMLElement) || !surfaceRef.current?.contains(target)) {
+        return;
+      }
+
+      const isInputTarget =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        target.isContentEditable;
+
+      if (!isInputTarget) {
+        return;
+      }
+
+      window.setTimeout(() => {
+        target.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        });
+      }, 160);
+    }
+
+    window.addEventListener("focusin", handleFocusIn);
+
+    return () => {
+      window.removeEventListener("focusin", handleFocusIn);
+    };
+  }, [open]);
+
+  const mobileDialogStyle =
+    mobileViewportHeight !== null
+      ? {
+          height: `${mobileViewportHeight}px`,
+          maxHeight: `${mobileViewportHeight}px`,
+        }
+      : undefined;
+  const mobileContentPadding = mobileViewportHeight !== null ? Math.max(24, mobileKeyboardInset + 24) : undefined;
+
   return (
     <div
       className={cn(
@@ -63,9 +164,13 @@ export function TaskModal({
         onClick={onClose}
       />
 
-      <div className="absolute inset-0 overflow-y-auto">
-        <div className="flex min-h-full items-end justify-center p-0 sm:items-center sm:p-5">
+      <div className="absolute inset-0 overflow-y-auto overscroll-contain">
+        <div
+          className="flex min-h-full items-end justify-center p-0 sm:items-center sm:p-5"
+          style={mobileViewportHeight !== null ? { paddingBottom: `${mobileKeyboardInset}px` } : undefined}
+        >
           <div
+            ref={surfaceRef}
             role="dialog"
             aria-modal="true"
             aria-label={title}
@@ -75,6 +180,7 @@ export function TaskModal({
               maxWidthClassName,
               open ? "translate-y-0 scale-100 opacity-100" : "translate-y-4 scale-[0.985] opacity-95",
             )}
+            style={mobileDialogStyle}
           >
             <div className="border-b border-border/80 px-5 py-4 sm:px-6 sm:py-[1.125rem]">
               <div className="flex items-start justify-between gap-4">
@@ -95,7 +201,17 @@ export function TaskModal({
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 overscroll-contain soft-scrollbar sm:px-6 sm:py-5">
+            <div
+              className="min-h-0 flex-1 overflow-y-auto px-5 py-4 overscroll-contain soft-scrollbar sm:px-6 sm:py-5"
+              style={
+                mobileContentPadding
+                  ? {
+                      paddingBottom: `${mobileContentPadding}px`,
+                      scrollPaddingBottom: `${mobileContentPadding}px`,
+                    }
+                  : undefined
+              }
+            >
               {children}
             </div>
           </div>

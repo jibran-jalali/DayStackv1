@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import { ArrowRight, CalendarRange, Flame, Gauge, Sparkles, Video } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/shared/button";
@@ -91,7 +91,7 @@ function getStreakLine(streak: number, dateMode: PlannerDateMode) {
   return "Clear the 70% line to keep the chain intact.";
 }
 
-export function DashboardView({
+function DashboardViewComponent({
   dateLabel,
   dateMode,
   isPending,
@@ -224,3 +224,18 @@ export function DashboardView({
     </div>
   );
 }
+
+function areDashboardViewPropsEqual(left: DashboardViewProps, right: DashboardViewProps) {
+  return (
+    left.dateLabel === right.dateLabel &&
+    left.dateMode === right.dateMode &&
+    left.isPending === right.isPending &&
+    left.now.getTime() === right.now.getTime() &&
+    left.streak === right.streak &&
+    left.summary === right.summary &&
+    left.taskDate === right.taskDate &&
+    left.tasks === right.tasks
+  );
+}
+
+export const DashboardView = memo(DashboardViewComponent, areDashboardViewPropsEqual);

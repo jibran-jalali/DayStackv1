@@ -193,6 +193,17 @@ button:disabled {
   animation: pulse-ring 2.2s ease-in-out infinite;
 }
 
+.render-smooth {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.ui-pressable {
+  transition-property: transform, opacity, background-color, border-color, color;
+  transition-duration: 140ms;
+  transition-timing-function: var(--ease-premium);
+}
+
 @keyframes fade-in-up {
   from {
     opacity: 0;
@@ -334,6 +345,11 @@ button:disabled {
 
 @utility mobile-nav-shell {
   @apply rounded-[28px] border border-white/75 bg-white/92 shadow-[0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-xl;
+}
+
+@utility content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 640px;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { CalendarRange, Check, CheckCircle2, PencilLine, Play, Repeat, Trash2, Users, Video } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/shared/button";
@@ -43,7 +44,7 @@ const blockedStateStyles: Record<TaskVisualState, string> = {
   overdue: "border-slate-400 bg-slate-200/92 shadow-[0_12px_22px_rgba(71,85,105,0.08)]",
 };
 
-export function TaskCard({
+function TaskCardComponent({
   focusedTaskId,
   isPending,
   isSelected = false,
@@ -64,7 +65,7 @@ export function TaskCard({
     <div
       id={getTaskAnchorId(task.id)}
       className={cn(
-        "rounded-[26px] border px-4 py-4 transition-[transform,box-shadow,border-color,background-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 active:scale-[0.995] sm:px-4",
+        "rounded-[26px] border px-4 py-4 transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 active:scale-[0.995] sm:px-4",
         isBlocked ? blockedStateStyles[visualState] : stateStyles[visualState],
         selectionMode && isSelected && "border-primary/35 ring-2 ring-primary/25 ring-offset-2 ring-offset-background",
         focusedTaskId === task.id && "ring-2 ring-primary/35 ring-offset-2 ring-offset-background",
@@ -223,3 +224,16 @@ export function TaskCard({
     </div>
   );
 }
+
+function areTaskCardPropsEqual(left: TaskCardProps, right: TaskCardProps) {
+  return (
+    left.focusedTaskId === right.focusedTaskId &&
+    left.isPending === right.isPending &&
+    left.isSelected === right.isSelected &&
+    left.selectionMode === right.selectionMode &&
+    left.task === right.task &&
+    left.visualState === right.visualState
+  );
+}
+
+export const TaskCard = memo(TaskCardComponent, areTaskCardPropsEqual);

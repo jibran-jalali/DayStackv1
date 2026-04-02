@@ -32,7 +32,7 @@ export function MobileDayStrip({
 
   return (
     <section className="mobile-surface px-2.5 py-2.5">
-      <div className="flex items-stretch gap-2.5 overflow-x-auto pb-0.5 soft-scrollbar">
+      <div className="grid grid-cols-4 gap-2">
         {days.map((dateKey) => {
           const isActive = dateKey === selectedDate;
           const isToday = dateKey === todayDate;
@@ -43,7 +43,7 @@ export function MobileDayStrip({
               key={dateKey}
               type="button"
               className={cn(
-                "flex min-w-[4.65rem] shrink-0 snap-start flex-col items-center rounded-[22px] px-3 py-3 text-center transition-[transform,box-shadow,background-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]",
+                "flex min-w-0 flex-col items-center rounded-[20px] px-2 py-2.5 text-center transition-[transform,box-shadow,background-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]",
                 isActive
                   ? "bg-brand-gradient text-white shadow-[var(--shadow-brand-pill)]"
                   : "bg-muted/52 text-secondary-foreground hover:bg-white",
@@ -51,20 +51,20 @@ export function MobileDayStrip({
               onClick={() => onSelectDate(dateKey)}
               disabled={isPending}
             >
-              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-80">{weekdayLabel}</span>
-              <span className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{dayNumber}</span>
-              <span className="mt-1 text-[11px] font-medium opacity-80">{monthLabel}</span>
-              <span className="mt-2 text-[10px] font-semibold uppercase tracking-[0.18em]">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] opacity-80">{weekdayLabel}</span>
+              <span className="mt-1.5 text-xl font-semibold tracking-[-0.04em]">{dayNumber}</span>
+              <span className="mt-1 text-[10px] font-medium opacity-80">{monthLabel}</span>
+              <span className="mt-1.5 text-[9px] font-semibold uppercase tracking-[0.16em]">
                 {isToday ? "Today" : isActive ? "Selected" : "Open"}
               </span>
             </button>
           );
         })}
 
-        <label className="flex min-w-[4.65rem] shrink-0 snap-start cursor-pointer flex-col items-center rounded-[22px] border border-border/70 bg-white px-3 py-3 text-center text-secondary-foreground shadow-[0_12px_26px_rgba(15,23,42,0.08)] transition-[transform,box-shadow,background-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]">
+        <label className="flex min-w-0 cursor-pointer flex-col items-center rounded-[20px] border border-border/70 bg-white px-2 py-2.5 text-center text-secondary-foreground shadow-[0_12px_26px_rgba(15,23,42,0.08)] transition-[transform,box-shadow,background-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]">
           <CalendarDays className="h-4 w-4" />
-          <span className="mt-2 text-sm font-semibold">Pick</span>
-          <span className="mt-1 text-[11px] text-secondary-foreground/78">Any date</span>
+          <span className="mt-1.5 text-sm font-semibold">Pick</span>
+          <span className="mt-1 text-[10px] text-secondary-foreground/78">Any date</span>
           <input
             type="date"
             value={selectedDate}

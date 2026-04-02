@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarRange, CheckCircle2, GripVertical, Play, Plus, Repeat, Users, Video } from "lucide-react";
 
 import { Button } from "@/components/shared/button";
@@ -203,7 +203,7 @@ interface DragState {
   task: PlannerTask;
 }
 
-export function TimelineGrid({
+function TimelineGridComponent({
   focusedTaskId,
   isPending,
   now,
@@ -397,7 +397,7 @@ export function TimelineGrid({
                   key={task.id}
                   id={getTaskAnchorId(task.id)}
                   className={cn(
-                    "pointer-events-auto absolute z-10 overflow-hidden rounded-[20px] border transition-[transform,box-shadow,border-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                    "pointer-events-auto absolute z-10 overflow-hidden rounded-[20px] border transition-[box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
                     isBlocked ? blockedBlockStyles[visualState] : blockStyles[visualState],
                     dragState?.task.id === task.id && "shadow-[0_18px_34px_rgba(15,23,42,0.14)] ring-2 ring-primary/25",
                     focusedTaskId === task.id && "ring-2 ring-primary/35 ring-offset-2 ring-offset-background",
@@ -592,3 +592,17 @@ export function TimelineGrid({
     </div>
   );
 }
+
+function areTimelineGridPropsEqual(left: TimelineGridProps, right: TimelineGridProps) {
+  return (
+    left.focusedTaskId === right.focusedTaskId &&
+    left.isPending === right.isPending &&
+    left.now.getTime() === right.now.getTime() &&
+    left.onAddTask === right.onAddTask &&
+    left.resolveVisualState === right.resolveVisualState &&
+    left.taskDate === right.taskDate &&
+    left.tasks === right.tasks
+  );
+}
+
+export const TimelineGrid = memo(TimelineGridComponent, areTimelineGridPropsEqual);

@@ -279,17 +279,20 @@ export function PlannerShell({
     onNotice: setNotice,
   });
 
-  function applyTasksToCurrentSnapshot(
-    nextTasks: PlannerTask[] | ((currentTasks: PlannerTask[]) => PlannerTask[]),
-  ) {
-    setSnapshot((current) =>
-      syncSnapshotWithTasks(
-        current,
-        userId,
-        typeof nextTasks === "function" ? nextTasks(current.tasks) : nextTasks,
-      ),
-    );
-  }
+  const applyTasksToCurrentSnapshot = useCallback(
+    function applyTasksToCurrentSnapshot(
+      nextTasks: PlannerTask[] | ((currentTasks: PlannerTask[]) => PlannerTask[]),
+    ) {
+      setSnapshot((current) =>
+        syncSnapshotWithTasks(
+          current,
+          userId,
+          typeof nextTasks === "function" ? nextTasks(current.tasks) : nextTasks,
+        ),
+      );
+    },
+    [userId],
+  );
 
   const syncWorkspaceLocation = useCallback(
     (taskDate: string, tab = workspaceTab) => {
@@ -298,35 +301,45 @@ export function PlannerShell({
     [workspaceTab],
   );
 
-  function handleOpenWorkspaceTab(nextTab: WorkspaceTab) {
-    if (nextTab === workspaceTab) {
-      return;
-    }
-
-    playActionFeedback("navigate");
-    clearSelection();
-    setEditorTask(null);
-    setRecurringSeriesEditor(null);
-    setComposerDefaults(null);
-    setFocusedTaskId(null);
-    handleCloseRecurringScope();
-    setWorkspaceTab(nextTab);
-    setNotice(null);
-    syncWorkspaceLocation(snapshot.taskDate, nextTab);
-  }
-
-  function handleChangePlannerView(nextView: PlannerViewMode) {
-    setViewMode(nextView);
-
-    if (workspaceTab !== "plan") {
-      handleOpenWorkspaceTab("plan");
-    }
-  }
-
-  function clearSelection() {
+  const clearSelection = useCallback(function clearSelection() {
     setSelectionMode(false);
     setSelectedTaskIds([]);
-  }
+  }, []);
+
+  const handleOpenWorkspaceTab = useCallback(
+    function handleOpenWorkspaceTab(nextTab: WorkspaceTab) {
+      if (nextTab === workspaceTab) {
+        return;
+      }
+
+      playActionFeedback("navigate");
+      clearSelection();
+      setEditorTask(null);
+      setRecurringSeriesEditor(null);
+      setComposerDefaults(null);
+      setFocusedTaskId(null);
+      handleCloseRecurringScope();
+      setWorkspaceTab(nextTab);
+      setNotice(null);
+      syncWorkspaceLocation(snapshot.taskDate, nextTab);
+    },
+    [clearSelection, playActionFeedback, snapshot.taskDate, syncWorkspaceLocation, workspaceTab],
+  );
+
+  const handleChangePlannerView = useCallback(
+    function handleChangePlannerView(nextView: PlannerViewMode) {
+      if (workspaceTab !== "plan") {
+        handleOpenWorkspaceTab("plan");
+      }
+
+      if (nextView === viewMode) {
+        return;
+      }
+
+      setViewMode(nextView);
+    },
+    [handleOpenWorkspaceTab, viewMode, workspaceTab],
+  );
 
   function toggleTaskSelection(taskId: string) {
     setSelectedTaskIds((current) =>
@@ -508,13 +521,16 @@ export function PlannerShell({
     setNotice(null);
   }
 
-  function handleCreateTask(startTime?: string) {
-    playActionFeedback("add");
-    setEditorTask(null);
-    setRecurringSeriesEditor(null);
-    setComposerDefaults(createDefaultTask(snapshot.taskDate, now, startTime));
-    setNotice(null);
-  }
+  const handleCreateTask = useCallback(
+    function handleCreateTask(startTime?: string) {
+      playActionFeedback("add");
+      setEditorTask(null);
+      setRecurringSeriesEditor(null);
+      setComposerDefaults(createDefaultTask(snapshot.taskDate, now, startTime));
+      setNotice(null);
+    },
+    [now, playActionFeedback, snapshot.taskDate],
+  );
 
   function handleCancelEditor() {
     setEditorTask(null);
@@ -842,15 +858,18 @@ export function PlannerShell({
     })();
   }
 
-  function handleStartFocusTask(task: PlannerTask) {
-    playActionFeedback("navigate");
-    router.push(
-      getPomodoroHref(task.task_date, new Date(), {
-        autostart: "1",
-        taskId: task.id,
-      }),
-    );
-  }
+  const handleStartFocusTask = useCallback(
+    function handleStartFocusTask(task: PlannerTask) {
+      playActionFeedback("navigate");
+      router.push(
+        getPomodoroHref(task.task_date, new Date(), {
+          autostart: "1",
+          taskId: task.id,
+        }),
+      );
+    },
+    [playActionFeedback, router],
+  );
 
   async function handleNotificationAccepted(result: TaskNotificationAcceptResult) {
     if (result.taskDate !== snapshot.taskDate) {
@@ -918,6 +937,13 @@ export function PlannerShell({
   const blockedCount = useMemo(
     () => snapshot.tasks.filter((task) => isBlockedTask(task)).length,
     [snapshot.tasks],
+  );
+  const handleCreateTaskFromDashboard = useCallback(() => {
+    handleCreateTask();
+  }, [handleCreateTask]);
+  const resolveTaskVisualState = useCallback(
+    (task: PlannerTask) => getTaskVisualState(task, now, snapshot.taskDate),
+    [now, snapshot.taskDate],
   );
   const viewCopy = useMemo(() => {
     if (viewMode === "recurring") {
@@ -1105,8 +1131,7 @@ export function PlannerShell({
         : composerDefaults ?? createDefaultTask(snapshot.taskDate, now),
     [composerDefaults, editorTask, now, recurringSeriesEditor, snapshot.taskDate],
   );
-  const mobilePlanView: "dashboard" | "leaderboard" | "list" | "recurring" =
-    viewMode === "grid" ? "list" : viewMode;
+  const mobilePlanView: "dashboard" | "grid" | "leaderboard" | "list" | "recurring" = viewMode;
   const mobileHeaderTitle =
     workspaceTab === "plan"
       ? dateMode === "today"
@@ -1241,9 +1266,10 @@ export function PlannerShell({
               />
 
               <section className="mobile-surface px-3 py-3">
-                <div className="flex items-center gap-2 overflow-x-auto px-0.5 pb-1 soft-scrollbar">
+                <div className="grid grid-cols-3 gap-2">
                   {[
                     { key: "list", label: "Tasks" },
+                    { key: "grid", label: "Grid" },
                     { key: "dashboard", label: "Overview" },
                     { key: "recurring", label: "Recurring" },
                     { key: "leaderboard", label: "Top" },
@@ -1255,13 +1281,16 @@ export function PlannerShell({
                         key={option.key}
                         type="button"
                         className={cn(
-                          "inline-flex h-11 shrink-0 items-center justify-center rounded-full px-4 text-sm font-semibold transition-[transform,box-shadow,background-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]",
+                          "inline-flex h-11 min-w-0 items-center justify-center rounded-full px-3 text-sm font-semibold transition-[transform,box-shadow,background-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]",
                           isActive
                             ? "bg-brand-gradient text-white shadow-[var(--shadow-brand-pill)]"
                             : "bg-muted/52 text-secondary-foreground",
                         )}
                         onClick={() => {
                           playActionFeedback("navigate");
+                          if (option.key !== "list" && selectionMode) {
+                            clearSelection();
+                          }
                           setViewMode(option.key as PlannerViewMode);
                         }}
                       >
@@ -1308,7 +1337,7 @@ export function PlannerShell({
                     dateMode={dateMode}
                     isPending={isPending}
                     now={now}
-                    onAddTask={() => handleCreateTask()}
+                    onAddTask={handleCreateTaskFromDashboard}
                     onEditTask={handleEditTask}
                     onStartFocusTask={handleStartFocusTask}
                     streak={snapshot.streak}
@@ -1325,11 +1354,25 @@ export function PlannerShell({
                   />
                 ) : mobilePlanView === "leaderboard" ? (
                   <LeaderboardView currentUserId={userId} entries={snapshot.leaderboard} />
+                ) : mobilePlanView === "grid" ? (
+                  <TimelineGrid
+                    focusedTaskId={focusedTaskId}
+                    tasks={snapshot.tasks}
+                    taskDate={snapshot.taskDate}
+                    now={now}
+                    resolveVisualState={resolveTaskVisualState}
+                    isPending={isPending}
+                    onAddTask={handleCreateTask}
+                    onEditTask={handleEditTask}
+                    onRescheduleTask={handleRescheduleTask}
+                    onStartFocusTask={handleStartFocusTask}
+                    onToggleTask={handleToggleTask}
+                  />
                 ) : (
                   <TimelineList
                     focusedTaskId={focusedTaskId}
                     tasks={snapshot.tasks}
-                    resolveVisualState={(task) => getTaskVisualState(task, now, snapshot.taskDate)}
+                    resolveVisualState={resolveTaskVisualState}
                     isPending={isPending}
                     onAddTask={handleCreateTask}
                     onEditTask={handleEditTask}
@@ -1385,7 +1428,6 @@ export function PlannerShell({
           onOpenSettings={() => handleOpenWorkspaceTab("settings")}
           onPlayNavigate={() => playActionFeedback("navigate")}
           plannerHref={plannerHref}
-          pomodoroHref={pomodoroHref}
           settingsHref={settingsHref}
         />
       </div>
@@ -1472,7 +1514,7 @@ export function PlannerShell({
                     <button
                       suppressHydrationWarning
                       type="button"
-                      className="inline-flex h-9 items-center justify-center rounded-full border border-border/80 bg-white/92 px-3 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_16px_32px_rgba(15,23,42,0.09)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
+                      className="ui-pressable inline-flex h-9 items-center justify-center rounded-full border border-border/80 bg-white/92 px-3 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] hover:bg-white focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
                       onClick={() => setSelectionMode(true)}
                       disabled={isPending}
                     >
@@ -1496,7 +1538,7 @@ export function PlannerShell({
                   <button
                     suppressHydrationWarning
                     type="button"
-                    className="inline-flex h-10 items-center justify-center rounded-full border border-border/80 bg-white/92 px-4 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_16px_32px_rgba(15,23,42,0.09)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
+                    className="ui-pressable inline-flex h-10 items-center justify-center rounded-full border border-border/80 bg-white/92 px-4 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] hover:bg-white focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
                     onClick={() => setSelectionMode(true)}
                     disabled={isPending}
                   >
@@ -1519,7 +1561,7 @@ export function PlannerShell({
                     <button
                       suppressHydrationWarning
                       type="button"
-                      className="inline-flex h-10 items-center justify-center rounded-full border border-red-200 bg-red-50 px-4 text-sm font-semibold text-danger shadow-[0_10px_24px_rgba(239,68,68,0.1)] transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-red-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
+                      className="ui-pressable inline-flex h-10 items-center justify-center rounded-full border border-red-200 bg-red-50 px-4 text-sm font-semibold text-danger shadow-[0_10px_24px_rgba(239,68,68,0.1)] hover:bg-red-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
                       onClick={handleDeleteSelectedTasks}
                       disabled={isPending || selectedTaskIds.length === 0}
                     >
@@ -1528,7 +1570,7 @@ export function PlannerShell({
                     <button
                       suppressHydrationWarning
                       type="button"
-                      className="inline-flex h-10 items-center justify-center rounded-full border border-border/80 bg-white/92 px-4 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-[transform,opacity,box-shadow,background-color,border-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_16px_32px_rgba(15,23,42,0.09)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
+                      className="ui-pressable inline-flex h-10 items-center justify-center rounded-full border border-border/80 bg-white/92 px-4 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] hover:bg-white focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
                       onClick={clearSelection}
                       disabled={isPending}
                     >
@@ -1546,7 +1588,7 @@ export function PlannerShell({
                   dateMode={dateMode}
                   isPending={isPending}
                   now={now}
-                  onAddTask={() => handleCreateTask()}
+                  onAddTask={handleCreateTaskFromDashboard}
                   onEditTask={handleEditTask}
                   onStartFocusTask={handleStartFocusTask}
                   streak={snapshot.streak}
@@ -1569,7 +1611,7 @@ export function PlannerShell({
                   tasks={snapshot.tasks}
                   taskDate={snapshot.taskDate}
                   now={now}
-                  resolveVisualState={(task) => getTaskVisualState(task, now, snapshot.taskDate)}
+                  resolveVisualState={resolveTaskVisualState}
                   isPending={isPending}
                   onAddTask={handleCreateTask}
                   onEditTask={handleEditTask}
@@ -1581,7 +1623,7 @@ export function PlannerShell({
                 <TimelineList
                   focusedTaskId={focusedTaskId}
                   tasks={snapshot.tasks}
-                  resolveVisualState={(task) => getTaskVisualState(task, now, snapshot.taskDate)}
+                  resolveVisualState={resolveTaskVisualState}
                   isPending={isPending}
                   onAddTask={handleCreateTask}
                   onEditTask={handleEditTask}

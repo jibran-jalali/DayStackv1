@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   CalendarClock,
@@ -239,22 +239,43 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ leaderboard }: LandingPageProps) {
-  const [scrollProgress, setScrollProgress] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const scrollProgressRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    function handleScroll() {
+    let animationFrame = 0;
+
+    function updateScrollProgress() {
+      animationFrame = 0;
       const root = document.documentElement;
       const scrollRange = root.scrollHeight - window.innerHeight;
-      const nextProgress = scrollRange <= 0 ? 0 : (window.scrollY / scrollRange) * 100;
-      setScrollProgress(Math.max(0, Math.min(100, nextProgress)));
+      const nextProgress = scrollRange <= 0 ? 0 : window.scrollY / scrollRange;
+      const clampedProgress = Math.max(0, Math.min(1, nextProgress));
+
+      if (scrollProgressRef.current) {
+        scrollProgressRef.current.style.transform = `scaleX(${clampedProgress})`;
+      }
     }
 
-    handleScroll();
+    function handleScroll() {
+      if (animationFrame !== 0) {
+        return;
+      }
+
+      animationFrame = window.requestAnimationFrame(updateScrollProgress);
+    }
+
+    updateScrollProgress();
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
 
     return () => {
+      if (animationFrame !== 0) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
     };
   }, []);
 
@@ -273,8 +294,9 @@ export function LandingPage({ leaderboard }: LandingPageProps) {
     <main className="relative overflow-x-clip pb-16 sm:pb-20">
       <div className="pointer-events-none fixed inset-x-0 top-0 z-50 h-px bg-black/5">
         <div
-          className="h-full bg-[linear-gradient(90deg,#18beef_0%,#1496e8_45%,#6d28f0_100%)] transition-[width] duration-150 ease-linear"
-          style={{ width: `${scrollProgress}%` }}
+          ref={scrollProgressRef}
+          className="render-smooth h-full origin-left bg-[linear-gradient(90deg,#18beef_0%,#1496e8_45%,#6d28f0_100%)] will-change-transform"
+          style={{ transform: "scaleX(0)" }}
         />
       </div>
 
@@ -407,7 +429,7 @@ export function LandingPage({ leaderboard }: LandingPageProps) {
         </Reveal>
       </section>
 
-      <section id="problem" className="container-shell py-20 sm:py-24 lg:py-28">
+      <section id="problem" className="container-shell content-auto py-20 sm:py-24 lg:py-28">
         <div className="mx-auto max-w-[1180px] space-y-10">
           <Reveal>
             <SectionIntro
@@ -435,7 +457,7 @@ export function LandingPage({ leaderboard }: LandingPageProps) {
         </div>
       </section>
 
-      <section className="container-shell pb-20 sm:pb-24 lg:pb-28">
+      <section className="container-shell content-auto pb-20 sm:pb-24 lg:pb-28">
         <div className="mx-auto max-w-[1180px]">
           <Reveal>
             <StatementBand
@@ -447,7 +469,7 @@ export function LandingPage({ leaderboard }: LandingPageProps) {
         </div>
       </section>
 
-      <section id="why-daystack" className="container-shell pb-20 sm:pb-24 lg:pb-28">
+      <section id="why-daystack" className="container-shell content-auto pb-20 sm:pb-24 lg:pb-28">
         <div className="mx-auto max-w-[1180px] space-y-10">
           <Reveal>
             <SectionIntro
@@ -479,7 +501,7 @@ export function LandingPage({ leaderboard }: LandingPageProps) {
         </div>
       </section>
 
-      <section className="container-shell pb-20 sm:pb-24 lg:pb-28">
+      <section className="container-shell content-auto pb-20 sm:pb-24 lg:pb-28">
         <div className="mx-auto grid max-w-[1180px] gap-5 lg:grid-cols-[1.04fr_0.96fr]">
           <Reveal>
             <div className="flex h-full flex-col justify-between rounded-[30px] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,248,252,0.94))] p-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)] sm:p-8">
@@ -554,7 +576,7 @@ export function LandingPage({ leaderboard }: LandingPageProps) {
         </div>
       </section>
 
-      <section id="start" className="container-shell pb-14 sm:pb-16">
+      <section id="start" className="container-shell content-auto pb-14 sm:pb-16">
         <div className="mx-auto max-w-[1180px]">
           <Reveal>
             <div className="relative overflow-hidden rounded-[34px] border border-[rgba(17,24,39,0.05)] bg-[linear-gradient(135deg,#101725_0%,#172133_55%,#1c2840_100%)] px-6 py-9 text-white shadow-[0_32px_90px_rgba(15,23,42,0.24)] sm:px-10 sm:py-12">

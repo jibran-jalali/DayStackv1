@@ -242,11 +242,10 @@ export function PomodoroShell({ displayName, email, initialNowIso, initialSnapsh
         </div>
 
         <MobileBottomNav
-          activeTab="pomodoro"
+          activeTab={null}
           notificationsHref={notificationsHref}
           onPlayNavigate={() => playActionFeedback("navigate")}
           plannerHref={plannerHref}
-          pomodoroHref={pomodoroHref}
           settingsHref={settingsHref}
         />
       </div>

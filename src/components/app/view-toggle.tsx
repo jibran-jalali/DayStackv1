@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { LayoutDashboard, LayoutGrid, List, Repeat, Trophy } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -23,7 +24,7 @@ const options: Array<{
   { value: "leaderboard", label: "Leaderboard", icon: Trophy },
 ];
 
-export function ViewToggle({ value, onChange }: ViewToggleProps) {
+function ViewToggleComponent({ value, onChange }: ViewToggleProps) {
   const activeIndex = Math.max(
     options.findIndex((option) => option.value === value),
     0,
@@ -31,12 +32,12 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
 
   return (
     <div
-      className="relative inline-grid rounded-full border border-border/80 bg-white/90 p-1 shadow-[0_12px_28px_rgba(15,23,42,0.06)]"
+      className="render-smooth relative inline-grid rounded-full border border-border/80 bg-white/90 p-1 shadow-[0_12px_28px_rgba(15,23,42,0.06)]"
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
       <span
         className={cn(
-          "pointer-events-none absolute inset-y-1 left-1 rounded-full bg-brand-gradient shadow-[var(--shadow-brand-pill)] transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          "render-smooth pointer-events-none absolute inset-y-1 left-1 rounded-full bg-brand-gradient shadow-[var(--shadow-brand-pill)] transition-transform duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
         )}
         style={{
           width: `calc((100% - 0.5rem) / ${options.length})`,
@@ -54,7 +55,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
             type="button"
             onClick={() => onChange(option.value)}
             className={cn(
-              "relative z-10 inline-flex h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-[transform,color,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] active:scale-[0.985] sm:px-4",
+              "ui-pressable relative z-10 inline-flex h-9 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] sm:px-4",
               isActive ? "text-white" : "text-secondary-foreground hover:text-foreground",
             )}
             aria-pressed={isActive}
@@ -67,3 +68,9 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
     </div>
   );
 }
+
+function areViewTogglePropsEqual(left: ViewToggleProps, right: ViewToggleProps) {
+  return left.value === right.value && left.onChange === right.onChange;
+}
+
+export const ViewToggle = memo(ViewToggleComponent, areViewTogglePropsEqual);

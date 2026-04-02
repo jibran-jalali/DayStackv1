@@ -1,21 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, CalendarDays, Clock3, Settings2 } from "lucide-react";
+import { Bell, CalendarDays, Settings2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-type MobileBottomNavTab = "notifications" | "plan" | "pomodoro" | "settings";
+type MobileBottomNavTab = "notifications" | "plan" | "settings";
 
 interface MobileBottomNavProps {
-  activeTab: MobileBottomNavTab;
+  activeTab?: MobileBottomNavTab | null;
   notificationsHref?: string;
   onOpenNotifications?: () => void;
   onOpenPlan?: () => void;
   onOpenSettings?: () => void;
   onPlayNavigate?: () => void;
   plannerHref?: string;
-  pomodoroHref: string;
   settingsHref?: string;
 }
 
@@ -29,11 +28,6 @@ const navItems = [
     icon: Bell,
     key: "notifications",
     label: "Inbox",
-  },
-  {
-    icon: Clock3,
-    key: "pomodoro",
-    label: "Focus",
   },
   {
     icon: Settings2,
@@ -54,7 +48,6 @@ export function MobileBottomNav({
   onOpenSettings,
   onPlayNavigate,
   plannerHref = "/app",
-  pomodoroHref,
   settingsHref = "/app?tab=settings",
 }: MobileBottomNavProps) {
   return (
@@ -142,17 +135,6 @@ export function MobileBottomNav({
             );
           }
 
-          return (
-            <Link
-              key={item.key}
-              href={pomodoroHref}
-              className={baseClassName}
-              onClick={() => onPlayNavigate?.()}
-            >
-              <Icon className="h-4.5 w-4.5" />
-              {item.label}
-            </Link>
-          );
         })}
       </nav>
     </div>
