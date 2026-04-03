@@ -1216,30 +1216,39 @@ export function PlannerShell({
                 : "overflow-y-auto",
             )}
           >
-            <MobileWorkspaceHeader
-          title={mobileHeaderTitle}
-          subtitle={mobileHeaderSubtitle}
-          metricLabel={activeMetricLabel}
-          metricTone={activeMetricTone}
-          secondaryMetricLabel={mobileSecondaryMetricLabel ?? mobileTaskCountLabel}
-          secondaryMetricTone={mobileSecondaryMetricLabel ? "success" : "default"}
-          action={
-            workspaceTab === "plan" ? (
-              <Button
-                size="sm"
-                className="h-11 min-w-[7.25rem] px-4"
-                onClick={() => handleCreateTask()}
-                disabled={isPending}
-              >
-                <Plus className="h-4 w-4" />
-                Add block
-              </Button>
-            ) : undefined
-          }
-            />
+            {workspaceTab !== "assistant" ? (
+              <MobileWorkspaceHeader
+                title={mobileHeaderTitle}
+                subtitle={mobileHeaderSubtitle}
+                metricLabel={activeMetricLabel}
+                metricTone={activeMetricTone}
+                secondaryMetricLabel={mobileSecondaryMetricLabel ?? mobileTaskCountLabel}
+                secondaryMetricTone={mobileSecondaryMetricLabel ? "success" : "default"}
+                action={
+                  workspaceTab === "plan" ? (
+                    <Button
+                      size="sm"
+                      className="h-11 min-w-[7.25rem] px-4"
+                      onClick={() => handleCreateTask()}
+                      disabled={isPending}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add block
+                    </Button>
+                  ) : undefined
+                }
+              />
+            ) : null}
 
             {notice ? (
-              <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+8.75rem)] z-40 flex justify-center lg:hidden">
+              <div
+                className={cn(
+                  "pointer-events-none fixed inset-x-0 z-40 flex justify-center lg:hidden",
+                  workspaceTab === "assistant"
+                    ? "top-[calc(env(safe-area-inset-top)+1rem)]"
+                    : "top-[calc(env(safe-area-inset-top)+8.75rem)]",
+                )}
+              >
                 <div className="mobile-shell-width mx-auto">
                   <div
                     aria-live="polite"
@@ -1259,7 +1268,7 @@ export function PlannerShell({
               className={cn(
                 "mobile-shell-width mx-auto",
                 workspaceTab === "assistant"
-                  ? "flex min-h-0 flex-1 flex-col px-0 pb-2 pt-3"
+                  ? "flex min-h-0 flex-1 flex-col px-0 pb-2 pt-[max(0.85rem,env(safe-area-inset-top))]"
                   : "mobile-stack pb-4 pt-4",
               )}
             >

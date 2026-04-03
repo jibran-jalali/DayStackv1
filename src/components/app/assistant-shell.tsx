@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, LoaderCircle, Send, Sparkles, User2 } from "lucide-react";
+import { ArrowUpRight, CalendarDays, LoaderCircle, Send, Sparkles, User2 } from "lucide-react";
 
 import { Button } from "@/components/shared/button";
 import { LogoMark } from "@/components/shared/logo";
@@ -108,7 +108,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[88%] rounded-[24px] bg-slate-950 px-3.5 py-3 text-[14px] leading-6 text-white shadow-[0_18px_36px_rgba(15,23,42,0.18)] sm:max-w-[min(100%,42rem)] sm:rounded-[26px] sm:px-4">
+        <div className="max-w-[85%] rounded-[22px] bg-slate-950 px-3.5 py-3 text-[14px] leading-6 text-white shadow-[0_18px_36px_rgba(15,23,42,0.16)] sm:max-w-[min(100%,42rem)] sm:rounded-[26px] sm:px-4 sm:shadow-[0_18px_36px_rgba(15,23,42,0.18)]">
           <div className="mb-1 flex items-center justify-end gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55 sm:text-[11px]">
             <span>You</span>
             <User2 className="h-3.5 w-3.5" />
@@ -121,14 +121,14 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2.5 sm:gap-3">
-      <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-[18px] border border-border/80 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.07)] sm:mt-1 sm:h-10 sm:w-10 sm:rounded-2xl">
-        <LogoMark className="h-6 w-6 rounded-[10px] sm:h-7 sm:w-7 sm:rounded-[12px]" />
+      <span className="mt-0.5 inline-flex h-[2.125rem] w-[2.125rem] items-center justify-center rounded-full border border-border/70 bg-white/90 shadow-[0_10px_24px_rgba(15,23,42,0.05)] sm:mt-1 sm:h-10 sm:w-10 sm:rounded-2xl sm:border-border/80 sm:bg-white sm:shadow-[0_12px_28px_rgba(15,23,42,0.07)]">
+        <LogoMark className="h-5.5 w-5.5 rounded-[10px] sm:h-7 sm:w-7 sm:rounded-[12px]" />
       </span>
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/72 sm:text-[11px] sm:tracking-[0.2em]">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/60 sm:text-[11px] sm:tracking-[0.2em] sm:text-secondary-foreground/72">
           DayStack Assistant
         </p>
-        <div className="mt-2 rounded-[22px] border border-border/70 bg-white/96 px-3.5 py-3 text-[14px] leading-6 text-foreground shadow-[0_12px_28px_rgba(15,23,42,0.05)] sm:rounded-[26px] sm:px-4 sm:text-sm">
+        <div className="mt-2 rounded-[18px] bg-transparent px-0 py-0 text-[15px] leading-7 text-foreground sm:rounded-[26px] sm:border sm:border-border/70 sm:bg-white/96 sm:px-4 sm:py-3 sm:text-sm sm:leading-6 sm:shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
           <p className="whitespace-pre-wrap">{message.content}</p>
         </div>
       </div>
@@ -201,11 +201,19 @@ function StarterPromptCard({
   return (
     <button
       type="button"
-      className="ui-pressable min-w-[16.5rem] snap-start rounded-[22px] border border-border/75 bg-white/92 p-4 text-left shadow-[0_12px_28px_rgba(15,23,42,0.05)] transition-colors duration-200 hover:border-primary/20 hover:bg-white disabled:translate-y-0 disabled:opacity-60 sm:min-w-0 sm:rounded-[24px]"
+      className="ui-pressable min-w-full snap-start rounded-[20px] border border-border/70 bg-white/92 p-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition-colors duration-200 hover:border-primary/20 hover:bg-white disabled:translate-y-0 disabled:opacity-60 sm:min-w-0 sm:rounded-[24px] sm:shadow-[0_12px_28px_rgba(15,23,42,0.05)]"
       onClick={() => onSelect(prompt)}
       disabled={disabled}
     >
-      <p className="text-sm font-medium leading-6 text-foreground">{prompt}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/58">
+            Try asking
+          </p>
+          <p className="mt-1 text-sm font-medium leading-6 text-foreground">{prompt}</p>
+        </div>
+        <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-secondary-foreground/55" />
+      </div>
     </button>
   );
 }
@@ -381,43 +389,50 @@ export function AssistantShell({
 
   return (
     <section className="relative flex h-full min-h-0 flex-1 flex-col pb-2 sm:pb-0">
-      <div className="glass-panel relative flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[30px] border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.985),rgba(247,250,255,0.96))] shadow-[0_24px_54px_rgba(15,23,42,0.12)]">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(24,150,232,0.12),transparent_72%)] opacity-90" />
+      <div className="glass-panel relative flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-black/5 bg-[#f8f8f8] shadow-[0_14px_34px_rgba(15,23,42,0.08)] sm:rounded-[30px] sm:border-white/70 sm:bg-[linear-gradient(180deg,rgba(255,255,255,0.985),rgba(247,250,255,0.96))] sm:shadow-[0_24px_54px_rgba(15,23,42,0.12)]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),transparent)] sm:h-28 sm:bg-[radial-gradient(circle_at_top,rgba(24,150,232,0.12),transparent_72%)] sm:opacity-90" />
 
-        <div className="shrink-0 border-b border-border/65 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="shrink-0 border-b border-black/6 px-4 py-3 sm:border-border/65 sm:px-6 sm:py-4">
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-3">
-            <div className="flex items-start gap-3">
-              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[18px] border border-border/75 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.06)] sm:h-11 sm:w-11">
-                <LogoMark className="h-7 w-7 rounded-[12px] sm:h-8 sm:w-8 sm:rounded-[14px]" />
-              </span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[18px] border border-border/75 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.06)] sm:h-11 sm:w-11">
+                  <LogoMark className="h-7 w-7 rounded-[12px] sm:h-8 sm:w-8 sm:rounded-[14px]" />
+                </span>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary-foreground/72 sm:text-[11px]">
-                    DayStack Assistant
-                  </p>
-                  <span className="inline-flex rounded-full border border-emerald-200/80 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                    Live
-                  </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary-foreground/72 sm:text-[11px]">
+                      DayStack Assistant
+                    </p>
+                    <span className="hidden sm:inline-flex rounded-full border border-emerald-200/80 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                      Live
+                    </span>
+                  </div>
+
+                  <h2 className="mt-0.5 truncate text-[15px] font-semibold text-foreground sm:mt-1 sm:text-lg">
+                    Chat-based planning for {displayName}
+                  </h2>
                 </div>
-
-                <h2 className="mt-1 text-[15px] font-semibold text-foreground sm:text-lg">
-                  Plan, update, and summarize faster for {displayName}
-                </h2>
-                <p className="mt-1 line-clamp-2 text-xs leading-5 text-secondary-foreground sm:text-sm">
-                  {snapshot.summary.summaryLine}
-                </p>
               </div>
-            </div>
 
-            <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 soft-scrollbar">
-              <span className="data-chip shrink-0">
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/80 bg-white px-3 py-1.5 text-[11px] font-semibold text-secondary-foreground shadow-[0_10px_20px_rgba(15,23,42,0.04)]">
                 <CalendarDays className="h-3.5 w-3.5" />
                 {formatShortDateLabel(snapshot.taskDate)}
               </span>
+            </div>
+
+            <div className="sm:hidden">
+              <p className="text-xs leading-5 text-secondary-foreground">
+                {snapshot.tasks.length} visible blocks, {snapshot.summary.completedTasks} done, {snapshot.summary.executionScore}% execution score.
+              </p>
+            </div>
+
+            <div className="hidden items-center gap-2 overflow-x-auto px-1 pb-1 soft-scrollbar sm:flex">
               <span className="data-chip shrink-0">{snapshot.tasks.length} visible</span>
               <span className="data-chip shrink-0">{snapshot.summary.executionScore}% score</span>
               <span className="data-chip shrink-0">{snapshot.summary.completedTasks} done</span>
+              <span className="data-chip shrink-0">{snapshot.recurringBlocks.length} recurring</span>
             </div>
           </div>
         </div>
@@ -425,26 +440,23 @@ export function AssistantShell({
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <div
             ref={chatScrollRef}
-            className="soft-scrollbar h-full overflow-y-auto overscroll-contain px-4 py-4 pb-10 sm:px-6 sm:py-6 sm:pb-12"
+            className="soft-scrollbar h-full overflow-y-auto overscroll-contain px-4 py-4 pb-8 sm:px-6 sm:py-6 sm:pb-12"
           >
             <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col">
               {!hasConversation ? (
-                <div className="flex flex-1 flex-col items-center justify-center py-4 text-center sm:py-8">
-                  <span className="inline-flex h-14 w-14 items-center justify-center rounded-[22px] border border-border/75 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.08)] sm:h-16 sm:w-16 sm:rounded-[24px]">
+                <div className="flex flex-1 flex-col items-center justify-center py-3 text-center sm:py-8">
+                  <span className="inline-flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-[20px] border border-border/75 bg-white shadow-[0_14px_28px_rgba(15,23,42,0.06)] sm:h-16 sm:w-16 sm:rounded-[24px] sm:shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
                     <LogoMark className="h-10 w-10 rounded-[16px] sm:h-11 sm:w-11 sm:rounded-[18px]" />
                   </span>
 
-                  <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.22em] text-secondary-foreground/72 sm:text-[11px]">
-                    Assistant workspace
-                  </p>
-                  <h3 className="mt-2 max-w-xl font-display text-[2rem] font-semibold tracking-[-0.05em] text-foreground sm:max-w-3xl sm:text-[2.6rem]">
-                    What should we do with {formatDateLabel(snapshot.taskDate)}?
+                  <h3 className="mt-5 max-w-[16rem] font-display text-[2rem] font-semibold tracking-[-0.05em] text-foreground sm:max-w-3xl sm:text-[2.6rem]">
+                    How can I help with {formatDateLabel(snapshot.taskDate)}?
                   </h3>
-                  <p className="mt-3 max-w-xl text-sm leading-6 text-secondary-foreground sm:max-w-2xl">
-                    Ask naturally. I can add blocks, clean up the day, summarize progress, or turn a brain dump into a balanced plan before anything touches the grid.
+                  <p className="mt-3 max-w-[19rem] text-sm leading-6 text-secondary-foreground sm:max-w-2xl">
+                    Ask naturally. I can add blocks, clean up the day, summarize progress, or turn a brain dump into a balanced plan.
                   </p>
 
-                  <div className="mt-6 flex w-[calc(100%+0.5rem)] snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 sm:mt-8 sm:grid sm:w-full sm:grid-cols-3 sm:overflow-visible sm:px-0">
+                  <div className="mt-7 grid w-full gap-2.5 sm:mt-8 sm:grid-cols-3 sm:gap-3">
                     {STARTER_PROMPTS.map((prompt) => (
                       <StarterPromptCard
                         key={prompt}
@@ -491,7 +503,7 @@ export function AssistantShell({
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[rgba(250,252,255,0.98)] via-[rgba(250,252,255,0.84)] to-transparent sm:h-24" />
         </div>
 
-        <div className="shrink-0 border-t border-border/65 bg-[linear-gradient(180deg,rgba(250,252,255,0.82),rgba(250,252,255,0.98))] px-3 pb-[calc(0.85rem+env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:py-4">
+        <div className="shrink-0 border-t border-black/6 bg-[rgba(248,248,248,0.96)] px-3 pb-[calc(0.85rem+env(safe-area-inset-bottom))] pt-3 sm:border-border/65 sm:bg-[linear-gradient(180deg,rgba(250,252,255,0.82),rgba(250,252,255,0.98))] sm:px-6 sm:py-4">
           <div className="mx-auto w-full max-w-4xl">
             {pendingFollowUp ? (
               <p className="mb-2 px-1 text-[11px] text-secondary-foreground sm:text-xs">
@@ -499,7 +511,7 @@ export function AssistantShell({
               </p>
             ) : null}
 
-            <div className="rounded-[24px] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.96))] p-2 shadow-[0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:rounded-[28px] sm:p-2.5">
+            <div className="rounded-[22px] border border-border/80 bg-white p-2 shadow-[0_10px_24px_rgba(15,23,42,0.07)] sm:rounded-[28px] sm:bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.96))] sm:p-2.5 sm:shadow-[0_20px_44px_rgba(15,23,42,0.12)] sm:backdrop-blur-xl">
               <form
                 className="flex items-end gap-2"
                 onSubmit={(event) => {
@@ -514,7 +526,7 @@ export function AssistantShell({
                   onKeyDown={handleComposerKeyDown}
                   rows={1}
                   placeholder="Type a message..."
-                  className="max-h-44 min-h-0 flex-1 resize-none border-0 bg-transparent px-2.5 py-2.5 text-[15px] leading-6 text-foreground outline-none placeholder:text-secondary-foreground/72"
+                  className="max-h-44 min-h-0 flex-1 resize-none border-0 bg-transparent px-2 py-2.5 text-[15px] leading-6 text-foreground outline-none placeholder:text-secondary-foreground/72"
                   disabled={isSending || isConfirming}
                 />
                 <Button
