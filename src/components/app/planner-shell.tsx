@@ -1741,7 +1741,13 @@ export function PlannerShell({
               </div>
             </section>
 
-            <section className={cn("min-w-0", workspaceTab !== "assistant" && "hidden", workspaceTab === "assistant" && "min-h-0 flex-1")}>
+            <section
+              className={cn(
+                "min-w-0",
+                workspaceTab !== "assistant" && "hidden",
+                workspaceTab === "assistant" && "mx-auto flex min-h-0 w-full max-w-[86rem] flex-1",
+              )}
+            >
               <AssistantShell
                 displayName={displayName}
                 onNotice={setNotice}

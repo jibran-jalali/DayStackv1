@@ -37,6 +37,8 @@ const STARTER_PROMPTS = [
   "Plan my day from this dump: finish the report 90 min, reply to client emails 30 min, prep slides 60 min, gym 60 min.",
 ] as const;
 
+const CHAT_COLUMN_CLASS = "mx-auto w-full max-w-3xl xl:max-w-[54rem]";
+
 function createMessage(role: ChatMessage["role"], content: string, action?: AssistantMutationAction): ChatMessage {
   return {
     action,
@@ -153,7 +155,7 @@ function ActionCard({
 
   return (
     <div className="sm:ml-[3.25rem]">
-      <div className="max-w-[min(100%,42rem)] rounded-[24px] border border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,250,255,0.98))] p-3.5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] sm:rounded-[26px] sm:p-4">
+      <div className="max-w-[min(100%,42rem)] rounded-[24px] border border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,250,255,0.98))] p-3.5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] sm:rounded-[26px] sm:p-4 lg:max-w-[48rem] lg:rounded-[24px] lg:border-border/70 lg:bg-white lg:p-5 lg:shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/78 sm:text-[11px] sm:tracking-[0.2em]">
@@ -389,11 +391,11 @@ export function AssistantShell({
 
   return (
     <section className="relative flex h-full min-h-0 flex-1 flex-col pb-2 sm:pb-0">
-      <div className="glass-panel relative flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-black/5 bg-[#f8f8f8] shadow-[0_14px_34px_rgba(15,23,42,0.08)] sm:rounded-[30px] sm:border-white/70 sm:bg-[linear-gradient(180deg,rgba(255,255,255,0.985),rgba(247,250,255,0.96))] sm:shadow-[0_24px_54px_rgba(15,23,42,0.12)]">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),transparent)] sm:h-28 sm:bg-[radial-gradient(circle_at_top,rgba(24,150,232,0.12),transparent_72%)] sm:opacity-90" />
+      <div className="glass-panel relative flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-black/5 bg-[#f8f8f8] shadow-[0_14px_34px_rgba(15,23,42,0.08)] backdrop-blur-none sm:rounded-[30px] sm:border-white/70 sm:bg-[linear-gradient(180deg,rgba(255,255,255,0.985),rgba(247,250,255,0.96))] sm:shadow-[0_24px_54px_rgba(15,23,42,0.12)] sm:backdrop-blur-md lg:rounded-[32px] lg:border-border/70 lg:bg-white/95 lg:shadow-[0_20px_46px_rgba(15,23,42,0.08)] lg:backdrop-blur-sm">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),transparent)] sm:h-28 sm:bg-[radial-gradient(circle_at_top,rgba(24,150,232,0.12),transparent_72%)] sm:opacity-90 lg:h-20 lg:bg-[linear-gradient(180deg,rgba(255,255,255,0.84),transparent)] lg:opacity-45" />
 
-        <div className="shrink-0 border-b border-black/6 px-4 py-3 sm:border-border/65 sm:px-6 sm:py-4">
-          <div className="mx-auto flex w-full max-w-4xl flex-col gap-3">
+        <div className="shrink-0 border-b border-black/6 px-4 py-3 sm:border-border/65 sm:px-6 sm:py-4 lg:px-8 lg:py-5">
+          <div className={cn(CHAT_COLUMN_CLASS, "flex flex-col gap-3 lg:gap-4")}>
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
                 <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[18px] border border-border/75 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.06)] sm:h-11 sm:w-11">
@@ -410,9 +412,12 @@ export function AssistantShell({
                     </span>
                   </div>
 
-                  <h2 className="mt-0.5 truncate text-[15px] font-semibold text-foreground sm:mt-1 sm:text-lg">
+                  <h2 className="mt-0.5 truncate text-[15px] font-semibold text-foreground sm:mt-1 sm:text-lg lg:text-[1.18rem]">
                     Chat-based planning for {displayName}
                   </h2>
+                  <p className="mt-1 hidden text-sm leading-6 text-secondary-foreground/90 lg:block">
+                    Create blocks, clean up your day, and work through planning changes without leaving the dashboard.
+                  </p>
                 </div>
               </div>
 
@@ -428,7 +433,7 @@ export function AssistantShell({
               </p>
             </div>
 
-            <div className="hidden items-center gap-2 overflow-x-auto px-1 pb-1 soft-scrollbar sm:flex">
+            <div className="hidden items-center gap-2 overflow-x-auto px-1 pb-1 soft-scrollbar sm:flex lg:pb-0">
               <span className="data-chip shrink-0">{snapshot.tasks.length} visible</span>
               <span className="data-chip shrink-0">{snapshot.summary.executionScore}% score</span>
               <span className="data-chip shrink-0">{snapshot.summary.completedTasks} done</span>
@@ -440,23 +445,23 @@ export function AssistantShell({
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <div
             ref={chatScrollRef}
-            className="soft-scrollbar h-full overflow-y-auto overscroll-contain px-4 py-4 pb-8 sm:px-6 sm:py-6 sm:pb-12"
+            className="soft-scrollbar h-full overflow-y-auto overscroll-contain px-4 py-4 pb-8 sm:px-6 sm:py-6 sm:pb-12 lg:px-8 lg:py-5 lg:pb-6"
           >
-            <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col">
+            <div className={cn(CHAT_COLUMN_CLASS, "flex min-h-full flex-col")}>
               {!hasConversation ? (
-                <div className="flex flex-1 flex-col items-center justify-center py-3 text-center sm:py-8">
+                <div className="flex flex-1 flex-col items-center justify-center py-3 text-center sm:py-8 lg:py-6">
                   <span className="inline-flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-[20px] border border-border/75 bg-white shadow-[0_14px_28px_rgba(15,23,42,0.06)] sm:h-16 sm:w-16 sm:rounded-[24px] sm:shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
                     <LogoMark className="h-10 w-10 rounded-[16px] sm:h-11 sm:w-11 sm:rounded-[18px]" />
                   </span>
 
-                  <h3 className="mt-5 max-w-[16rem] font-display text-[2rem] font-semibold tracking-[-0.05em] text-foreground sm:max-w-3xl sm:text-[2.6rem]">
+                  <h3 className="mt-5 max-w-[16rem] font-display text-[2rem] font-semibold tracking-[-0.05em] text-foreground sm:max-w-3xl sm:text-[2.35rem] lg:max-w-[32rem] lg:text-[2rem]">
                     How can I help with {formatDateLabel(snapshot.taskDate)}?
                   </h3>
-                  <p className="mt-3 max-w-[19rem] text-sm leading-6 text-secondary-foreground sm:max-w-2xl">
+                  <p className="mt-3 max-w-[19rem] text-sm leading-6 text-secondary-foreground sm:max-w-2xl lg:max-w-[38rem]">
                     Ask naturally. I can add blocks, clean up the day, summarize progress, or turn a brain dump into a balanced plan.
                   </p>
 
-                  <div className="mt-7 grid w-full gap-2.5 sm:mt-8 sm:grid-cols-3 sm:gap-3">
+                  <div className="mt-7 grid w-full gap-2.5 sm:mt-8 sm:grid-cols-3 sm:gap-3 lg:mt-6">
                     {STARTER_PROMPTS.map((prompt) => (
                       <StarterPromptCard
                         key={prompt}
@@ -468,7 +473,7 @@ export function AssistantShell({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-5 pb-3 sm:space-y-7 sm:pb-4">
+                <div className="space-y-5 pb-3 sm:space-y-7 sm:pb-4 lg:space-y-6 lg:pb-2">
                   {visibleMessages.map((message) => (
                     <div key={message.id} className="space-y-3">
                       <MessageBubble message={message} />
@@ -500,18 +505,18 @@ export function AssistantShell({
             </div>
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[rgba(250,252,255,0.98)] via-[rgba(250,252,255,0.84)] to-transparent sm:h-24" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[rgba(250,252,255,0.98)] via-[rgba(250,252,255,0.84)] to-transparent sm:h-24 lg:h-14 lg:from-white/96 lg:via-white/70" />
         </div>
 
-        <div className="shrink-0 border-t border-black/6 bg-[rgba(248,248,248,0.96)] px-3 pb-[calc(0.85rem+env(safe-area-inset-bottom))] pt-3 sm:border-border/65 sm:bg-[linear-gradient(180deg,rgba(250,252,255,0.82),rgba(250,252,255,0.98))] sm:px-6 sm:py-4">
-          <div className="mx-auto w-full max-w-4xl">
+        <div className="shrink-0 border-t border-black/6 bg-[rgba(248,248,248,0.96)] px-3 pb-[calc(0.85rem+env(safe-area-inset-bottom))] pt-3 sm:border-border/65 sm:bg-[linear-gradient(180deg,rgba(250,252,255,0.82),rgba(250,252,255,0.98))] sm:px-6 sm:py-4 lg:sticky lg:bottom-0 lg:z-10 lg:border-border/70 lg:bg-white/95 lg:px-8 lg:py-5">
+          <div className={CHAT_COLUMN_CLASS}>
             {pendingFollowUp ? (
               <p className="mb-2 px-1 text-[11px] text-secondary-foreground sm:text-xs">
                 Continue with the missing detail for the current draft.
               </p>
             ) : null}
 
-            <div className="rounded-[22px] border border-border/80 bg-white p-2 shadow-[0_10px_24px_rgba(15,23,42,0.07)] sm:rounded-[28px] sm:bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.96))] sm:p-2.5 sm:shadow-[0_20px_44px_rgba(15,23,42,0.12)] sm:backdrop-blur-xl">
+            <div className="rounded-[22px] border border-border/80 bg-white p-2 shadow-[0_10px_24px_rgba(15,23,42,0.07)] sm:rounded-[28px] sm:bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.96))] sm:p-2.5 sm:shadow-[0_20px_44px_rgba(15,23,42,0.12)] sm:backdrop-blur-xl lg:rounded-[24px] lg:border-border/70 lg:bg-white lg:p-3 lg:shadow-[0_14px_32px_rgba(15,23,42,0.08)] lg:backdrop-blur-none">
               <form
                 className="flex items-end gap-2"
                 onSubmit={(event) => {
