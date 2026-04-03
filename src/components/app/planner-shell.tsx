@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { Bell, Mail, Plus } from "lucide-react";
+import { Bell, Mail, Plus, Sparkles } from "lucide-react";
 
+import { AssistantShell } from "@/components/app/assistant-shell";
 import { DateSwitcher } from "@/components/app/date-switcher";
 import { DashboardView } from "@/components/app/dashboard-view";
 import { LeaderboardView } from "@/components/app/leaderboard-view";
@@ -341,6 +342,58 @@ export function PlannerShell({
     [handleOpenWorkspaceTab, viewMode, workspaceTab],
   );
 
+  const refreshWorkspaceDate = useCallback(
+    async function refreshWorkspaceDate(
+      nextDate: string,
+      options?: {
+        forceRefresh?: boolean;
+        nextTab?: WorkspaceTab;
+      },
+    ) {
+      if (!isValidDateKey(nextDate)) {
+        return;
+      }
+
+      const targetTab = options?.nextTab ?? "plan";
+
+      if (nextDate === snapshot.taskDate && !options?.forceRefresh) {
+        if (options?.nextTab) {
+          handleOpenWorkspaceTab(options.nextTab);
+        }
+
+        return;
+      }
+
+      if (nextDate !== snapshot.taskDate) {
+        playActionFeedback("navigate");
+      }
+
+      clearSelection();
+      setEditorTask(null);
+      setRecurringSeriesEditor(null);
+      setComposerDefaults(null);
+      setFocusedTaskId(null);
+      setNotice(null);
+      setWorkspaceTab(targetTab);
+      setBusyMode("navigation");
+
+      try {
+        const nextSnapshot = await fetchDashboardSnapshot(nextDate);
+        setSnapshot(nextSnapshot);
+        setFollowToday(nextDate === formatDateKey(new Date()));
+        syncWorkspaceLocation(nextDate, targetTab);
+      } catch (error) {
+        setNotice({
+          type: "error",
+          message: getErrorMessage(error),
+        });
+      } finally {
+        setBusyMode(null);
+      }
+    },
+    [clearSelection, handleOpenWorkspaceTab, playActionFeedback, snapshot.taskDate, syncWorkspaceLocation],
+  );
+
   function toggleTaskSelection(taskId: string) {
     setSelectedTaskIds((current) =>
       current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId],
@@ -603,41 +656,11 @@ export function PlannerShell({
     })();
   }
 
-  function handleSelectDate(nextDate: string, options?: { nextTab?: WorkspaceTab }) {
-    if (!isValidDateKey(nextDate) || nextDate === snapshot.taskDate) {
-      if (options?.nextTab) {
-        handleOpenWorkspaceTab(options.nextTab);
-      }
-
-      return;
-    }
-
-    playActionFeedback("navigate");
-    clearSelection();
-    setEditorTask(null);
-    setRecurringSeriesEditor(null);
-    setComposerDefaults(null);
-    setFocusedTaskId(null);
-    setNotice(null);
-    setWorkspaceTab(options?.nextTab ?? "plan");
-
-    setBusyMode("navigation");
-
-    void (async () => {
-      try {
-        const nextSnapshot = await fetchDashboardSnapshot(nextDate);
-        setSnapshot(nextSnapshot);
-        setFollowToday(nextDate === formatDateKey(new Date()));
-        syncWorkspaceLocation(nextDate, options?.nextTab);
-      } catch (error) {
-        setNotice({
-          type: "error",
-          message: getErrorMessage(error),
-        });
-      } finally {
-        setBusyMode(null);
-      }
-    })();
+  function handleSelectDate(
+    nextDate: string,
+    options?: { forceRefresh?: boolean; nextTab?: WorkspaceTab },
+  ) {
+    void refreshWorkspaceDate(nextDate, options);
   }
 
   function handleDeleteTask(task: PlannerTask) {
@@ -921,6 +944,10 @@ export function PlannerShell({
     () => getWorkspaceHref(snapshot.taskDate, now, "plan"),
     [now, snapshot.taskDate],
   );
+  const assistantHref = useMemo(
+    () => getWorkspaceHref(snapshot.taskDate, now, "assistant"),
+    [now, snapshot.taskDate],
+  );
   const settingsHref = useMemo(
     () => getWorkspaceHref(snapshot.taskDate, now, "settings"),
     [now, snapshot.taskDate],
@@ -1058,12 +1085,18 @@ export function PlannerShell({
   const activePage =
     workspaceTab === "plan"
       ? "planner"
+      : workspaceTab === "assistant"
+        ? "assistant"
       : workspaceTab === "settings"
         ? "settings"
         : "notifications";
   const activeMetricLabel =
     workspaceTab === "plan"
       ? headerMetric.label
+      : workspaceTab === "assistant"
+        ? snapshot.tasks.length > 0
+          ? `${snapshot.tasks.length} visible`
+          : "Ready to plan"
       : workspaceTab === "settings"
         ? activeChannelCount > 0
           ? `${activeChannelCount} channel${activeChannelCount === 1 ? "" : "s"} on`
@@ -1072,6 +1105,8 @@ export function PlannerShell({
   const activeMetricTone =
     workspaceTab === "plan"
       ? headerMetric.tone
+      : workspaceTab === "assistant"
+        ? "brand"
       : workspaceTab === "settings"
         ? activeChannelCount > 0
           ? "brand"
@@ -1080,6 +1115,8 @@ export function PlannerShell({
   const activeMetricIcon =
     workspaceTab === "plan"
       ? undefined
+      : workspaceTab === "assistant"
+        ? Sparkles
       : workspaceTab === "settings"
         ? activeChannelCount > 0
           ? Mail
@@ -1088,6 +1125,8 @@ export function PlannerShell({
   const activeDateLabel =
     workspaceTab === "plan"
       ? dateLabel
+      : workspaceTab === "assistant"
+        ? "DayStack Assistant"
       : workspaceTab === "settings"
         ? "Notifications & reminders"
         : "Notifications";
@@ -1098,6 +1137,8 @@ export function PlannerShell({
         : dateMode === "past"
           ? "Review what this day looked like."
           : "Plan and execute in one surface."
+      : workspaceTab === "assistant"
+        ? "Ask for guidance, then confirm changes before they touch the plan."
       : workspaceTab === "settings"
         ? "Manage how DayStack nudges the plan."
         : "Approve meeting blocks and open the linked schedule in one place.";
@@ -1137,12 +1178,16 @@ export function PlannerShell({
       ? dateMode === "today"
         ? "Today"
         : relativeDateLabel
+      : workspaceTab === "assistant"
+        ? "Assistant"
       : workspaceTab === "settings"
         ? "Settings"
         : "Inbox";
   const mobileHeaderSubtitle =
     workspaceTab === "plan"
       ? dateLabel
+      : workspaceTab === "assistant"
+        ? "Grounded to the selected day before it changes anything."
       : workspaceTab === "settings"
         ? "Manage reminders, meeting emails, and app feedback."
         : "Meeting mentions and approvals in one stream.";
@@ -1151,6 +1196,8 @@ export function PlannerShell({
   const mobileTaskCountLabel =
     workspaceTab === "plan"
       ? `${snapshot.tasks.length} block${snapshot.tasks.length === 1 ? "" : "s"}`
+      : workspaceTab === "assistant"
+        ? `${snapshot.recurringBlocks.length} recurring`
       : workspaceTab === "settings"
         ? activeChannelCount > 0
           ? `${activeChannelCount} active`
@@ -1158,10 +1205,17 @@ export function PlannerShell({
         : `${initialNotifications.length} updates`;
 
   return (
-    <main className="min-h-screen">
+    <main className={cn(workspaceTab === "assistant" ? "h-screen overflow-hidden" : "min-h-screen")}>
       <div className="mobile-app-shell mobile-safe-x mobile-viewport-shell overflow-hidden lg:hidden">
         <div className="flex h-full flex-col">
-          <div className="soft-scrollbar flex-1 overflow-y-auto overscroll-y-contain">
+          <div
+            className={cn(
+              "soft-scrollbar flex-1 overscroll-y-contain",
+              workspaceTab === "assistant"
+                ? "flex min-h-0 flex-col overflow-hidden"
+                : "overflow-y-auto",
+            )}
+          >
             <MobileWorkspaceHeader
           title={mobileHeaderTitle}
           subtitle={mobileHeaderSubtitle}
@@ -1201,7 +1255,14 @@ export function PlannerShell({
               </div>
             ) : null}
 
-            <div className="mobile-shell-width mobile-stack mx-auto pb-4 pt-4">
+            <div
+              className={cn(
+                "mobile-shell-width mx-auto",
+                workspaceTab === "assistant"
+                  ? "flex min-h-0 flex-1 flex-col px-0 pb-2 pt-3"
+                  : "mobile-stack pb-4 pt-4",
+              )}
+            >
           {workspaceTab === "plan" ? (
             <>
               <section className="mobile-surface relative overflow-hidden px-4 py-4">
@@ -1388,6 +1449,20 @@ export function PlannerShell({
                 )}
               </section>
             </>
+          ) : workspaceTab === "assistant" ? (
+            <section className="min-h-0 flex flex-1 flex-col">
+              <AssistantShell
+                displayName={displayName}
+                onNotice={setNotice}
+                onRefreshContext={(nextDate) =>
+                  refreshWorkspaceDate(nextDate, {
+                    forceRefresh: true,
+                    nextTab: "assistant",
+                  })
+                }
+                snapshot={snapshot}
+              />
+            </section>
           ) : workspaceTab === "settings" ? (
             <WorkspaceSettingsContent
               compact
@@ -1425,7 +1500,9 @@ export function PlannerShell({
 
           <MobileBottomNav
             activeTab={workspaceTab === "plan" ? "plan" : workspaceTab}
+            assistantHref={assistantHref}
             notificationsHref={notificationsHref}
+            onOpenAssistant={() => handleOpenWorkspaceTab("assistant")}
             onOpenNotifications={() => handleOpenWorkspaceTab("notifications")}
             onOpenPlan={() => handleOpenWorkspaceTab("plan")}
             onOpenSettings={() => handleOpenWorkspaceTab("settings")}
@@ -1436,246 +1513,273 @@ export function PlannerShell({
         </div>
       </div>
 
-      <div className="container-shell hidden min-h-screen py-4 sm:py-6 lg:block">
-      <div className="space-y-4 sm:space-y-5">
-        <PlannerHeader
-          activePage={activePage}
-          displayName={displayName}
-          email={email}
-          dateLabel={activeDateLabel}
-          dateMode={workspaceTab === "plan" ? dateMode : undefined}
-          metricIcon={activeMetricIcon}
-          metricLabel={activeMetricLabel}
-          metricTone={activeMetricTone}
-          notificationsHref={notificationsHref}
-          onNotice={setNotice}
-          onOpenNotifications={() => handleOpenWorkspaceTab("notifications")}
-          onOpenPlanner={() => handleOpenWorkspaceTab("plan")}
-          onOpenSettings={() => handleOpenWorkspaceTab("settings")}
-          onOpenTaskDay={handleOpenTaskDay}
-          onTaskAccepted={handleNotificationAccepted}
-          plannerHref={plannerHref}
-          settingsHref={settingsHref}
-          showNotificationCenter={workspaceTab === "plan"}
-          streak={workspaceTab === "plan" ? snapshot.streak : undefined}
-          subtitle={activeSubtitle}
-          viewMode={viewMode}
-          pomodoroHref={pomodoroHref}
-          onAddTask={workspaceTab === "plan" ? () => handleCreateTask() : undefined}
-          onViewChange={handleChangePlannerView}
-          onSignOutError={(message) =>
-            setNotice({
-              type: "error",
-              message,
-            })
-          }
-        />
-
-        {notice ? (
-          <div className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center px-4">
-            <div
-              aria-live="polite"
-              className={`pointer-events-auto min-w-[16rem] rounded-full border px-4 py-2.5 text-sm shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl ${
-                notice.type === "success"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-red-200 bg-red-50 text-danger"
-              }`}
-            >
-              {notice.message}
-            </div>
-          </div>
-        ) : null}
-
-        <section className={cn("min-w-0", workspaceTab !== "plan" && "hidden")}>
-          <div
-            className={cn("glass-panel relative p-4 sm:p-5", isSurfaceRefreshing && "opacity-90")}
-            aria-busy={isSurfaceRefreshing}
-          >
-            <div
-              className={cn(
-                "pointer-events-none absolute inset-x-6 top-0 h-px bg-brand-gradient transition-opacity duration-150",
-                isSurfaceRefreshing ? "opacity-100" : "opacity-0",
-              )}
-            />
-
-            <div className="flex flex-col gap-4 border-b border-border/70 pb-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="section-label">{viewCopy.eyebrow}</p>
-                  <h2 className="mt-1 font-display text-2xl font-semibold text-foreground sm:text-[2rem]">
-                    {viewCopy.title}
-                  </h2>
-                  <p className="mt-1.5 text-sm text-secondary-foreground">{viewCopy.description}</p>
-                </div>
-                <div className="hidden flex-wrap items-center gap-2 sm:flex">
-                  <span className="data-chip">{relativeDateLabel}</span>
-                  <span className="data-chip">
-                    {viewMode === "recurring"
-                      ? `${snapshot.recurringBlocks.length} recurring`
-                      : `${snapshot.tasks.length} block${snapshot.tasks.length === 1 ? "" : "s"}`}
-                  </span>
-                  {viewMode === "list" && snapshot.tasks.length > 0 && !selectionMode ? (
-                    <button
-                      suppressHydrationWarning
-                      type="button"
-                      className="ui-pressable inline-flex h-9 items-center justify-center rounded-full border border-border/80 bg-white/92 px-3 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] hover:bg-white focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
-                      onClick={() => setSelectionMode(true)}
-                      disabled={isPending}
-                    >
-                      Select
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-
-              <DateSwitcher
-                dateLabel={dateLabel}
-                dateMode={dateMode}
-                isPending={isSurfaceRefreshing}
-                onSelectDate={handleSelectDate}
-                selectedDate={snapshot.taskDate}
-                todayDate={todayDate}
-              />
-
-              {viewMode === "list" && snapshot.tasks.length > 0 && !selectionMode ? (
-                <div className="sm:hidden">
-                  <button
-                    suppressHydrationWarning
-                    type="button"
-                    className="ui-pressable inline-flex h-10 items-center justify-center rounded-full border border-border/80 bg-white/92 px-4 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] hover:bg-white focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
-                    onClick={() => setSelectionMode(true)}
-                    disabled={isPending}
-                  >
-                    Select
-                  </button>
-                </div>
-              ) : null}
-
-              {viewMode === "list" && selectionMode ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-border/80 bg-white/86 px-3 py-2.5 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground">
-                      {selectedTaskIds.length} selected
-                    </span>
-                    <span className="hidden text-xs text-secondary-foreground sm:inline">
-                      Choose the blocks you want to delete together.
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      suppressHydrationWarning
-                      type="button"
-                      className="ui-pressable inline-flex h-10 items-center justify-center rounded-full border border-red-200 bg-red-50 px-4 text-sm font-semibold text-danger shadow-[0_10px_24px_rgba(239,68,68,0.1)] hover:bg-red-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
-                      onClick={handleDeleteSelectedTasks}
-                      disabled={isPending || selectedTaskIds.length === 0}
-                    >
-                      Delete selected
-                    </button>
-                    <button
-                      suppressHydrationWarning
-                      type="button"
-                      className="ui-pressable inline-flex h-10 items-center justify-center rounded-full border border-border/80 bg-white/92 px-4 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] hover:bg-white focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
-                      onClick={clearSelection}
-                      disabled={isPending}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="mt-4">
-              {viewMode === "dashboard" ? (
-                <DashboardView
-                  dateLabel={dateLabel}
-                  dateMode={dateMode}
-                  isPending={isPending}
-                  now={now}
-                  onAddTask={handleCreateTaskFromDashboard}
-                  onEditTask={handleEditTask}
-                  onStartFocusTask={handleStartFocusTask}
-                  streak={snapshot.streak}
-                  summary={snapshot.summary}
-                  taskDate={snapshot.taskDate}
-                  tasks={snapshot.tasks}
-                />
-              ) : viewMode === "recurring" ? (
-                <RecurringBlocksView
-                  blocks={snapshot.recurringBlocks}
-                  isPending={isPending}
-                  onDeleteBlock={handleDeleteRecurringBlock}
-                  onEditBlock={handleEditRecurringBlock}
-                />
-              ) : viewMode === "leaderboard" ? (
-                <LeaderboardView currentUserId={userId} entries={snapshot.leaderboard} />
-              ) : viewMode === "grid" ? (
-                <TimelineGrid
-                  focusedTaskId={focusedTaskId}
-                  tasks={snapshot.tasks}
-                  taskDate={snapshot.taskDate}
-                  now={now}
-                  resolveVisualState={resolveTaskVisualState}
-                  isPending={isPending}
-                  onAddTask={handleCreateTask}
-                  onEditTask={handleEditTask}
-                  onRescheduleTask={handleRescheduleTask}
-                  onStartFocusTask={handleStartFocusTask}
-                  onToggleTask={handleToggleTask}
-                />
-              ) : (
-                <TimelineList
-                  focusedTaskId={focusedTaskId}
-                  tasks={snapshot.tasks}
-                  resolveVisualState={resolveTaskVisualState}
-                  isPending={isPending}
-                  onAddTask={handleCreateTask}
-                  onEditTask={handleEditTask}
-                  onDeleteTask={handleDeleteTask}
-                  onStartFocusTask={handleStartFocusTask}
-                  onToggleTaskSelection={toggleTaskSelection}
-                  onToggleTask={handleToggleTask}
-                  selectedTaskIds={selectedTaskIds}
-                  selectionMode={selectionMode}
-                />
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className={cn("min-w-0", workspaceTab !== "settings" && "hidden")}>
-          <WorkspaceSettingsContent
-            actionSoundsEnabled={soundsEnabled}
+      <div
+        className={cn(
+          "container-shell hidden lg:block",
+          workspaceTab === "assistant" ? "h-screen overflow-hidden py-4 sm:py-6" : "min-h-screen py-4 sm:py-6",
+        )}
+      >
+        <div
+          className={cn(
+            workspaceTab === "assistant" ? "flex h-full min-h-0 flex-col gap-4 sm:gap-5" : "space-y-4 sm:space-y-5",
+          )}
+        >
+          <PlannerHeader
+            activePage={activePage}
+            assistantHref={assistantHref}
             displayName={displayName}
             email={email}
-            isBusy={isNotificationPending}
-            notificationPreferences={notificationPreferences}
+            dateLabel={activeDateLabel}
+            dateMode={workspaceTab === "plan" ? dateMode : undefined}
+            metricIcon={activeMetricIcon}
+            metricLabel={activeMetricLabel}
+            metricTone={activeMetricTone}
+            onOpenAssistant={() => handleOpenWorkspaceTab("assistant")}
+            notificationsHref={notificationsHref}
             onNotice={setNotice}
+            onOpenNotifications={() => handleOpenWorkspaceTab("notifications")}
             onOpenPlanner={() => handleOpenWorkspaceTab("plan")}
-            onSendTest={sendTestNotification}
-            onSaveLeadMinutes={updateEmailReminderLeadMinutes}
-            onSignOut={handleSignOut}
-            onToggleActionSounds={setSoundsEnabled}
-            onToggleEmail={toggleEmailReminders}
-            onToggleMeetingMentionEmail={toggleMeetingMentionEmails}
-            selectedDate={auxiliarySelectedDate}
-          />
-        </section>
-
-        <section className={cn("min-w-0", workspaceTab !== "notifications" && "hidden")}>
-          <WorkspaceNotificationsContent
-            displayName={displayName}
-            email={email}
-            initialNotifications={initialNotifications}
-            isActive={workspaceTab === "notifications"}
-            onNotice={setNotice}
-            onOpenPlanner={() => handleOpenWorkspaceTab("plan")}
+            onOpenSettings={() => handleOpenWorkspaceTab("settings")}
             onOpenTaskDay={handleOpenTaskDay}
             onTaskAccepted={handleNotificationAccepted}
-            selectedDate={auxiliarySelectedDate}
+            plannerHref={plannerHref}
+            settingsHref={settingsHref}
+            showNotificationCenter={workspaceTab === "plan"}
+            streak={workspaceTab === "plan" ? snapshot.streak : undefined}
+            subtitle={activeSubtitle}
+            viewMode={viewMode}
+            pomodoroHref={pomodoroHref}
+            onAddTask={workspaceTab === "plan" ? () => handleCreateTask() : undefined}
+            onViewChange={handleChangePlannerView}
+            onSignOutError={(message) =>
+              setNotice({
+                type: "error",
+                message,
+              })
+            }
           />
-        </section>
-      </div>
+
+          {notice ? (
+            <div className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center px-4">
+              <div
+                aria-live="polite"
+                className={`pointer-events-auto min-w-[16rem] rounded-full border px-4 py-2.5 text-sm shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl ${
+                  notice.type === "success"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-red-200 bg-red-50 text-danger"
+                }`}
+              >
+                {notice.message}
+              </div>
+            </div>
+          ) : null}
+
+          <div className={cn("space-y-4", workspaceTab === "assistant" && "flex min-h-0 flex-1 flex-col")}>
+            <section className={cn("min-w-0", workspaceTab !== "plan" && "hidden")}>
+              <div
+                className={cn("glass-panel relative p-4 sm:p-5", isSurfaceRefreshing && "opacity-90")}
+                aria-busy={isSurfaceRefreshing}
+              >
+                <div
+                  className={cn(
+                    "pointer-events-none absolute inset-x-6 top-0 h-px bg-brand-gradient transition-opacity duration-150",
+                    isSurfaceRefreshing ? "opacity-100" : "opacity-0",
+                  )}
+                />
+
+                <div className="flex flex-col gap-4 border-b border-border/70 pb-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="section-label">{viewCopy.eyebrow}</p>
+                      <h2 className="mt-1 font-display text-2xl font-semibold text-foreground sm:text-[2rem]">
+                        {viewCopy.title}
+                      </h2>
+                      <p className="mt-1.5 text-sm text-secondary-foreground">{viewCopy.description}</p>
+                    </div>
+                    <div className="hidden flex-wrap items-center gap-2 sm:flex">
+                      <span className="data-chip">{relativeDateLabel}</span>
+                      <span className="data-chip">
+                        {viewMode === "recurring"
+                          ? `${snapshot.recurringBlocks.length} recurring`
+                          : `${snapshot.tasks.length} block${snapshot.tasks.length === 1 ? "" : "s"}`}
+                      </span>
+                      {viewMode === "list" && snapshot.tasks.length > 0 && !selectionMode ? (
+                        <button
+                          suppressHydrationWarning
+                          type="button"
+                          className="ui-pressable inline-flex h-9 items-center justify-center rounded-full border border-border/80 bg-white/92 px-3 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] hover:bg-white focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
+                          onClick={() => setSelectionMode(true)}
+                          disabled={isPending}
+                        >
+                          Select
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <DateSwitcher
+                    dateLabel={dateLabel}
+                    dateMode={dateMode}
+                    isPending={isSurfaceRefreshing}
+                    onSelectDate={handleSelectDate}
+                    selectedDate={snapshot.taskDate}
+                    todayDate={todayDate}
+                  />
+
+                  {viewMode === "list" && snapshot.tasks.length > 0 && !selectionMode ? (
+                    <div className="sm:hidden">
+                      <button
+                        suppressHydrationWarning
+                        type="button"
+                        className="ui-pressable inline-flex h-10 items-center justify-center rounded-full border border-border/80 bg-white/92 px-4 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] hover:bg-white focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
+                        onClick={() => setSelectionMode(true)}
+                        disabled={isPending}
+                      >
+                        Select
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {viewMode === "list" && selectionMode ? (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-border/80 bg-white/86 px-3 py-2.5 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="text-sm font-semibold text-foreground">
+                          {selectedTaskIds.length} selected
+                        </span>
+                        <span className="hidden text-xs text-secondary-foreground sm:inline">
+                          Choose the blocks you want to delete together.
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          suppressHydrationWarning
+                          type="button"
+                          className="ui-pressable inline-flex h-10 items-center justify-center rounded-full border border-red-200 bg-red-50 px-4 text-sm font-semibold text-danger shadow-[0_10px_24px_rgba(239,68,68,0.1)] hover:bg-red-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
+                          onClick={handleDeleteSelectedTasks}
+                          disabled={isPending || selectedTaskIds.length === 0}
+                        >
+                          Delete selected
+                        </button>
+                        <button
+                          suppressHydrationWarning
+                          type="button"
+                          className="ui-pressable inline-flex h-10 items-center justify-center rounded-full border border-border/80 bg-white/92 px-4 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] hover:bg-white focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] disabled:translate-y-0 disabled:opacity-60"
+                          onClick={clearSelection}
+                          disabled={isPending}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="mt-4">
+                  {viewMode === "dashboard" ? (
+                    <DashboardView
+                      dateLabel={dateLabel}
+                      dateMode={dateMode}
+                      isPending={isPending}
+                      now={now}
+                      onAddTask={handleCreateTaskFromDashboard}
+                      onEditTask={handleEditTask}
+                      onStartFocusTask={handleStartFocusTask}
+                      streak={snapshot.streak}
+                      summary={snapshot.summary}
+                      taskDate={snapshot.taskDate}
+                      tasks={snapshot.tasks}
+                    />
+                  ) : viewMode === "recurring" ? (
+                    <RecurringBlocksView
+                      blocks={snapshot.recurringBlocks}
+                      isPending={isPending}
+                      onDeleteBlock={handleDeleteRecurringBlock}
+                      onEditBlock={handleEditRecurringBlock}
+                    />
+                  ) : viewMode === "leaderboard" ? (
+                    <LeaderboardView currentUserId={userId} entries={snapshot.leaderboard} />
+                  ) : viewMode === "grid" ? (
+                    <TimelineGrid
+                      focusedTaskId={focusedTaskId}
+                      tasks={snapshot.tasks}
+                      taskDate={snapshot.taskDate}
+                      now={now}
+                      resolveVisualState={resolveTaskVisualState}
+                      isPending={isPending}
+                      onAddTask={handleCreateTask}
+                      onEditTask={handleEditTask}
+                      onRescheduleTask={handleRescheduleTask}
+                      onStartFocusTask={handleStartFocusTask}
+                      onToggleTask={handleToggleTask}
+                    />
+                  ) : (
+                    <TimelineList
+                      focusedTaskId={focusedTaskId}
+                      tasks={snapshot.tasks}
+                      resolveVisualState={resolveTaskVisualState}
+                      isPending={isPending}
+                      onAddTask={handleCreateTask}
+                      onEditTask={handleEditTask}
+                      onDeleteTask={handleDeleteTask}
+                      onStartFocusTask={handleStartFocusTask}
+                      onToggleTaskSelection={toggleTaskSelection}
+                      onToggleTask={handleToggleTask}
+                      selectedTaskIds={selectedTaskIds}
+                      selectionMode={selectionMode}
+                    />
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className={cn("min-w-0", workspaceTab !== "assistant" && "hidden", workspaceTab === "assistant" && "min-h-0 flex-1")}>
+              <AssistantShell
+                displayName={displayName}
+                onNotice={setNotice}
+                onRefreshContext={(nextDate) =>
+                  refreshWorkspaceDate(nextDate, {
+                    forceRefresh: true,
+                    nextTab: "assistant",
+                  })
+                }
+                snapshot={snapshot}
+              />
+            </section>
+
+            <section className={cn("min-w-0", workspaceTab !== "settings" && "hidden")}>
+              <WorkspaceSettingsContent
+                actionSoundsEnabled={soundsEnabled}
+                displayName={displayName}
+                email={email}
+                isBusy={isNotificationPending}
+                notificationPreferences={notificationPreferences}
+                onNotice={setNotice}
+                onOpenPlanner={() => handleOpenWorkspaceTab("plan")}
+                onSendTest={sendTestNotification}
+                onSaveLeadMinutes={updateEmailReminderLeadMinutes}
+                onSignOut={handleSignOut}
+                onToggleActionSounds={setSoundsEnabled}
+                onToggleEmail={toggleEmailReminders}
+                onToggleMeetingMentionEmail={toggleMeetingMentionEmails}
+                selectedDate={auxiliarySelectedDate}
+              />
+            </section>
+
+            <section className={cn("min-w-0", workspaceTab !== "notifications" && "hidden")}>
+              <WorkspaceNotificationsContent
+                displayName={displayName}
+                email={email}
+                initialNotifications={initialNotifications}
+                isActive={workspaceTab === "notifications"}
+                onNotice={setNotice}
+                onOpenPlanner={() => handleOpenWorkspaceTab("plan")}
+                onOpenTaskDay={handleOpenTaskDay}
+                onTaskAccepted={handleNotificationAccepted}
+                selectedDate={auxiliarySelectedDate}
+              />
+            </section>
+          </div>
+        </div>
       </div>
 
       <TaskModal

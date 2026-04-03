@@ -34,7 +34,7 @@ export type TaskNotificationStatus = TaskNotificationRecord["status"];
 export type TaskPropagationMode = "owner_only" | "owner_and_accepted_copies";
 export type TaskMode = "one_time" | "recurring";
 export type RecurringTaskScope = "occurrence_only" | "this_and_future";
-export type WorkspaceTab = "notifications" | "plan" | "settings";
+export type WorkspaceTab = "assistant" | "notifications" | "plan" | "settings";
 
 export interface AutomationApiKeySummary {
   createdAt: string;

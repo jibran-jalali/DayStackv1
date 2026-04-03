@@ -40,6 +40,11 @@ function getPomodoroHref(taskDate: string, now: Date) {
   return taskDate === todayDate ? "/app/pomodoro" : `/app/pomodoro?date=${taskDate}`;
 }
 
+function getAssistantHref(taskDate: string, now: Date) {
+  const todayDate = formatDateKey(now);
+  return taskDate === todayDate ? "/app?tab=assistant" : `/app?tab=assistant&date=${taskDate}`;
+}
+
 function getSettingsHref(taskDate: string, now: Date) {
   const todayDate = formatDateKey(now);
   return taskDate === todayDate ? "/app/settings" : `/app/settings?date=${taskDate}`;
@@ -172,6 +177,10 @@ export function PomodoroShell({ displayName, email, initialNowIso, initialSnapsh
     () => getPlannerHref(snapshot.taskDate, now),
     [now, snapshot.taskDate],
   );
+  const assistantHref = useMemo(
+    () => getAssistantHref(snapshot.taskDate, now),
+    [now, snapshot.taskDate],
+  );
   const pomodoroHref = useMemo(
     () => getPomodoroHref(snapshot.taskDate, now),
     [now, snapshot.taskDate],
@@ -246,6 +255,7 @@ export function PomodoroShell({ displayName, email, initialNowIso, initialSnapsh
 
           <MobileBottomNav
             activeTab={null}
+            assistantHref={assistantHref}
             notificationsHref={notificationsHref}
             onPlayNavigate={() => playActionFeedback("navigate")}
             plannerHref={plannerHref}
@@ -258,6 +268,7 @@ export function PomodoroShell({ displayName, email, initialNowIso, initialSnapsh
       <div className="space-y-4 sm:space-y-5">
         <PlannerHeader
           activePage="pomodoro"
+          assistantHref={assistantHref}
           dateLabel={dateLabel}
           displayName={displayName}
           email={email}

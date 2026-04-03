@@ -31,6 +31,14 @@ function getPlannerHref(returnDate?: string) {
   return `/app?date=${returnDate}`;
 }
 
+function getAssistantHref(returnDate?: string) {
+  if (!returnDate) {
+    return "/app?tab=assistant";
+  }
+
+  return `/app?tab=assistant&date=${returnDate}`;
+}
+
 function getSettingsHref(returnDate?: string) {
   if (!returnDate) {
     return "/app/settings";
@@ -45,6 +53,7 @@ export function NotificationsShell({
   returnDate,
 }: NotificationsShellProps) {
   const [notice, setNotice] = useState<NoticeState>(null);
+  const assistantHref = useMemo(() => getAssistantHref(returnDate), [returnDate]);
   const plannerHref = useMemo(() => getPlannerHref(returnDate), [returnDate]);
   const settingsHref = useMemo(() => getSettingsHref(returnDate), [returnDate]);
 
@@ -88,6 +97,7 @@ export function NotificationsShell({
       <div className="space-y-4 sm:space-y-5">
         <PlannerHeader
           activePage="notifications"
+          assistantHref={assistantHref}
           dateLabel="Notifications"
           displayName={displayName}
           email={email}

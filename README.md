@@ -14,6 +14,7 @@ DayStack is a timeline-based daily execution planner built on:
 - Landing page at `/`
 - Email/password auth at `/login` and `/signup`
 - Protected planner at `/app`
+- AI chat assistant tab inside `/app`
 - Daily timeline planning with create/edit/delete/complete flows
 - Execution score and streak tracking
 - Meeting blocks with participant mentions
@@ -40,6 +41,8 @@ Optional:
 ```bash
 POSTGRES_URL_NON_POOLING=
 NEXTAUTH_URL=http://localhost:3000
+GROQ_API_KEY=
+GROQ_MODEL=llama-3.1-8b-instant
 GMAIL_SMTP_USER=
 GMAIL_SMTP_APP_PASSWORD=
 EMAIL_FROM_NAME=DayStack
@@ -96,6 +99,29 @@ Recommended setup:
 5. Deploy.
 
 For scheduled reminders, configure Vercel Cron to `POST /api/reminders/dispatch` with `Authorization: Bearer <CRON_SECRET>`.
+
+## DayStack Assistant
+
+DayStack now includes an AI assistant tab inside `/app`.
+
+What it can do:
+
+- Answer questions about how DayStack works
+- Draft planner changes from chat prompts
+- Create, edit, reschedule, complete, and delete visible blocks
+- Work with recurring blocks using confirmation before applying changes
+
+Setup:
+
+1. Add `GROQ_API_KEY` to `.env.local`.
+2. Optionally set `GROQ_MODEL` if you want a different Groq model than the default.
+3. Open the `Assistant` tab inside the app and start chatting.
+
+Notes:
+
+- The assistant is grounded to the currently selected day plus the visible tasks and recurring blocks in that context.
+- It always asks for confirmation before changing data.
+- If a request is ambiguous or the target is not visible in the current context, it will ask a follow-up question instead of guessing.
 
 ## Automation API
 

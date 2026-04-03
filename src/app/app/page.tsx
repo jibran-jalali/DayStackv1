@@ -32,7 +32,7 @@ interface AppPageProps {
 }
 
 function getWorkspaceTab(value: string | undefined): WorkspaceTab {
-  if (value === "notifications" || value === "settings") {
+  if (value === "assistant" || value === "notifications" || value === "settings") {
     return value;
   }
 

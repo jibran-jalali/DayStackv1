@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Bell, CalendarDays, Clock3, Flame, LoaderCircle, LogOut, Plus, Settings2 } from "lucide-react";
+import { Bell, CalendarDays, Clock3, Flame, LoaderCircle, LogOut, MessageSquareText, Plus, Settings2 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useTransition } from "react";
 
@@ -16,7 +16,8 @@ import { cn } from "@/lib/utils";
 import type { PlannerDateMode, TaskNotificationAcceptResult } from "@/types/daystack";
 
 interface PlannerHeaderProps {
-  activePage: "notifications" | "planner" | "pomodoro" | "settings";
+  activePage: "assistant" | "notifications" | "planner" | "pomodoro" | "settings";
+  assistantHref?: string;
   dateLabel: string;
   dateMode?: PlannerDateMode;
   displayName: string;
@@ -26,6 +27,7 @@ interface PlannerHeaderProps {
   metricTone?: "brand" | "default" | "success" | "warning";
   onAddTask?: () => void;
   onNotice?: (notice: { message: string; type: "error" | "success" }) => void;
+  onOpenAssistant?: () => void;
   onOpenNotifications?: () => void;
   onOpenPlanner?: () => void;
   onOpenSettings?: () => void;
@@ -45,9 +47,13 @@ interface PlannerHeaderProps {
 }
 
 function getEyebrow(
-  activePage: "notifications" | "planner" | "pomodoro" | "settings",
+  activePage: "assistant" | "notifications" | "planner" | "pomodoro" | "settings",
   dateMode?: PlannerDateMode,
 ) {
+  if (activePage === "assistant") {
+    return "Assistant";
+  }
+
   if (activePage === "settings") {
     return "Preferences";
   }
@@ -73,6 +79,7 @@ function getEyebrow(
 
 export function PlannerHeader({
   activePage,
+  assistantHref = "/app?tab=assistant",
   dateLabel,
   dateMode,
   displayName,
@@ -82,6 +89,7 @@ export function PlannerHeader({
   metricTone = "brand",
   onAddTask,
   onNotice,
+  onOpenAssistant,
   onOpenNotifications,
   onOpenPlanner,
   onOpenSettings,
@@ -201,6 +209,14 @@ export function PlannerHeader({
               onClick: activePage === "planner" ? undefined : onOpenPlanner,
             })
           )}
+
+          {renderNavPill({
+            active: activePage === "assistant",
+            href: assistantHref,
+            icon: MessageSquareText,
+            label: "Assistant",
+            onClick: activePage === "assistant" ? undefined : onOpenAssistant,
+          })}
 
           {renderNavPill({
             active: activePage === "notifications",

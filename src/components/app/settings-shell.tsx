@@ -41,6 +41,14 @@ function getSettingsHref(returnDate?: string) {
   return `/app/settings?date=${returnDate}`;
 }
 
+function getAssistantHref(returnDate?: string) {
+  if (!returnDate) {
+    return "/app?tab=assistant";
+  }
+
+  return `/app?tab=assistant&date=${returnDate}`;
+}
+
 function getNotificationsHref(returnDate?: string) {
   if (!returnDate) {
     return "/app/notifications";
@@ -82,6 +90,7 @@ export function SettingsShell({
   }, [notice]);
 
   const plannerHref = useMemo(() => getPlannerHref(returnDate), [returnDate]);
+  const assistantHref = useMemo(() => getAssistantHref(returnDate), [returnDate]);
   const notificationsHref = useMemo(() => getNotificationsHref(returnDate), [returnDate]);
   const settingsHref = useMemo(() => getSettingsHref(returnDate), [returnDate]);
   const activeChannelCount = [
@@ -94,6 +103,7 @@ export function SettingsShell({
       <div className="space-y-4 sm:space-y-5">
         <PlannerHeader
           activePage="settings"
+          assistantHref={assistantHref}
           dateLabel="Notifications & reminders"
           displayName={displayName}
           email={email}

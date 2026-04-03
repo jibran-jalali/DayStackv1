@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, CalendarDays, Settings2 } from "lucide-react";
+import { Bell, CalendarDays, MessageSquareText, Settings2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-type MobileBottomNavTab = "notifications" | "plan" | "settings";
+type MobileBottomNavTab = "assistant" | "notifications" | "plan" | "settings";
 
 interface MobileBottomNavProps {
   activeTab?: MobileBottomNavTab | null;
+  assistantHref?: string;
+  onOpenAssistant?: () => void;
   notificationsHref?: string;
   onOpenNotifications?: () => void;
   onOpenPlan?: () => void;
@@ -23,6 +25,11 @@ const navItems = [
     icon: CalendarDays,
     key: "plan",
     label: "Plan",
+  },
+  {
+    icon: MessageSquareText,
+    key: "assistant",
+    label: "Assistant",
   },
   {
     icon: Bell,
@@ -42,6 +49,8 @@ const navItems = [
 
 export function MobileBottomNav({
   activeTab,
+  assistantHref = "/app?tab=assistant",
+  onOpenAssistant,
   notificationsHref = "/app?tab=notifications",
   onOpenNotifications,
   onOpenPlan,
@@ -102,6 +111,30 @@ export function MobileBottomNav({
               <Link
                 key={item.key}
                 href={notificationsHref}
+                className={baseClassName}
+                onClick={() => onPlayNavigate?.()}
+              >
+                <Icon className="h-4.5 w-4.5" />
+                {item.label}
+              </Link>
+            );
+          }
+
+          if (item.key === "assistant") {
+            return onOpenAssistant ? (
+              <button
+                key={item.key}
+                type="button"
+                className={baseClassName}
+                onClick={onOpenAssistant}
+              >
+                <Icon className="h-4.5 w-4.5" />
+                {item.label}
+              </button>
+            ) : (
+              <Link
+                key={item.key}
+                href={assistantHref}
                 className={baseClassName}
                 onClick={() => onPlayNavigate?.()}
               >
