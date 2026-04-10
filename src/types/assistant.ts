@@ -17,6 +17,13 @@ export const assistantConversationMessageSchema = z.object({
   role: z.enum(["assistant", "user"]),
 });
 
+export const assistantResponseModeSchema = z.enum(["planner", "general", "web"]);
+
+export const assistantAnswerSourceSchema = z.object({
+  title: z.string().trim().min(1).max(300).optional(),
+  url: z.string().url("Use a valid source URL."),
+});
+
 export const assistantContextTaskSchema = z.object({
   acceptedCopiesCount: z.number().int().min(0),
   endTime: timeSchema,
@@ -243,7 +250,9 @@ export const assistantMutationActionSchema = z.discriminatedUnion("kind", [
 
 export const assistantModelResponseSchema = z.object({
   action: assistantActionSchema,
+  answerMode: assistantResponseModeSchema.default("planner"),
   reply: z.string().trim().min(1).max(4000),
+  sources: z.array(assistantAnswerSourceSchema).max(8).default([]),
 });
 
 export const assistantChatRequestSchema = z.object({
@@ -259,6 +268,7 @@ export const assistantExecuteRequestSchema = z.object({
 });
 
 export type AssistantAction = z.infer<typeof assistantActionSchema>;
+export type AssistantAnswerSource = z.infer<typeof assistantAnswerSourceSchema>;
 export type AssistantChatRequest = z.infer<typeof assistantChatRequestSchema>;
 export type AssistantContext = z.infer<typeof assistantContextSchema>;
 export type AssistantContextRecurringBlock = z.infer<typeof assistantContextRecurringBlockSchema>;
@@ -269,5 +279,6 @@ export type AssistantFollowUpContext = z.infer<typeof assistantFollowUpContextSc
 export type AssistantMissingField = z.infer<typeof assistantMissingFieldSchema>;
 export type AssistantModelResponse = z.infer<typeof assistantModelResponseSchema>;
 export type AssistantMutationAction = z.infer<typeof assistantMutationActionSchema>;
+export type AssistantResponseMode = z.infer<typeof assistantResponseModeSchema>;
 export type AssistantTaskDraft = z.infer<typeof assistantTaskDraftSchema>;
 export type AssistantVisibleTaskCandidate = z.infer<typeof assistantVisibleTaskCandidateSchema>;

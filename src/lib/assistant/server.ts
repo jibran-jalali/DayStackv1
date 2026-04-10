@@ -28,6 +28,7 @@ import {
 import { getErrorMessage } from "@/lib/utils";
 import type {
   AssistantAction,
+  AssistantAnswerSource,
   AssistantChatRequest,
   AssistantContext,
   AssistantContextRecurringBlock,
@@ -35,13 +36,20 @@ import type {
   AssistantFollowUpContext,
   AssistantModelResponse,
   AssistantMutationAction,
+  AssistantResponseMode,
   AssistantTaskDraft,
   AssistantVisibleTaskCandidate,
 } from "@/types/assistant";
 import { assistantModelResponseSchema, assistantTaskDraftSchema } from "@/types/assistant";
 import type { TaskFormValues } from "@/types/daystack";
 
-const DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant";
+const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b";
+const DEFAULT_GROQ_WEB_MODEL = "groq/compound-mini";
+const DEFAULT_OPENAI_MODEL = "gpt-5";
+const DEFAULT_OPENAI_WEB_MODEL = "gpt-5";
+const GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions";
+const OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 
 const DAYSTACK_ASSISTANT_PRIMER = `
 You are DayStack Assistant, a chat-based planner assistant embedded inside the DayStack app.
@@ -55,7 +63,8 @@ Product facts:
 - The selected day in the UI is the assistant's active planner context.
 
 Your job:
-- Answer product/help questions clearly.
+- Answer the user's prompt naturally, even when it is broad, casual, messy, or not phrased like a command.
+- Answer DayStack product questions clearly.
 - Propose planner changes using the provided structured action types.
 - Use only task IDs and recurring series IDs that appear in the provided context.
 - If a request is ambiguous, missing critical details, or targets something not visible in context, ask a follow-up question instead of guessing.
@@ -71,31 +80,43 @@ Action rules:
 - update_recurring_series: for editing a visible recurring series from a date onward.
 - delete_recurring_series: for deleting a visible recurring series from a date onward.
 
+Answer mode rules:
+- Use "planner" for DayStack-specific help, plan summaries, follow-up questions, and every mutation proposal.
+- Use "general" for broad knowledge answers that do not need current web information.
+- Use "web" only for current events, latest information, factual questions that need outside verification, or answers that should include sources.
+- Never use "web" for a mutation proposal.
+- Return "sources": [] in this JSON response. The app fills sources separately after web research when needed.
+
 Important constraints:
 - Never invent IDs.
 - Never invent tasks outside the provided context.
 - If the user asks to change recurrence mode between one-time and recurring, ask a follow-up instead of forcing a conversion.
 - If a recurring action needs a scope choice and the user did not make it clear, ask a follow-up.
 - Return JSON only. No markdown, no code fences, no prose outside JSON.
-- Always return an object with exactly two keys: reply and action.
+- Always return an object with exactly four keys: reply, action, answerMode, and sources.
 - The reply should be concise and natural.
 - For mutation actions, the reply should summarize the planned change and make it clear that the app will ask for confirmation before applying it.
+- The assistant should understand ordinary language. Do not ask the user to reformat prompts.
 
 Example answer-only response:
 {
+  "answerMode": "planner",
   "reply": "Blocked time keeps space on the timeline, but it does not count toward your execution score.",
   "action": {
     "kind": "answer_only"
-  }
+  },
+  "sources": []
 }
 
 Example follow-up response:
 {
+  "answerMode": "planner",
   "reply": "I can do that, but I need to know which visible block you want me to move.",
   "action": {
     "kind": "ask_followup",
     "question": "Which visible block should I move?"
-  }
+  },
+  "sources": []
 }
 `.trim();
 
@@ -157,25 +178,47 @@ interface ParsedBrainDumpItem {
   title: string;
 }
 
-function createAssistantResponse(reply: string, action: AssistantAction): AssistantModelResponse {
+function createAssistantResponse(
+  reply: string,
+  action: AssistantAction,
+  options?: {
+    answerMode?: AssistantResponseMode;
+    sources?: AssistantAnswerSource[];
+  },
+): AssistantModelResponse {
   return assistantModelResponseSchema.parse({
     action,
+    answerMode: options?.answerMode ?? "planner",
     reply,
+    sources: options?.sources ?? [],
   });
 }
 
-function createAnswerOnly(reply: string) {
+function createAnswerOnly(
+  reply: string,
+  options?: {
+    answerMode?: AssistantResponseMode;
+    sources?: AssistantAnswerSource[];
+  },
+) {
   return createAssistantResponse(reply, {
     kind: "answer_only",
-  });
+  }, options);
 }
 
-function createFollowUp(question: string, followUp?: AssistantFollowUpContext) {
+function createFollowUp(
+  question: string,
+  followUp?: AssistantFollowUpContext,
+  options?: {
+    answerMode?: AssistantResponseMode;
+    sources?: AssistantAnswerSource[];
+  },
+) {
   return createAssistantResponse(question, {
     followUp,
     kind: "ask_followup",
     question,
-  });
+  }, options);
 }
 
 function normalizeText(value: string) {
@@ -1445,8 +1488,24 @@ function getGroqApiKey() {
   return process.env.GROQ_API_KEY?.trim() ?? null;
 }
 
+function getOpenAiApiKey() {
+  return process.env.OPENAI_API_KEY?.trim() ?? null;
+}
+
 function getGroqModel() {
   return process.env.GROQ_MODEL?.trim() || DEFAULT_GROQ_MODEL;
+}
+
+function getGroqWebModel() {
+  return process.env.GROQ_WEB_MODEL?.trim() || DEFAULT_GROQ_WEB_MODEL;
+}
+
+function getOpenAiModel() {
+  return process.env.OPENAI_MODEL?.trim() || DEFAULT_OPENAI_MODEL;
+}
+
+function getOpenAiWebModel() {
+  return process.env.OPENAI_WEB_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || DEFAULT_OPENAI_WEB_MODEL;
 }
 
 function extractJsonObject(content: string) {
@@ -1506,6 +1565,67 @@ function normalizeAssistantActionPayload(raw: unknown) {
   return candidate;
 }
 
+function normalizeAssistantSourcePayload(raw: unknown): AssistantAnswerSource[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw.flatMap((entry) => {
+    if (typeof entry === "string") {
+      return entry.trim()
+        ? [
+            {
+              url: entry,
+            },
+          ]
+        : [];
+    }
+
+    if (!entry || typeof entry !== "object") {
+      return [];
+    }
+
+    const candidate = entry as Record<string, unknown>;
+    const url =
+      typeof candidate.url === "string"
+        ? candidate.url
+        : typeof candidate.link === "string"
+          ? candidate.link
+          : typeof candidate.href === "string"
+            ? candidate.href
+            : null;
+
+    if (!url) {
+      return [];
+    }
+
+    const title =
+      typeof candidate.title === "string"
+        ? candidate.title
+        : typeof candidate.name === "string"
+          ? candidate.name
+          : typeof candidate.label === "string"
+            ? candidate.label
+            : undefined;
+
+    return [
+      {
+        title,
+        url,
+      },
+    ];
+  });
+}
+
+function inferDefaultAnswerMode(action: unknown): AssistantResponseMode {
+  if (!action || typeof action !== "object") {
+    return "general";
+  }
+
+  const candidate = action as Record<string, unknown>;
+  return candidate.kind === "answer_only" ? "general" : "planner";
+}
+
 function normalizeAssistantModelPayload(raw: unknown) {
   if (!raw || typeof raw !== "object") {
     return raw;
@@ -1515,17 +1635,25 @@ function normalizeAssistantModelPayload(raw: unknown) {
   const normalizedAction = normalizeAssistantActionPayload(
     candidate.action ?? candidate.actionPayload ?? candidate.action_data ?? candidate,
   );
+  const answerMode =
+    candidate.answerMode === "planner" || candidate.answerMode === "general" || candidate.answerMode === "web"
+      ? candidate.answerMode
+      : candidate.mode === "planner" || candidate.mode === "general" || candidate.mode === "web"
+        ? candidate.mode
+        : inferDefaultAnswerMode(normalizedAction);
 
   const basePayload = {
     action: normalizedAction,
+    answerMode,
     reply:
       typeof candidate.reply === "string"
         ? candidate.reply
         : typeof candidate.message === "string"
           ? candidate.message
-          : typeof candidate.response === "string"
-            ? candidate.response
-            : "",
+            : typeof candidate.response === "string"
+              ? candidate.response
+              : "",
+    sources: normalizeAssistantSourcePayload(candidate.sources ?? candidate.citations),
   } satisfies Record<string, unknown>;
 
   if (normalizedAction && typeof normalizedAction === "object") {
@@ -1613,77 +1741,513 @@ function formatContextForPrompt(input: AssistantChatRequest, displayName: string
   );
 }
 
+function normalizeMessageContent(content: unknown) {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (!Array.isArray(content)) {
+    return null;
+  }
+
+  const text = content
+    .map((part) => {
+      if (typeof part === "string") {
+        return part;
+      }
+
+      if (!part || typeof part !== "object") {
+        return "";
+      }
+
+      const candidate = part as Record<string, unknown>;
+
+      if (typeof candidate.text === "string") {
+        return candidate.text;
+      }
+
+      if (typeof candidate.content === "string") {
+        return candidate.content;
+      }
+
+      return "";
+    })
+    .join("")
+    .trim();
+
+  return text || null;
+}
+
+async function requestStructuredAssistantResponse(
+  endpoint: string,
+  apiKey: string,
+  model: string,
+  input: AssistantChatRequest,
+  displayName: string,
+  label: string,
+) {
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      max_tokens: 1100,
+      messages: [
+        {
+          content: DAYSTACK_ASSISTANT_PRIMER,
+          role: "system",
+        },
+        {
+          content: formatContextForPrompt(input, displayName),
+          role: "user",
+        },
+      ],
+      model,
+      response_format: {
+        type: "json_object",
+      },
+      temperature: 0.2,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`${label} could not generate an assistant response.`);
+  }
+
+  const payload = (await response.json()) as {
+    choices?: Array<{
+      message?: {
+        content?: unknown;
+      };
+    }>;
+  };
+  const content = normalizeMessageContent(payload.choices?.[0]?.message?.content);
+
+  if (!content) {
+    throw new Error(`${label} returned an empty assistant response.`);
+  }
+
+  return assistantModelResponseSchema.parse(
+    normalizeAssistantModelPayload(JSON.parse(extractJsonObject(content))),
+  );
+}
+
+async function requestOpenAiStructuredAssistantResponse(
+  input: AssistantChatRequest,
+  displayName: string,
+) {
+  const apiKey = getOpenAiApiKey();
+
+  if (!apiKey) {
+    return null;
+  }
+
+  return requestStructuredAssistantResponse(
+    OPENAI_CHAT_COMPLETIONS_URL,
+    apiKey,
+    getOpenAiModel(),
+    input,
+    displayName,
+    "OpenAI",
+  );
+}
+
+async function requestGroqStructuredAssistantResponse(
+  input: AssistantChatRequest,
+  displayName: string,
+) {
+  const apiKey = getGroqApiKey();
+
+  if (!apiKey) {
+    return null;
+  }
+
+  return requestStructuredAssistantResponse(
+    GROQ_CHAT_COMPLETIONS_URL,
+    apiKey,
+    getGroqModel(),
+    input,
+    displayName,
+    "Groq",
+  );
+}
+
+function buildWebResearchPrompt(
+  input: AssistantChatRequest,
+  displayName: string,
+  draftReply: string,
+) {
+  return [
+    "You are DayStack Assistant.",
+    "Answer the user's question directly and naturally.",
+    "Use web information when needed, keep the answer concise, and include concrete dates for current or recent topics.",
+    "Do not propose task mutations or confirmations in this reply.",
+    `User: ${displayName}`,
+    `Selected planner date: ${input.context.currentDate}`,
+    `Timezone: ${input.context.timezone}`,
+    draftReply ? `Initial answer direction: ${draftReply}` : "",
+    `Conversation history: ${JSON.stringify(input.messages.slice(-8))}`,
+    `User prompt: ${input.message}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function normalizeAssistantSourceList(sources: AssistantAnswerSource[]) {
+  const seenUrls = new Set<string>();
+
+  return assistantModelResponseSchema.shape.sources.parse(
+    sources.filter((source) => {
+      if (seenUrls.has(source.url)) {
+        return false;
+      }
+
+      seenUrls.add(source.url);
+      return true;
+    }).slice(0, 6),
+  );
+}
+
+function collectAssistantSource(
+  sources: AssistantAnswerSource[],
+  title: unknown,
+  url: unknown,
+) {
+  if (typeof url !== "string" || !url.trim()) {
+    return;
+  }
+
+  sources.push({
+    title: typeof title === "string" && title.trim() ? title.trim() : undefined,
+    url,
+  });
+}
+
+function extractOpenAiWebContent(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const candidate = payload as Record<string, unknown>;
+
+  if (typeof candidate.output_text === "string" && candidate.output_text.trim()) {
+    return candidate.output_text.trim();
+  }
+
+  const output = Array.isArray(candidate.output) ? candidate.output : [];
+  const parts = output.flatMap((item) => {
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+
+    const outputItem = item as Record<string, unknown>;
+
+    if (outputItem.type !== "message" || !Array.isArray(outputItem.content)) {
+      return [];
+    }
+
+    return outputItem.content.flatMap((contentPart) => {
+      if (!contentPart || typeof contentPart !== "object") {
+        return [];
+      }
+
+      const part = contentPart as Record<string, unknown>;
+      const text =
+        typeof part.text === "string"
+          ? part.text
+          : typeof part.output_text === "string"
+            ? part.output_text
+            : "";
+
+      return text ? [text] : [];
+    });
+  });
+
+  return parts.join("").trim() || null;
+}
+
+function extractOpenAiWebSources(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const candidate = payload as Record<string, unknown>;
+  const sources: AssistantAnswerSource[] = [];
+  const output = Array.isArray(candidate.output) ? candidate.output : [];
+
+  for (const item of output) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+
+    const outputItem = item as Record<string, unknown>;
+
+    if (outputItem.type === "web_search_call") {
+      const searchSources =
+        outputItem.action && typeof outputItem.action === "object"
+          ? (outputItem.action as Record<string, unknown>).sources
+          : undefined;
+
+      if (Array.isArray(searchSources)) {
+        for (const source of searchSources) {
+          if (!source || typeof source !== "object") {
+            continue;
+          }
+
+          const entry = source as Record<string, unknown>;
+          collectAssistantSource(sources, entry.title ?? entry.name, entry.url ?? entry.link);
+        }
+      }
+    }
+
+    if (outputItem.type === "message" && Array.isArray(outputItem.content)) {
+      for (const contentPart of outputItem.content) {
+        if (!contentPart || typeof contentPart !== "object") {
+          continue;
+        }
+
+        const part = contentPart as Record<string, unknown>;
+        const annotations = Array.isArray(part.annotations) ? part.annotations : [];
+
+        for (const annotation of annotations) {
+          if (!annotation || typeof annotation !== "object") {
+            continue;
+          }
+
+          const entry = annotation as Record<string, unknown>;
+          collectAssistantSource(sources, entry.title, entry.url);
+        }
+      }
+    }
+  }
+
+  return normalizeAssistantSourceList(sources);
+}
+
+async function requestOpenAiWebBackedAnswer(
+  input: AssistantChatRequest,
+  displayName: string,
+  draftReply: string,
+) {
+  const apiKey = getOpenAiApiKey();
+
+  if (!apiKey) {
+    return null;
+  }
+
+  const response = await fetch(OPENAI_RESPONSES_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      include: ["web_search_call.action.sources"],
+      input: buildWebResearchPrompt(input, displayName, draftReply),
+      model: getOpenAiWebModel(),
+      tools: [
+        {
+          type: "web_search",
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("OpenAI web search could not answer the request.");
+  }
+
+  const payload = await response.json();
+  const reply = extractOpenAiWebContent(payload);
+
+  if (!reply) {
+    throw new Error("OpenAI web search returned an empty answer.");
+  }
+
+  return createAnswerOnly(reply, {
+    answerMode: "web",
+    sources: extractOpenAiWebSources(payload),
+  });
+}
+
+function extractGroqWebSources(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const sources: AssistantAnswerSource[] = [];
+  const candidate = payload as Record<string, unknown>;
+  const choices = Array.isArray(candidate.choices) ? candidate.choices : [];
+
+  for (const choice of choices) {
+    if (!choice || typeof choice !== "object") {
+      continue;
+    }
+
+    const message =
+      (choice as Record<string, unknown>).message && typeof (choice as Record<string, unknown>).message === "object"
+        ? ((choice as Record<string, unknown>).message as Record<string, unknown>)
+        : null;
+
+    if (!message || !Array.isArray(message.executed_tools)) {
+      continue;
+    }
+
+    for (const tool of message.executed_tools) {
+      if (!tool || typeof tool !== "object") {
+        continue;
+      }
+
+      const searchResults = Array.isArray((tool as Record<string, unknown>).search_results)
+        ? ((tool as Record<string, unknown>).search_results as unknown[])
+        : [];
+
+      for (const result of searchResults) {
+        if (!result || typeof result !== "object") {
+          continue;
+        }
+
+        const entry = result as Record<string, unknown>;
+        collectAssistantSource(sources, entry.title, entry.url);
+      }
+    }
+  }
+
+  return normalizeAssistantSourceList(sources);
+}
+
+async function requestGroqWebBackedAnswer(
+  input: AssistantChatRequest,
+  displayName: string,
+  draftReply: string,
+) {
+  const apiKey = getGroqApiKey();
+
+  if (!apiKey) {
+    return null;
+  }
+
+  const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      citation_options: "enabled",
+      messages: [
+        {
+          content:
+            "You are DayStack Assistant. Answer the user's question directly with current, sourced information when useful. Do not propose or apply planner mutations.",
+          role: "system",
+        },
+        {
+          content: buildWebResearchPrompt(input, displayName, draftReply),
+          role: "user",
+        },
+      ],
+      model: getGroqWebModel(),
+      temperature: 0.2,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Groq web search could not answer the request.");
+  }
+
+  const payload = await response.json();
+  const reply = normalizeMessageContent(
+    (payload as { choices?: Array<{ message?: { content?: unknown } }> }).choices?.[0]?.message?.content,
+  );
+
+  if (!reply) {
+    throw new Error("Groq web search returned an empty answer.");
+  }
+
+  return createAnswerOnly(reply, {
+    answerMode: "web",
+    sources: extractGroqWebSources(payload),
+  });
+}
+
+async function requestWebBackedAnswer(
+  input: AssistantChatRequest,
+  displayName: string,
+  draftReply: string,
+) {
+  try {
+    const openAiAnswer = await requestOpenAiWebBackedAnswer(input, displayName, draftReply);
+
+    if (openAiAnswer) {
+      return openAiAnswer;
+    }
+  } catch {
+    // Fall through to the next provider.
+  }
+
+  return requestGroqWebBackedAnswer(input, displayName, draftReply);
+}
+
+function hasConfiguredAssistantProvider() {
+  return Boolean(getOpenAiApiKey() || getGroqApiKey());
+}
+
 export async function generateAssistantResponse(
   input: AssistantChatRequest,
   user: { email: string; full_name: string | null | undefined },
 ): Promise<AssistantModelResponse> {
+  const displayName = deriveDisplayName(user.full_name, user.email);
+
+  try {
+    const providerResponse =
+      (await requestOpenAiStructuredAssistantResponse(input, displayName)) ??
+      (await requestGroqStructuredAssistantResponse(input, displayName));
+
+    if (providerResponse) {
+      if (providerResponse.action.kind === "answer_only" && providerResponse.answerMode === "web") {
+        try {
+          return (await requestWebBackedAnswer(input, displayName, providerResponse.reply)) ?? createAnswerOnly(
+            providerResponse.reply,
+            {
+              answerMode: "general",
+            },
+          );
+        } catch {
+          return createAnswerOnly(providerResponse.reply, {
+            answerMode: "general",
+          });
+        }
+      }
+
+      return providerResponse;
+    }
+  } catch {
+    // Fall through to the deterministic local fallback below.
+  }
+
   const routedResponse = routeAssistantMessage(input);
 
   if (routedResponse) {
     return routedResponse;
   }
 
-  const apiKey = getGroqApiKey();
-
-  if (!apiKey) {
+  if (!hasConfiguredAssistantProvider()) {
     return createAnswerOnly(
-      "I can help add blocks, move or delete visible ones, summarize the selected day, and turn a task dump into a balanced schedule. If you want a planner change, say it plainly and I will guide you.",
-    );
-  }
-
-  try {
-    const displayName = deriveDisplayName(user.full_name, user.email);
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+      "Planner actions still work, but broad assistant answers need AI provider configuration. Add OPENAI_API_KEY or GROQ_API_KEY to enable smarter freeform chat.",
+      {
+        answerMode: "general",
       },
-      body: JSON.stringify({
-        max_tokens: 900,
-        messages: [
-          {
-            content: DAYSTACK_ASSISTANT_PRIMER,
-            role: "system",
-          },
-          {
-            content: formatContextForPrompt(input, displayName),
-            role: "user",
-          },
-        ],
-        model: getGroqModel(),
-        response_format: {
-          type: "json_object",
-        },
-        temperature: 0.2,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Groq could not generate an assistant response.");
-    }
-
-    const payload = (await response.json()) as {
-      choices?: Array<{
-        message?: {
-          content?: string | null;
-        };
-      }>;
-    };
-    const content = payload.choices?.[0]?.message?.content;
-
-    if (!content) {
-      throw new Error("Groq returned an empty assistant response.");
-    }
-
-    return assistantModelResponseSchema.parse(
-      normalizeAssistantModelPayload(JSON.parse(extractJsonObject(content))),
-    );
-  } catch {
-    return createAnswerOnly(
-      "I can help with DayStack planning, summaries, and schedule drafts. If you want a block created or changed, tell me the task, day, and time you want and I will guide you step by step.",
     );
   }
+
+  return createAnswerOnly(
+    "I hit a model problem, so I can still help with DayStack planning basics, summaries, and visible task changes. Try the request again, or rephrase it in plain language and I’ll keep working through it.",
+    {
+      answerMode: "general",
+    },
+  );
 }
 
 function findContextTask(context: AssistantContext, taskId: string) {

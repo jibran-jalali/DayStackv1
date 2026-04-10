@@ -1461,7 +1461,6 @@ export function PlannerShell({
           ) : workspaceTab === "assistant" ? (
             <section className="min-h-0 flex flex-1 flex-col">
               <AssistantShell
-                displayName={displayName}
                 onNotice={setNotice}
                 onRefreshContext={(nextDate) =>
                   refreshWorkspaceDate(nextDate, {
@@ -1749,7 +1748,6 @@ export function PlannerShell({
               )}
             >
               <AssistantShell
-                displayName={displayName}
                 onNotice={setNotice}
                 onRefreshContext={(nextDate) =>
                   refreshWorkspaceDate(nextDate, {

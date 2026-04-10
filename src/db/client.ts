@@ -33,7 +33,7 @@ function isDatabaseState(value: unknown): value is DatabaseState {
   return Boolean(candidate.db && candidate.sql && candidate.url);
 }
 
-function isConnectTimeoutError(error: unknown): boolean {
+function isRetryableConnectionError(error: unknown): boolean {
   if (!error || typeof error !== "object") {
     return false;
   }
@@ -41,9 +41,24 @@ function isConnectTimeoutError(error: unknown): boolean {
   const candidate = error as {
     cause?: unknown;
     code?: string;
+    message?: string;
   };
 
-  return candidate.code === "CONNECT_TIMEOUT" || isConnectTimeoutError(candidate.cause);
+  const message = candidate.message?.toLowerCase() ?? "";
+
+  return (
+    candidate.code === "CONNECT_TIMEOUT" ||
+    candidate.code === "CONNECTION_CLOSED" ||
+    candidate.code === "CONNECTION_ENDED" ||
+    candidate.code === "ECONNRESET" ||
+    candidate.code === "ECONNREFUSED" ||
+    message.includes("connection closed") ||
+    message.includes("connection ended") ||
+    message.includes("terminating connection") ||
+    message.includes("connection terminated") ||
+    message.includes("write connection_closed") ||
+    isRetryableConnectionError(candidate.cause)
+  );
 }
 
 declare global {
@@ -91,7 +106,7 @@ export async function withDbReconnectRetry<T>(operation: (db: DatabaseClient) =>
   try {
     return await operation(db);
   } catch (error) {
-    if (!isConnectTimeoutError(error)) {
+    if (!isRetryableConnectionError(error)) {
       throw error;
     }
 

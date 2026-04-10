@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { getServerSession, type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-import { getDb } from "@/db/client";
+import { getDb, withDbReconnectRetry } from "@/db/client";
 import { users } from "@/db/schema";
 import { isUserDisabled } from "@/lib/auth-status";
 import { loginSchema } from "@/types/daystack";
@@ -46,11 +46,13 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, parsed.data.email.toLowerCase()))
-          .limit(1);
+        const [user] = await withDbReconnectRetry((client) =>
+          client
+            .select()
+            .from(users)
+            .where(eq(users.email, parsed.data.email.toLowerCase()))
+            .limit(1),
+        );
 
         if (!user || isUserDisabled(user)) {
           return null;
@@ -62,13 +64,15 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        await db
-          .update(users)
-          .set({
-            last_sign_in_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .where(eq(users.id, user.id));
+        await withDbReconnectRetry((client) =>
+          client
+            .update(users)
+            .set({
+              last_sign_in_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .where(eq(users.id, user.id)),
+        );
 
         return {
           id: user.id,
@@ -118,7 +122,9 @@ export async function getSessionUser() {
     return null;
   }
 
-  const [user] = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1);
+  const [user] = await withDbReconnectRetry((client) =>
+    client.select().from(users).where(eq(users.id, session.user.id)).limit(1),
+  );
 
   if (!user || isUserDisabled(user)) {
     return null;

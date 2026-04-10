@@ -41,8 +41,12 @@ Optional:
 ```bash
 POSTGRES_URL_NON_POOLING=
 NEXTAUTH_URL=http://localhost:3000
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5
+OPENAI_WEB_MODEL=gpt-5
 GROQ_API_KEY=
-GROQ_MODEL=llama-3.1-8b-instant
+GROQ_MODEL=openai/gpt-oss-120b
+GROQ_WEB_MODEL=groq/compound-mini
 GMAIL_SMTP_USER=
 GMAIL_SMTP_APP_PASSWORD=
 EMAIL_FROM_NAME=DayStack
@@ -113,13 +117,14 @@ What it can do:
 
 Setup:
 
-1. Add `GROQ_API_KEY` to `.env.local`.
-2. Optionally set `GROQ_MODEL` if you want a different Groq model than the default.
-3. Open the `Assistant` tab inside the app and start chatting.
+1. Add `OPENAI_API_KEY` to `.env.local` for the strongest default assistant path, or add `GROQ_API_KEY` to use Groq.
+2. Optionally set `OPENAI_MODEL`, `OPENAI_WEB_MODEL`, `GROQ_MODEL`, or `GROQ_WEB_MODEL` if you want to override the defaults.
+3. Open the `Assistant` tab inside the app and start chatting naturally.
 
 Notes:
 
 - The assistant is grounded to the currently selected day plus the visible tasks and recurring blocks in that context.
+- It can answer broader questions, and when supported by the configured provider it can return web-backed answers with sources.
 - It always asks for confirmation before changing data.
 - If a request is ambiguous or the target is not visible in the current context, it will ask a follow-up question instead of guessing.
 
