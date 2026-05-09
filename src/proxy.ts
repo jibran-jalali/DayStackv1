@@ -4,6 +4,36 @@ import { getToken } from "next-auth/jwt";
 
 import { isAuthConfigured, isDatabaseConfigured } from "@/lib/env";
 
+function clearAuthCookies(response: NextResponse) {
+  response.cookies.delete("next-auth.session-token");
+  response.cookies.delete("__Secure-next-auth.session-token");
+  response.cookies.delete("next-auth.csrf-token");
+  response.cookies.delete("__Host-next-auth.csrf-token");
+  response.cookies.delete("next-auth.callback-url");
+  response.cookies.delete("__Secure-next-auth.callback-url");
+}
+
+function isJwtDecodeError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const candidate = error as {
+    code?: string;
+    message?: string;
+    name?: string;
+  };
+
+  const message = candidate.message?.toLowerCase() ?? "";
+
+  return (
+    candidate.code === "JWT_SESSION_ERROR" ||
+    candidate.name === "JWTSessionError" ||
+    message.includes("decryption operation failed") ||
+    message.includes("jwt_session_error")
+  );
+}
+
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next();
   const pathname = request.nextUrl.pathname;
@@ -12,10 +42,27 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET,
-  });
+  let token = null;
+
+  try {
+    token = await getToken({
+      req: request,
+      secret: process.env.AUTH_SECRET,
+    });
+  } catch (error) {
+    if (!isJwtDecodeError(error)) {
+      throw error;
+    }
+
+    if (pathname.startsWith("/app")) {
+      const redirectResponse = NextResponse.redirect(new URL("/login", request.url));
+      clearAuthCookies(redirectResponse);
+      return redirectResponse;
+    }
+
+    clearAuthCookies(response);
+    return response;
+  }
 
   if (pathname.startsWith("/app") && !token?.sub) {
     return NextResponse.redirect(new URL("/login", request.url));

@@ -96,6 +96,16 @@ function getReminderRowsForTask(
     });
   }
 
+  if (preferences.push_enabled && preferences.remind_5_min_before) {
+    rows.push({
+      user_id: userId,
+      task_id: task.id,
+      reminder_type: "5_minutes_before",
+      remind_at: buildReminderTimestamp(task.task_date, task.start_time, -5),
+      status: "pending",
+    });
+  }
+
   return rows;
 }
 
@@ -343,6 +353,10 @@ export function isEmailReminderType(reminderType: ReminderType) {
   return reminderType === "email_before_start";
 }
 
+export function isPushReminderType(reminderType: ReminderType) {
+  return reminderType === "5_minutes_before";
+}
+
 export function buildReminderCopy(
   task: Pick<TaskRecord, "end_time" | "start_time" | "title">,
   reminderType: ReminderType,
@@ -362,6 +376,13 @@ export function buildReminderCopy(
 
     return {
       title: `Block starting in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}`,
+      body: `${task.title} begins at ${formatClockTime(task.start_time)}.`,
+    };
+  }
+
+  if (reminderType === "5_minutes_before") {
+    return {
+      title: "Block starting in 5 minutes",
       body: `${task.title} begins at ${formatClockTime(task.start_time)}.`,
     };
   }

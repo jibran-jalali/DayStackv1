@@ -22,6 +22,7 @@ export const reminderStatusEnum = pgEnum("reminder_status", ["pending", "process
 export const taskNotificationTypeEnum = pgEnum("task_notification_type", ["task_mention"]);
 export const taskNotificationStatusEnum = pgEnum("task_notification_status", ["pending", "accepted", "dismissed", "expired"]);
 export const recurringRuleExceptionTypeEnum = pgEnum("recurring_rule_exception_type", ["skip"]);
+export const friendConnectionStatusEnum = pgEnum("friend_connection_status", ["pending", "accepted"]);
 
 const timestampColumn = (name: string) =>
   timestamp(name, {
@@ -121,6 +122,45 @@ export const api_keys = pgTable(
     index("api_keys_user_created_idx").on(table.user_id, table.created_at),
     index("api_keys_user_revoked_idx").on(table.user_id, table.revoked_at),
     check("api_keys_label_not_blank_chk", sql`length(trim(${table.label})) > 0`),
+  ],
+);
+
+export const friend_connections = pgTable(
+  "friend_connections",
+  {
+    id: uuid("id").primaryKey(),
+    requester_id: uuid("requester_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    addressee_id: uuid("addressee_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    user_one_id: uuid("user_one_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    user_two_id: uuid("user_two_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: friendConnectionStatusEnum("status").notNull().default("pending"),
+    accepted_at: timestamp("accepted_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    created_at: timestampColumn("created_at"),
+    updated_at: timestampColumn("updated_at"),
+  },
+  (table) => [
+    uniqueIndex("friend_connections_pair_uidx").on(table.user_one_id, table.user_two_id),
+    index("friend_connections_requester_idx").on(table.requester_id, table.status, table.created_at),
+    index("friend_connections_addressee_idx").on(table.addressee_id, table.status, table.created_at),
+    index("friend_connections_user_one_idx").on(table.user_one_id, table.status),
+    index("friend_connections_user_two_idx").on(table.user_two_id, table.status),
+    check("friend_connections_no_self_request_chk", sql`${table.requester_id} <> ${table.addressee_id}`),
+    check("friend_connections_pair_order_chk", sql`${table.user_one_id} < ${table.user_two_id}`),
+    check(
+      "friend_connections_pair_matches_request_chk",
+      sql`(${table.requester_id} = ${table.user_one_id} and ${table.addressee_id} = ${table.user_two_id}) or (${table.requester_id} = ${table.user_two_id} and ${table.addressee_id} = ${table.user_one_id})`,
+    ),
   ],
 );
 
@@ -277,6 +317,30 @@ export const user_notification_preferences = pgTable(
       "user_notification_preferences_email_lead_range_chk",
       sql`${table.email_reminder_lead_minutes} >= 0 and ${table.email_reminder_lead_minutes} <= 1440`,
     ),
+  ],
+);
+
+export const push_subscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    user_agent: text("user_agent"),
+    last_seen_at: timestamp("last_seen_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    created_at: timestampColumn("created_at"),
+    updated_at: timestampColumn("updated_at"),
+  },
+  (table) => [
+    uniqueIndex("push_subscriptions_endpoint_uidx").on(table.endpoint),
+    index("push_subscriptions_user_idx").on(table.user_id, table.updated_at),
   ],
 );
 

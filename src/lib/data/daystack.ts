@@ -5,6 +5,7 @@ import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, lte, ne, or } f
 import { getDb } from "@/db/client";
 import {
   daily_summaries,
+  friend_connections,
   recurring_rule_exceptions,
   recurring_rule_participants,
   recurring_rules,
@@ -13,6 +14,7 @@ import {
   users,
 } from "@/db/schema";
 import { fetchLeaderboard } from "@/lib/data/leaderboard";
+import { assertAcceptedFriendParticipants } from "@/lib/data/friends";
 import { expireTaskMentionNotifications, syncTaskMentionNotificationsForTask } from "@/lib/data/notifications";
 import { syncTaskRemindersForTask } from "@/lib/data/reminders";
 import { buildSummary, calculateActiveStreak, deriveDisplayName } from "@/lib/daystack";
@@ -171,6 +173,42 @@ async function fetchAcceptedCopyCountsForTasks(
   );
 }
 
+async function fetchAcceptedCopyParticipantsForTasks(
+  db: DayStackDb,
+  taskIds: string[],
+): Promise<Map<string, ParticipantProfile[]>> {
+  if (taskIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await db
+    .select({
+      source_task_id: tasks.source_task_id,
+      user_id: tasks.user_id,
+    })
+    .from(tasks)
+    .where(inArray(tasks.source_task_id, taskIds));
+  const userIds = [...new Set(rows.map((row) => row.user_id))];
+  const profilesById = await fetchParticipantProfilesById(db, userIds);
+
+  return rows.reduce<Map<string, ParticipantProfile[]>>((accumulator, row) => {
+    if (!row.source_task_id) {
+      return accumulator;
+    }
+
+    const profile = profilesById.get(row.user_id);
+
+    if (!profile) {
+      return accumulator;
+    }
+
+    const current = accumulator.get(row.source_task_id) ?? [];
+    current.push(profile);
+    accumulator.set(row.source_task_id, current);
+    return accumulator;
+  }, new Map());
+}
+
 async function fetchRecurringRuleParticipantRows(
   db: DayStackDb,
   ruleIds: string[],
@@ -271,9 +309,10 @@ async function hydrateTasksWithParticipants(
 
   const taskIds = taskRows.map((task) => task.id);
   const recurringRuleIds = [...new Set(taskRows.flatMap((task) => (task.recurring_rule_id ? [task.recurring_rule_id] : [])))];
-  const [participantRows, acceptedCopyCounts] = await Promise.all([
+  const [participantRows, acceptedCopyCounts, acceptedParticipantsByTaskId] = await Promise.all([
     fetchTaskParticipantsForTasks(db, taskIds),
     fetchAcceptedCopyCountsForTasks(db, taskIds),
+    fetchAcceptedCopyParticipantsForTasks(db, taskIds),
   ]);
   const recurringSeriesMetadata = await fetchRecurringSeriesMetadataForRules(db, recurringRuleIds);
 
@@ -281,6 +320,7 @@ async function hydrateTasksWithParticipants(
     return taskRows.map((task) => ({
       ...task,
       acceptedCopiesCount: acceptedCopyCounts.get(task.id) ?? 0,
+      acceptedParticipants: acceptedParticipantsByTaskId.get(task.id) ?? [],
       participants: [],
       recurringSeriesId: task.recurring_rule_id
         ? recurringSeriesMetadata.get(task.recurring_rule_id)?.seriesId ?? null
@@ -309,6 +349,7 @@ async function hydrateTasksWithParticipants(
   return taskRows.map((task) => ({
     ...task,
     acceptedCopiesCount: acceptedCopyCounts.get(task.id) ?? 0,
+    acceptedParticipants: acceptedParticipantsByTaskId.get(task.id) ?? [],
     participants: participantsByTaskId.get(task.id) ?? [],
     recurringSeriesId: task.recurring_rule_id
       ? recurringSeriesMetadata.get(task.recurring_rule_id)?.seriesId ?? null
@@ -1074,6 +1115,8 @@ export async function createTask(
   const participantIds =
     values.taskType === "meeting" ? values.participants.map((participant) => participant.id) : [];
 
+  await assertAcceptedFriendParticipants(userId, participantIds);
+
   if (values.blockMode === "recurring") {
     const createdRules = await createRecurringSeriesRules(db, userId, values, participantIds);
     await ensureRecurringTasksForDate(db, userId, values.taskDate);
@@ -1146,6 +1189,9 @@ export async function updateTask(
 
   const participantIds =
     values.taskType === "meeting" ? values.participants.map((participant) => participant.id) : [];
+
+  await assertAcceptedFriendParticipants(userId, participantIds);
+
   const updatePayload = createTaskUpdatePayload(values);
   const now = new Date().toISOString();
   let updatedTask: TaskRecord | null = null;
@@ -1474,6 +1520,37 @@ export async function searchProfiles(
         ilike(users.email, `%${normalizedQuery}%`),
       )!,
     );
+  }
+
+  const friendRows = options?.excludeUserId
+    ? await db
+        .select({
+          user_one_id: friend_connections.user_one_id,
+          user_two_id: friend_connections.user_two_id,
+        })
+        .from(friend_connections)
+        .where(
+          and(
+            eq(friend_connections.status, "accepted"),
+            or(
+              eq(friend_connections.user_one_id, options.excludeUserId),
+              eq(friend_connections.user_two_id, options.excludeUserId),
+            ),
+          ),
+        )
+    : [];
+  const friendIds = options?.excludeUserId
+    ? friendRows.map((connection) =>
+        connection.user_one_id === options.excludeUserId ? connection.user_two_id : connection.user_one_id,
+      )
+    : [];
+
+  if (options?.excludeUserId && friendIds.length === 0) {
+    return [];
+  }
+
+  if (friendIds.length > 0) {
+    conditions.push(inArray(users.id, friendIds));
   }
 
   const results = await db

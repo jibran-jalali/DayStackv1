@@ -34,7 +34,7 @@ export function WorkspaceNotificationsContent({
 }: WorkspaceNotificationsContentProps) {
   if (compact) {
     return (
-      <div className="space-y-3.5">
+      <div className="space-y-2.5">
         <NotificationCenter
           compact
           initialNotifications={initialNotifications}
@@ -46,25 +46,23 @@ export function WorkspaceNotificationsContent({
           onTaskAccepted={onTaskAccepted}
         />
 
-        <section className="mobile-card p-4">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(24,190,239,0.14),rgba(109,40,240,0.12))] text-primary">
-              <CheckCheck className="h-5 w-5" />
+        <section className="mobile-card p-3">
+          <div className="flex items-start gap-2.5">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(24,190,239,0.12),rgba(109,40,240,0.1))] text-primary">
+              <CheckCheck className="h-4 w-4" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">Approvals land directly in your plan</p>
-              <p className="mt-1 text-sm text-secondary-foreground">
-                Accepting a meeting mention clones the block into your schedule and keeps the meeting link attached.
-              </p>
-              <div className="mt-3 grid gap-2">
+              <p className="text-sm font-semibold text-foreground">Meeting approvals</p>
+              <p className="mt-0.5 text-xs text-secondary-foreground">Accept adds the block. Reject dismisses it.</p>
+              <div className="mt-2 grid gap-1.5">
                 {selectedDate ? (
-                  <div className="rounded-full border border-border/80 bg-muted/35 px-3 py-1.5 text-xs font-semibold text-secondary-foreground">
+                  <div className="rounded-full border border-border/80 bg-muted/35 px-2.5 py-1 text-[11px] font-semibold text-secondary-foreground">
                     Return day: <span className="text-foreground">{formatDateLabel(selectedDate)}</span>
                   </div>
                 ) : null}
                 <button
                   type="button"
-                  className={buttonVariants({ variant: "secondary", size: "sm", className: "w-full" })}
+                  className={buttonVariants({ variant: "secondary", size: "sm", className: "h-9 w-full text-xs" })}
                   onClick={onOpenPlanner}
                 >
                   <CalendarDays className="h-4 w-4" />
@@ -122,7 +120,7 @@ export function WorkspaceNotificationsContent({
             <div>
               <p className="text-sm font-semibold text-foreground">Approval adds the block immediately</p>
               <p className="mt-1 text-sm text-secondary-foreground">
-                Accepting a meeting mention clones the block into your schedule and keeps the meeting link attached.
+                Accept adds the meeting block to your schedule. Reject only dismisses it for you.
               </p>
             </div>
           </div>

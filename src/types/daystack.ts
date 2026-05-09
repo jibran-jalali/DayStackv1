@@ -4,6 +4,8 @@ import type { InferSelectModel } from "drizzle-orm";
 import type {
   daily_summaries,
   api_keys,
+  friend_connections,
+  push_subscriptions,
   recurring_rule_exceptions,
   recurring_rule_participants,
   recurring_rules,
@@ -19,6 +21,8 @@ export type UserRecord = InferSelectModel<typeof users>;
 export type TaskRecord = InferSelectModel<typeof tasks>;
 export type DailySummaryRecord = InferSelectModel<typeof daily_summaries>;
 export type ApiKeyRecord = InferSelectModel<typeof api_keys>;
+export type FriendConnectionRecord = InferSelectModel<typeof friend_connections>;
+export type PushSubscriptionRecord = InferSelectModel<typeof push_subscriptions>;
 export type ProfileRecord = UserRecord;
 export type TaskParticipantRecord = InferSelectModel<typeof task_participants>;
 export type UserNotificationPreferencesRecord = InferSelectModel<typeof user_notification_preferences>;
@@ -34,7 +38,28 @@ export type TaskNotificationStatus = TaskNotificationRecord["status"];
 export type TaskPropagationMode = "owner_only" | "owner_and_accepted_copies";
 export type TaskMode = "one_time" | "recurring";
 export type RecurringTaskScope = "occurrence_only" | "this_and_future";
-export type WorkspaceTab = "assistant" | "notifications" | "plan" | "settings";
+export type WorkspaceTab = "assistant" | "friends" | "notifications" | "plan" | "settings";
+
+export interface FriendConnectionSummary {
+  acceptedAt: string | null;
+  createdAt: string;
+  id: string;
+  otherUser: ParticipantProfile;
+  requesterId: string;
+  status: FriendConnectionRecord["status"];
+  updatedAt: string;
+}
+
+export interface FriendsSnapshot {
+  friends: FriendConnectionSummary[];
+  incoming: FriendConnectionSummary[];
+  outgoing: FriendConnectionSummary[];
+}
+
+export interface FriendSearchResult extends ParticipantProfile {
+  connectionId: string | null;
+  friendshipStatus: "accepted" | "incoming" | "none" | "outgoing";
+}
 
 export interface AutomationApiKeySummary {
   createdAt: string;
@@ -54,6 +79,7 @@ export interface ParticipantProfile {
 
 export interface PlannerTask extends TaskRecord {
   acceptedCopiesCount: number;
+  acceptedParticipants: ParticipantProfile[];
   participants: ParticipantProfile[];
   recurringSeriesId: string | null;
   recurringWeekdays: number[];

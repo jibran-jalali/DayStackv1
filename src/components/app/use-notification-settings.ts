@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { sendTestPushNotification, subscribeToPushReminders, unsubscribeFromPushReminders } from "@/lib/client/push";
 import { updateNotificationPreferences } from "@/lib/client/reminders";
 import { getErrorMessage } from "@/lib/utils";
 import type { UserNotificationPreferencesRecord } from "@/types/daystack";
@@ -28,6 +29,32 @@ export function useNotificationSettings({
         onNotice?.({
           type: "success",
           message: nextValue ? "Email reminders enabled." : "Email reminders turned off.",
+        });
+      } catch (error) {
+        onNotice?.({
+          type: "error",
+          message: getErrorMessage(error),
+        });
+      }
+    });
+  }
+
+  function togglePushReminders(nextValue: boolean) {
+    startTransition(async () => {
+      try {
+        if (nextValue) {
+          await subscribeToPushReminders();
+        } else {
+          await unsubscribeFromPushReminders();
+        }
+
+        const nextPreferences = await updateNotificationPreferences({
+          push_enabled: nextValue,
+        });
+        setNotificationPreferences(nextPreferences);
+        onNotice?.({
+          type: "success",
+          message: nextValue ? "Push reminders enabled." : "Push reminders turned off.",
         });
       } catch (error) {
         onNotice?.({
@@ -104,13 +131,32 @@ export function useNotificationSettings({
     });
   }
 
+  function sendTestPush() {
+    startTransition(async () => {
+      try {
+        await sendTestPushNotification();
+        onNotice?.({
+          type: "success",
+          message: "Test push sent.",
+        });
+      } catch (error) {
+        onNotice?.({
+          type: "error",
+          message: getErrorMessage(error),
+        });
+      }
+    });
+  }
+
   return {
     isNotificationPending: isPending,
     notificationPreferences,
+    sendTestPush,
     sendTestNotification,
     setNotificationPreferences,
     toggleEmailReminders,
     toggleMeetingMentionEmails,
+    togglePushReminders,
     updateEmailReminderLeadMinutes,
   };
 }

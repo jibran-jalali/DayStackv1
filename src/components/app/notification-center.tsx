@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, BellRing, Check, CheckCheck, ExternalLink, Inbox, LoaderCircle } from "lucide-react";
+import { Bell, BellRing, Check, CheckCheck, ExternalLink, Inbox, LoaderCircle, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { Button, buttonVariants } from "@/components/shared/button";
@@ -10,6 +10,7 @@ import {
   acceptTaskNotification,
   fetchTaskNotifications,
   markTaskNotificationsRead,
+  rejectTaskNotification,
 } from "@/lib/client/notifications";
 import { formatClockTime, formatDateLabel } from "@/lib/daystack";
 import { cn, getErrorMessage } from "@/lib/utils";
@@ -209,6 +210,26 @@ export function NotificationCenter({
     }
   }
 
+  async function handleReject(notificationId: string) {
+    setActiveNotificationId(notificationId);
+
+    try {
+      await rejectTaskNotification(notificationId);
+      await loadNotifications();
+      onNotice?.({
+        type: "success",
+        message: "Meeting request rejected. Nothing was added to your timeline.",
+      });
+    } catch (error) {
+      onNotice?.({
+        type: "error",
+        message: getErrorMessage(error),
+      });
+    } finally {
+      setActiveNotificationId(null);
+    }
+  }
+
   function renderNotificationList(maxHeightClassName: string) {
     if (loadError) {
       return <div className="px-1 py-4 text-sm text-danger">{loadError}</div>;
@@ -217,7 +238,7 @@ export function NotificationCenter({
     if (notifications.length === 0) {
       return (
         <div className="px-1 py-4 text-sm text-secondary-foreground">
-          Mention notifications will show up here when someone tags you in a meeting block.
+          Meeting requests will show up here when a friend tags you in a meeting block.
         </div>
       );
     }
@@ -238,7 +259,7 @@ export function NotificationCenter({
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground">{actorName} mentioned you</p>
+                  <p className="truncate text-sm font-semibold text-foreground">{actorName} sent a meeting request</p>
                   <p className="mt-1 text-sm leading-6 text-secondary-foreground">
                     In <span className="font-medium text-foreground">{notification.taskTitle}</span>
                   </p>
@@ -253,18 +274,31 @@ export function NotificationCenter({
 
               <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap sm:items-center">
                 {notification.status === "pending" ? (
-                  <Button
-                    size="sm"
-                    className={compact ? "w-full justify-center sm:w-auto" : undefined}
-                    onClick={() => handleAccept(notification.id)}
-                    disabled={isPendingAction}
-                  >
-                    {isPendingAction ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                    Accept
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      className={compact ? "w-full justify-center sm:w-auto" : undefined}
+                      onClick={() => handleAccept(notification.id)}
+                      disabled={isPendingAction}
+                    >
+                      {isPendingAction ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      Accept & add
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className={compact ? "w-full justify-center sm:w-auto" : undefined}
+                      onClick={() => handleReject(notification.id)}
+                      disabled={isPendingAction}
+                    >
+                      {isPendingAction ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                      Reject
+                    </Button>
+                  </>
                 ) : notification.acceptedTaskDate ? (
                   onOpenDay ? (
                     <button
+                      suppressHydrationWarning
                       type="button"
                       className={buttonVariants({
                         variant: "secondary",
@@ -328,7 +362,7 @@ export function NotificationCenter({
             <div>
               <p className="section-label">Notifications</p>
               <p className="mt-1 text-sm text-secondary-foreground">
-                Review meeting approvals and jump straight into the linked day.
+              Accept to add the block to your timeline, or reject to dismiss it.
               </p>
             </div>
             {unreadCount > 0 ? <StatusChip label={`${unreadCount} unread`} tone="brand" /> : null}
@@ -348,7 +382,7 @@ export function NotificationCenter({
               Meeting approvals
             </h1>
             <p className="mt-1.5 text-sm text-secondary-foreground">
-              Review mentions, approve meeting blocks, and jump directly into the accepted day.
+              Accept meeting requests into your timeline, or reject them without adding anything.
             </p>
           </div>
           {unreadCount > 0 ? <StatusChip label={`${unreadCount} unread`} tone="brand" /> : null}
@@ -400,6 +434,7 @@ export function NotificationCenter({
             {unreadCount > 0 ? <StatusChip label={`${unreadCount} unread`} tone="brand" /> : null}
             {onOpenInbox ? (
               <button
+                suppressHydrationWarning
                 type="button"
                 className={buttonVariants({ variant: "ghost", size: "sm", className: "h-9 px-3" })}
                 onClick={() => {

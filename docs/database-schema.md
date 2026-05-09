@@ -54,9 +54,26 @@ Participant links for meeting tasks.
 
 Purpose:
 
-- stores meeting mentions
+- stores meeting mentions for accepted friends only
 - powers participant chips and mention notifications
 - uses a unique `(task_id, participant_id)` index to prevent duplicates
+
+### `friend_connections`
+
+Friend request and accepted friendship records.
+
+- `id`: UUID primary key
+- `requester_id`: user who sent the request
+- `addressee_id`: user who receives the request
+- `user_one_id`, `user_two_id`: sorted pair ids for uniqueness
+- `status`: `pending` or `accepted`
+- `accepted_at`, `created_at`, `updated_at`
+
+Purpose:
+
+- gates meeting mentions so only accepted friends can tag each other
+- powers the Friends page incoming, outgoing, and accepted lists
+- uses a unique `(user_one_id, user_two_id)` index to prevent duplicate relationships
 
 ### `task_notifications`
 
@@ -176,7 +193,8 @@ Rules:
 
 ## Mention flow
 
-- meeting participants are stored in `task_participants`
+- users first send and accept friend requests on `/app/friends`
+- meeting participants are stored in `task_participants` only for accepted friends
 - mention sync creates or refreshes `task_notifications`
 - accepting a mention clones the source task into the recipient's planner
 - the accept flow is idempotent and guarded by unique indexes plus transactional checks

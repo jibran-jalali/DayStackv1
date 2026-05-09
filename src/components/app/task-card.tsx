@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { CalendarRange, Check, CheckCircle2, PencilLine, Play, Repeat, Trash2, Users, Video } from "lucide-react";
+import { CalendarRange, Check, CheckCheck, CheckCircle2, PencilLine, Play, Repeat, Trash2, Users, Video } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/shared/button";
 import { formatClockTime, formatParticipantNames, getTaskAnchorId, isBlockedTask } from "@/lib/daystack";
@@ -65,19 +65,19 @@ function TaskCardComponent({
     <div
       id={getTaskAnchorId(task.id)}
       className={cn(
-        "rounded-[26px] border px-4 py-4 transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 active:scale-[0.995] sm:px-4",
+        "rounded-[18px] border px-3 py-3 transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 active:scale-[0.995] sm:px-4 sm:py-4",
         isBlocked ? blockedStateStyles[visualState] : stateStyles[visualState],
         selectionMode && isSelected && "border-primary/35 ring-2 ring-primary/25 ring-offset-2 ring-offset-background",
         focusedTaskId === task.id && "ring-2 ring-primary/35 ring-offset-2 ring-offset-background",
       )}
     >
-      <div className="flex flex-col gap-4">
-        <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-2.5">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/70">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-secondary-foreground/70">
               {isBlocked ? "Blocked" : stateLabels[visualState]}
             </p>
-            <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
+            <p className="mt-0.5 inline-flex items-center gap-1.5 text-xs font-semibold text-foreground sm:text-sm">
               {isMeeting ? (
                 <Video className="h-3.5 w-3.5 text-primary" />
               ) : (
@@ -91,7 +91,7 @@ function TaskCardComponent({
             <Button
               size="sm"
               variant={isSelected ? "primary" : "secondary"}
-              className="h-10 shrink-0 px-3"
+              className="h-9 shrink-0 px-2.5 text-xs"
               onClick={(event) => {
                 event.stopPropagation();
                 onToggleSelection?.(task.id);
@@ -119,42 +119,44 @@ function TaskCardComponent({
           className="min-w-0 text-left focus:outline-none"
           onClick={() => onEdit(task)}
         >
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-base font-semibold tracking-tight text-foreground">{task.title}</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className="truncate text-[15px] font-semibold tracking-tight text-foreground sm:text-base">{task.title}</p>
             {isMeeting ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-primary/15 bg-[linear-gradient(135deg,rgba(24,190,239,0.14),rgba(109,40,240,0.08))] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-700">
+              <span className="inline-flex items-center gap-1 rounded-full border border-primary/15 bg-[linear-gradient(135deg,rgba(24,190,239,0.14),rgba(109,40,240,0.08))] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-sky-700">
                 <Video className="h-3 w-3" />
                 Meeting
               </span>
             ) : isBlocked ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-200/82 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-700">
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-200/82 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-700">
                 Blocked
               </span>
             ) : null}
             {task.recurring_rule_id ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50/80 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-amber-700">
                 <Repeat className="h-3 w-3" />
                 Recurring
               </span>
             ) : null}
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-secondary-foreground">
-            <span>Tap to edit.</span>
-            {task.recurring_rule_id ? (
-              <span>Part of a repeating weekly schedule.</span>
-            ) : null}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-secondary-foreground sm:text-xs">
             {isMeeting && task.participants.length > 0 ? (
               <span className="inline-flex items-center gap-1.5">
                 <Users className="h-3.5 w-3.5" />
                 {formatParticipantNames(task.participants, 3)}
               </span>
             ) : null}
+            {isMeeting && task.acceptedParticipants.length > 0 ? (
+              <span className="inline-flex items-center gap-1.5 text-emerald-700">
+                <CheckCheck className="h-3.5 w-3.5" />
+                Accepted: {formatParticipantNames(task.acceptedParticipants, 3)}
+              </span>
+            ) : null}
           </div>
         </button>
 
-        <div className={cn("gap-2", hasPrimaryActions ? "flex items-start" : "flex justify-end")}>
+        <div className={cn("gap-1.5", hasPrimaryActions ? "flex items-start" : "flex justify-end")}>
           {hasPrimaryActions ? (
-            <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
+            <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
               {isMeeting && task.meeting_link ? (
                 <a
                   href={task.meeting_link}
@@ -163,7 +165,7 @@ function TaskCardComponent({
                   className={buttonVariants({
                     variant: "ghost",
                     size: "sm",
-                    className: "col-span-2 h-11 justify-center px-4",
+                    className: "col-span-2 h-10 justify-center px-3 text-xs",
                   })}
                 >
                   <Video className="h-4 w-4" />
@@ -173,7 +175,7 @@ function TaskCardComponent({
               {!isBlocked ? (
                 <Button
                   size="sm"
-                  className="h-11 w-full justify-center"
+                  className="h-10 w-full justify-center px-2 text-xs"
                   variant={task.status === "completed" ? "secondary" : "primary"}
                   onClick={() => onToggle(task)}
                   disabled={isPending}
@@ -186,7 +188,7 @@ function TaskCardComponent({
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="h-11 w-full justify-center"
+                  className="h-10 w-full justify-center px-2 text-xs"
                   onClick={() => onStartFocusTask(task)}
                   disabled={isPending || task.status === "completed"}
                 >
@@ -197,11 +199,11 @@ function TaskCardComponent({
             </div>
           ) : null}
 
-          <div className={cn("shrink-0 gap-2", hasPrimaryActions ? "flex flex-col" : "flex")}>
+          <div className={cn("shrink-0 gap-1.5", hasPrimaryActions ? "flex flex-col" : "flex")}>
             <Button
               size="sm"
               variant="secondary"
-              className="h-11 w-11 px-0"
+              className="h-10 w-10 px-0"
               onClick={() => onEdit(task)}
               disabled={isPending}
               aria-label={`Edit ${task.title}`}
@@ -211,7 +213,7 @@ function TaskCardComponent({
             <Button
               size="sm"
               variant="danger"
-              className="h-11 w-11 px-0"
+              className="h-10 w-10 px-0"
               onClick={() => onDelete(task)}
               disabled={isPending}
               aria-label={`Delete ${task.title}`}

@@ -6,6 +6,7 @@ export async function updateNotificationPreferences(
   updates: Partial<
     Pick<
       UserNotificationPreferencesRecord,
+      | "push_enabled"
       | "email_enabled"
       | "meeting_mention_email_enabled"
       | "email_reminder_lead_minutes"

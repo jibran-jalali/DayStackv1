@@ -3,8 +3,8 @@
 import { CalendarDays, LogOut, Mail } from "lucide-react";
 
 import { ActionFeedbackPanel } from "@/components/app/action-feedback-panel";
-import { AutomationKeysPanel } from "@/components/app/automation-keys-panel";
 import { EmailSettingsPanel } from "@/components/app/email-settings-panel";
+import { PushSettingsPanel } from "@/components/app/push-settings-panel";
 import { buttonVariants } from "@/components/shared/button";
 import { formatDateLabel } from "@/lib/daystack";
 import type { UserNotificationPreferencesRecord } from "@/types/daystack";
@@ -16,14 +16,15 @@ interface WorkspaceSettingsContentProps {
   email?: string;
   isBusy: boolean;
   notificationPreferences: UserNotificationPreferencesRecord;
-  onNotice?: (notice: { message: string; type: "error" | "success" }) => void;
   onOpenPlanner: () => void;
   onSignOut?: () => void;
+  onSendTestPush: () => void;
   onSendTest: () => void;
   onSaveLeadMinutes: (nextValue: number) => void;
   onToggleActionSounds: (nextValue: boolean) => void;
   onToggleEmail: (nextValue: boolean) => void;
   onToggleMeetingMentionEmail: (nextValue: boolean) => void;
+  onTogglePush: (nextValue: boolean) => void;
   selectedDate?: string;
 }
 
@@ -34,21 +35,23 @@ export function WorkspaceSettingsContent({
   email,
   isBusy,
   notificationPreferences,
-  onNotice,
   onOpenPlanner,
   onSignOut,
+  onSendTestPush,
   onSendTest,
   onSaveLeadMinutes,
   onToggleActionSounds,
   onToggleEmail,
   onToggleMeetingMentionEmail,
+  onTogglePush,
   selectedDate,
 }: WorkspaceSettingsContentProps) {
   if (compact) {
     return (
-      <div className="space-y-3.5">
+      <div className="space-y-2.5">
         <EmailSettingsPanel
           accountEmail={email}
+          compact
           isBusy={isBusy}
           onSendTest={onSendTest}
           onSaveLeadMinutes={onSaveLeadMinutes}
@@ -57,25 +60,32 @@ export function WorkspaceSettingsContent({
           preferences={notificationPreferences}
         />
 
-        <ActionFeedbackPanel enabled={actionSoundsEnabled} onToggle={onToggleActionSounds} />
-        <AutomationKeysPanel compact onNotice={onNotice} />
+        <PushSettingsPanel
+          compact
+          isBusy={isBusy}
+          onSendTest={onSendTestPush}
+          onTogglePush={onTogglePush}
+          pushEnabled={notificationPreferences.push_enabled}
+        />
 
-        <section className="mobile-card p-4">
+        <ActionFeedbackPanel compact enabled={actionSoundsEnabled} onToggle={onToggleActionSounds} />
+
+        <section className="mobile-card p-3">
           <p className="section-label">Account</p>
-          <div className="mt-3 space-y-3">
+          <div className="mt-2.5 space-y-2.5">
             <div>
               <p className="text-sm font-semibold text-foreground">{displayName}</p>
-              <p className="text-sm text-secondary-foreground">{email ?? "Focused operator"}</p>
+              <p className="text-xs text-secondary-foreground">{email ?? "Focused operator"}</p>
             </div>
             {selectedDate ? (
-              <div className="rounded-[18px] border border-border/70 bg-muted/35 px-3 py-2.5 text-sm text-secondary-foreground">
+              <div className="rounded-[14px] border border-border/70 bg-muted/35 px-2.5 py-2 text-xs text-secondary-foreground">
                 Selected day: <span className="font-medium text-foreground">{formatDateLabel(selectedDate)}</span>
               </div>
             ) : null}
-            <div className="grid gap-2">
+            <div className="grid gap-1.5">
               <button
                 type="button"
-                className={buttonVariants({ variant: "secondary", size: "sm", className: "w-full" })}
+                className={buttonVariants({ variant: "secondary", size: "sm", className: "h-9 w-full text-xs" })}
                 onClick={onOpenPlanner}
               >
                 <CalendarDays className="h-4 w-4" />
@@ -84,7 +94,7 @@ export function WorkspaceSettingsContent({
               {onSignOut ? (
                 <button
                   type="button"
-                  className={buttonVariants({ variant: "ghost", size: "sm", className: "w-full" })}
+                  className={buttonVariants({ variant: "ghost", size: "sm", className: "h-9 w-full text-xs" })}
                   onClick={onSignOut}
                 >
                   <LogOut className="h-4 w-4" />
@@ -122,8 +132,14 @@ export function WorkspaceSettingsContent({
             preferences={notificationPreferences}
           />
 
+          <PushSettingsPanel
+            isBusy={isBusy}
+            onSendTest={onSendTestPush}
+            onTogglePush={onTogglePush}
+            pushEnabled={notificationPreferences.push_enabled}
+          />
+
           <ActionFeedbackPanel enabled={actionSoundsEnabled} onToggle={onToggleActionSounds} />
-          <AutomationKeysPanel onNotice={onNotice} />
         </div>
       </section>
 

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { EmailSettingsPanel } from "@/components/app/email-settings-panel";
 import { PlannerHeader } from "@/components/app/planner-header";
+import { PushSettingsPanel } from "@/components/app/push-settings-panel";
 import { useNotificationSettings } from "@/components/app/use-notification-settings";
 import { buttonVariants } from "@/components/shared/button";
 import { formatDateLabel } from "@/lib/daystack";
@@ -68,9 +69,11 @@ export function SettingsShell({
   const {
     isNotificationPending,
     notificationPreferences,
+    sendTestPush,
     sendTestNotification,
     toggleEmailReminders,
     toggleMeetingMentionEmails,
+    togglePushReminders,
     updateEmailReminderLeadMinutes,
   } = useNotificationSettings({
     initialPreferences: initialNotificationPreferences,
@@ -94,6 +97,7 @@ export function SettingsShell({
   const notificationsHref = useMemo(() => getNotificationsHref(returnDate), [returnDate]);
   const settingsHref = useMemo(() => getSettingsHref(returnDate), [returnDate]);
   const activeChannelCount = [
+    notificationPreferences.push_enabled,
     notificationPreferences.email_enabled,
     notificationPreferences.meeting_mention_email_enabled,
   ].filter(Boolean).length;
@@ -160,6 +164,12 @@ export function SettingsShell({
                 onToggleEmail={toggleEmailReminders}
                 onToggleMeetingMentionEmail={toggleMeetingMentionEmails}
                 preferences={notificationPreferences}
+              />
+              <PushSettingsPanel
+                isBusy={isNotificationPending}
+                onSendTest={sendTestPush}
+                onTogglePush={togglePushReminders}
+                pushEnabled={notificationPreferences.push_enabled}
               />
             </div>
           </section>

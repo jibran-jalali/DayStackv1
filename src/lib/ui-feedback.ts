@@ -1,11 +1,10 @@
 "use client";
 
-import { primePomodoroAudio } from "@/lib/pomodoro";
-
 export type UiActionSoundKind = "add" | "complete" | "navigate";
 
 export const UI_ACTION_SOUNDS_STORAGE_KEY = "daystack:ui-action-sounds:v1";
 const UI_ACTION_SOUNDS_CHANGE_EVENT = "daystack:ui-action-sounds:change";
+let uiActionAudioContext: AudioContext | null = null;
 
 export function readUiActionSoundsEnabled() {
   if (typeof window === "undefined") {
@@ -69,8 +68,29 @@ function queueNote(
   oscillator.stop(noteEnd + 0.02);
 }
 
+async function primeUiActionAudio() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const AudioContextConstructor =
+    window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+  if (!AudioContextConstructor) {
+    return null;
+  }
+
+  uiActionAudioContext = uiActionAudioContext ?? new AudioContextConstructor();
+
+  if (uiActionAudioContext.state === "suspended") {
+    await uiActionAudioContext.resume();
+  }
+
+  return uiActionAudioContext;
+}
+
 export async function playUiActionSound(kind: UiActionSoundKind) {
-  const audioContext = await primePomodoroAudio();
+  const audioContext = await primeUiActionAudio();
 
   if (!audioContext) {
     return;

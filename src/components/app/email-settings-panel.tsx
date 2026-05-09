@@ -11,6 +11,7 @@ import type { UserNotificationPreferencesRecord } from "@/types/daystack";
 
 interface EmailSettingsPanelProps {
   accountEmail?: string;
+  compact?: boolean;
   isBusy: boolean;
   onSendTest: () => void;
   onSaveLeadMinutes: (nextValue: number) => void;
@@ -21,6 +22,7 @@ interface EmailSettingsPanelProps {
 
 function ToggleRow({
   checked,
+  compact = false,
   description,
   disabled,
   label,
@@ -31,13 +33,15 @@ function ToggleRow({
   disabled: boolean;
   label: string;
   onChange: (nextValue: boolean) => void;
+  compact?: boolean;
 }) {
   return (
     <button
       suppressHydrationWarning
       type="button"
       className={cn(
-        "flex w-full items-center justify-between gap-3 rounded-[16px] border border-border/70 bg-white/72 px-3 py-2.5 text-left transition-[transform,box-shadow,border-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        "flex w-full items-center justify-between gap-3 rounded-[16px] border border-border/70 bg-white/72 px-3 text-left transition-[transform,box-shadow,border-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        compact ? "py-2" : "py-2.5",
         disabled ? "cursor-not-allowed opacity-60" : "hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(15,23,42,0.05)]",
       )}
       onClick={() => onChange(!checked)}
@@ -46,7 +50,7 @@ function ToggleRow({
     >
       <span>
         <span className="block text-sm font-medium text-foreground">{label}</span>
-        <span className="block text-xs text-secondary-foreground">{description}</span>
+        <span className={cn("block text-xs text-secondary-foreground", compact && "line-clamp-1")}>{description}</span>
       </span>
       <span
         className={cn(
@@ -67,6 +71,7 @@ function ToggleRow({
 
 export function EmailSettingsPanel({
   accountEmail,
+  compact = false,
   isBusy,
   onSendTest,
   onSaveLeadMinutes,
@@ -92,26 +97,26 @@ export function EmailSettingsPanel({
   const emailDeliveryActive = preferences.email_enabled || preferences.meeting_mention_email_enabled;
 
   return (
-    <section className="rounded-[18px] border border-border/70 bg-white/78 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <section className={cn("rounded-[18px] border border-border/70 bg-white/78 shadow-[0_10px_24px_rgba(15,23,42,0.04)]", compact ? "p-3" : "p-4")}>
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/70">Email delivery</p>
-          <p className="mt-2 text-sm text-secondary-foreground">
-            Email reminders and meeting mention emails are off by default. When enabled, DayStack sends them to{" "}
-            <span className="font-medium text-foreground">{accountEmail ?? "your account email"}</span>.
+          <p className={cn("mt-1.5 text-secondary-foreground", compact ? "text-xs" : "text-sm")}>
+            Sends reminders to <span className="font-medium text-foreground">{accountEmail ?? "your account email"}</span>.
           </p>
         </div>
         <StatusChip
           label={emailDeliveryActive ? "Email on" : "Email off"}
           tone={emailDeliveryActive ? "brand" : "default"}
           icon={emailDeliveryActive ? MailCheck : MailMinus}
-          className="shrink-0"
+          className={cn("shrink-0", compact && "px-2 py-1 text-[10px]")}
         />
       </div>
 
-      <div className="mt-4 space-y-2">
+      <div className={cn("space-y-2", compact ? "mt-3" : "mt-4")}>
         <ToggleRow
           checked={preferences.email_enabled}
+          compact={compact}
           description="Send one pre-start email for every scheduled block, including blocked time."
           disabled={isBusy}
           label="Email block reminders"
@@ -119,6 +124,7 @@ export function EmailSettingsPanel({
         />
         <ToggleRow
           checked={preferences.meeting_mention_email_enabled}
+          compact={compact}
           description="Send an email when someone tags you in a meeting block."
           disabled={isBusy}
           label="Email meeting tags"
@@ -126,18 +132,18 @@ export function EmailSettingsPanel({
         />
       </div>
 
-      <div className="mt-4 rounded-[18px] border border-border/70 bg-muted/35 p-3.5">
-        <div className="flex items-start gap-3">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-primary shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
+      <div className={cn("rounded-[18px] border border-border/70 bg-muted/35", compact ? "mt-3 p-3" : "mt-4 p-3.5")}>
+        <div className="flex items-start gap-2.5">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-primary shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
             <Mail className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground">Email reminder timing</p>
-            <p className="mt-1 text-sm text-secondary-foreground">
-              Choose how many minutes before each block DayStack should send the reminder email. Use <span className="font-medium text-foreground">0</span> to send it right at start time.
+            <p className={cn("mt-1 text-secondary-foreground", compact ? "text-xs" : "text-sm")}>
+              Minutes before each block. Use <span className="font-medium text-foreground">0</span> for start time.
             </p>
 
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="mt-2.5 flex flex-col gap-1.5 sm:flex-row sm:items-center">
               <Input
                 type="number"
                 min={0}
@@ -145,7 +151,7 @@ export function EmailSettingsPanel({
                 step={1}
                 value={leadMinutesInput}
                 error={leadMinutesError}
-                className="h-11 w-full sm:max-w-[12rem]"
+                className="h-10 w-full sm:max-w-[12rem]"
                 onChange={(event) => {
                   setLeadMinutesInput(event.target.value);
                   if (leadMinutesError) {
@@ -153,10 +159,10 @@ export function EmailSettingsPanel({
                   }
                 }}
               />
-              <Button size="sm" variant="secondary" disabled={isBusy} onClick={handleSaveLeadMinutes}>
+              <Button size="sm" variant="secondary" className={compact ? "h-9 text-xs" : undefined} disabled={isBusy} onClick={handleSaveLeadMinutes}>
                 Save timing
               </Button>
-              <Button size="sm" disabled={isBusy} onClick={onSendTest}>
+              <Button size="sm" className={compact ? "h-9 text-xs" : undefined} disabled={isBusy} onClick={onSendTest}>
                 <Send className="h-4 w-4" />
                 Send test email
               </Button>

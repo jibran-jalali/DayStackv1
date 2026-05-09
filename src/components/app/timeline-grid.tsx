@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarRange, CheckCircle2, GripVertical, Play, Plus, Repeat, Users, Video } from "lucide-react";
+import { CalendarRange, CheckCheck, CheckCircle2, GripVertical, Play, Plus, Repeat, Users, Video } from "lucide-react";
 
 import { Button } from "@/components/shared/button";
 import {
@@ -385,6 +385,7 @@ function TimelineGridComponent({
               const isTight = density === "micro" || layout.columns > 1;
               const isMeeting = task.task_type === "meeting";
               const showParticipantNames = isMeeting && task.participants.length > 0 && !isTight;
+              const showAcceptedNames = isMeeting && task.acceptedParticipants.length > 0 && !isTight;
               const { left, width } = getLayoutStyles(layout.column, layout.columns);
               const controlButtonClass = isMicro
                 ? "h-5 w-5 rounded-full border border-white/75 bg-white/92 px-0 text-secondary-foreground shadow-[0_4px_10px_rgba(15,23,42,0.05)] hover:bg-white"
@@ -482,6 +483,17 @@ function TimelineGridComponent({
                                 <Users className="h-3.5 w-3.5 shrink-0" />
                                 <span className="truncate">
                                   {formatParticipantNames(task.participants, layout.columns > 1 ? 1 : 2)}
+                                </span>
+                              </span>
+                            </>
+                          ) : null}
+                          {showAcceptedNames ? (
+                            <>
+                              <span className="h-1 w-1 shrink-0 rounded-full bg-emerald-500/45" />
+                              <span className="flex min-w-0 items-center gap-1.5 text-emerald-700">
+                                <CheckCheck className="h-3.5 w-3.5 shrink-0" />
+                                <span className="truncate">
+                                  Accepted: {formatParticipantNames(task.acceptedParticipants, layout.columns > 1 ? 1 : 2)}
                                 </span>
                               </span>
                             </>

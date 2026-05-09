@@ -105,8 +105,37 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
+function isJwtSessionDecodeError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const candidate = error as {
+    code?: string;
+    message?: string;
+    name?: string;
+  };
+
+  const message = candidate.message?.toLowerCase() ?? "";
+
+  return (
+    candidate.code === "JWT_SESSION_ERROR" ||
+    candidate.name === "JWTSessionError" ||
+    message.includes("decryption operation failed") ||
+    message.includes("jwt_session_error")
+  );
+}
+
 export async function auth() {
-  return getServerSession(authOptions);
+  try {
+    return await getServerSession(authOptions);
+  } catch (error) {
+    if (isJwtSessionDecodeError(error)) {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export async function getSessionUser() {

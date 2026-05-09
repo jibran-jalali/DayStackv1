@@ -51,3 +51,14 @@ export async function acceptTaskNotification(
 
   return payload.result;
 }
+
+export async function rejectTaskNotification(notificationId: string) {
+  await requestJson<{ ok: boolean }>(
+    `/api/notifications/${notificationId}/reject`,
+    {
+      method: "POST",
+      credentials: "same-origin",
+    },
+    "Meeting request reject failed.",
+  );
+}

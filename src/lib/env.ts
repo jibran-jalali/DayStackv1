@@ -4,6 +4,12 @@ export interface EmailServerEnv {
   user: string;
 }
 
+export interface WebPushEnv {
+  privateKey: string;
+  publicKey: string;
+  subject: string;
+}
+
 function normalizeEnvValue(value: string | undefined) {
   const trimmed = value?.trim();
 
@@ -75,4 +81,24 @@ export function isEmailConfigured() {
 
 export function getAppBaseUrl() {
   return normalizeEnvValue(process.env.NEXTAUTH_URL) ?? "http://localhost:3000";
+}
+
+export function getWebPushEnv(): WebPushEnv | null {
+  const publicKey = normalizeEnvValue(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
+  const privateKey = normalizeEnvValue(process.env.VAPID_PRIVATE_KEY);
+  const subject = normalizeEnvValue(process.env.VAPID_SUBJECT) ?? "mailto:admin@daystack.local";
+
+  if (!publicKey || !privateKey) {
+    return null;
+  }
+
+  return {
+    privateKey,
+    publicKey,
+    subject,
+  };
+}
+
+export function isWebPushConfigured() {
+  return Boolean(getWebPushEnv());
 }

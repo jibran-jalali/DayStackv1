@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Bell, CalendarDays, Clock3, Flame, LoaderCircle, LogOut, MessageSquareText, Plus, Settings2 } from "lucide-react";
+import { Bell, CalendarDays, Clock3, Flame, LoaderCircle, LogOut, MessageSquareText, Plus, Settings2, UserRoundPlus } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useTransition } from "react";
 
@@ -16,12 +16,13 @@ import { cn } from "@/lib/utils";
 import type { PlannerDateMode, TaskNotificationAcceptResult } from "@/types/daystack";
 
 interface PlannerHeaderProps {
-  activePage: "assistant" | "notifications" | "planner" | "pomodoro" | "settings";
+  activePage: "assistant" | "friends" | "notifications" | "planner" | "settings";
   assistantHref?: string;
   dateLabel: string;
   dateMode?: PlannerDateMode;
   displayName: string;
   email?: string;
+  friendsHref?: string;
   metricIcon?: LucideIcon;
   metricLabel?: string;
   metricTone?: "brand" | "default" | "success" | "warning";
@@ -47,7 +48,7 @@ interface PlannerHeaderProps {
 }
 
 function getEyebrow(
-  activePage: "assistant" | "notifications" | "planner" | "pomodoro" | "settings",
+  activePage: "assistant" | "friends" | "notifications" | "planner" | "settings",
   dateMode?: PlannerDateMode,
 ) {
   if (activePage === "assistant") {
@@ -62,8 +63,8 @@ function getEyebrow(
     return "Inbox";
   }
 
-  if (activePage === "pomodoro") {
-    return "Focus timer";
+  if (activePage === "friends") {
+    return "Friends";
   }
 
   if (dateMode === "future") {
@@ -84,6 +85,7 @@ export function PlannerHeader({
   dateMode,
   displayName,
   email,
+  friendsHref = "/app/friends",
   metricIcon,
   metricLabel,
   metricTone = "brand",
@@ -99,7 +101,7 @@ export function PlannerHeader({
   plannerHref = "/app",
   notificationsHref,
   onViewChange,
-  pomodoroHref = "/app/pomodoro",
+  pomodoroHref = "https://flocus.com/",
   settingsHref = "/app/settings",
   showNotificationCenter = false,
   streak,
@@ -117,12 +119,14 @@ export function PlannerHeader({
     icon: Icon,
     label,
     onClick,
+    target,
   }: {
     active?: boolean;
     href?: string;
     icon: LucideIcon;
     label: string;
     onClick?: () => void;
+    target?: "_blank";
   }) {
     const className = cn(
       navPillClass,
@@ -142,7 +146,7 @@ export function PlannerHeader({
 
     if (onClick) {
       return (
-        <button type="button" className={className} onClick={onClick}>
+        <button suppressHydrationWarning type="button" className={className} onClick={onClick}>
           <Icon className="h-4 w-4" />
           {label}
         </button>
@@ -150,7 +154,7 @@ export function PlannerHeader({
     }
 
     return (
-      <Link href={href ?? "#"} className={className}>
+      <Link href={href ?? "#"} className={className} target={target} rel={target === "_blank" ? "noreferrer" : undefined}>
         <Icon className="h-4 w-4" />
         {label}
       </Link>
@@ -235,10 +239,18 @@ export function PlannerHeader({
           })}
 
           {renderNavPill({
-            active: activePage === "pomodoro",
+            active: activePage === "friends",
+            href: friendsHref,
+            icon: UserRoundPlus,
+            label: "Friends",
+          })}
+
+          {renderNavPill({
+            active: false,
             href: pomodoroHref,
             icon: Clock3,
             label: "Pomodoro",
+            target: "_blank",
           })}
         </div>
 

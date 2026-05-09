@@ -33,7 +33,7 @@ function DashboardCard({
   return (
     <section
       className={cn(
-        "rounded-[24px] border border-border/75 bg-white/84 p-5 shadow-[0_16px_34px_rgba(15,23,42,0.05)] sm:p-6",
+        "rounded-[18px] border border-border/75 bg-white/84 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)] sm:rounded-[24px] sm:p-6 sm:shadow-[0_16px_34px_rgba(15,23,42,0.05)]",
         className,
       )}
     >
@@ -51,8 +51,8 @@ function SectionLabel({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-secondary-foreground">
-        <Icon className="h-4 w-4" />
+      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-secondary-foreground sm:h-8 sm:w-8">
+        <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
       </span>
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/70">{title}</p>
     </div>
@@ -109,19 +109,19 @@ function DashboardViewComponent({
   const streakLine = getStreakLine(streak, dateMode);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
-      <div className="grid gap-5 xl:grid-cols-[1.25fr_0.82fr]">
+    <div className="mx-auto max-w-6xl space-y-3 sm:space-y-5">
+      <div className="grid gap-3 sm:gap-5 xl:grid-cols-[1.25fr_0.82fr]">
         <DashboardCard className="relative overflow-hidden">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[linear-gradient(180deg,rgba(24,190,239,0.08),transparent)]" />
           <SectionLabel icon={Gauge} title="Today Progress" />
-          <div className="relative mt-5">
+          <div className="relative mt-3 sm:mt-5">
             <p className="text-sm font-medium text-secondary-foreground">{dateLabel}</p>
-            <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+            <div className="mt-2 flex flex-wrap items-end justify-between gap-3 sm:mt-3 sm:gap-4">
               <div>
-                <p className="font-display text-5xl font-semibold text-foreground sm:text-[3.5rem]">
+                <p className="font-display text-4xl font-semibold text-foreground sm:text-[3.5rem]">
                   {summary.completionRate}%
                 </p>
-                <p className="mt-2 text-base font-medium text-foreground">
+                <p className="mt-1 text-sm font-medium text-foreground sm:mt-2 sm:text-base">
                   {summary.completedTasks} of {summary.totalTasks || 0} completed
                 </p>
               </div>
@@ -130,23 +130,23 @@ function DashboardViewComponent({
                 tone={summary.incompleteTasks === 0 ? "success" : "default"}
               />
             </div>
-            <div className="mt-5 h-3 overflow-hidden rounded-full bg-muted">
+            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted sm:mt-5 sm:h-3">
               <div
                 className="h-full rounded-full bg-brand-gradient transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
                 style={{ width: `${summary.completionRate}%` }}
               />
             </div>
-            <p className="mt-4 text-sm text-secondary-foreground">{progressLine}</p>
+            <p className="mt-3 text-xs text-secondary-foreground sm:mt-4 sm:text-sm">{progressLine}</p>
           </div>
         </DashboardCard>
 
-        <DashboardCard className="flex min-h-[18rem] flex-col justify-between">
+        <DashboardCard className="flex min-h-[12rem] flex-col justify-between sm:min-h-[18rem]">
           <div>
             <SectionLabel icon={Flame} title="Current Streak" />
-            <div className="mt-5 flex items-end justify-between gap-4">
+            <div className="mt-3 flex items-end justify-between gap-3 sm:mt-5 sm:gap-4">
               <div>
-                <p className="font-display text-5xl font-semibold text-foreground sm:text-[3.5rem]">{streak}</p>
-                <p className="mt-2 text-base font-medium text-foreground">
+                <p className="font-display text-4xl font-semibold text-foreground sm:text-[3.5rem]">{streak}</p>
+                <p className="mt-1 text-sm font-medium text-foreground sm:mt-2 sm:text-base">
                   {streak === 1 ? "day active" : "days active"}
                 </p>
               </div>
@@ -156,17 +156,17 @@ function DashboardViewComponent({
               />
             </div>
           </div>
-          <p className="mt-6 text-sm text-secondary-foreground">{streakLine}</p>
+          <p className="mt-4 text-xs text-secondary-foreground sm:mt-6 sm:text-sm">{streakLine}</p>
         </DashboardCard>
       </div>
 
-      <DashboardCard className="min-h-[17rem]">
+      <DashboardCard className="min-h-[13rem] sm:min-h-[17rem]">
         <SectionLabel icon={Sparkles} title="Next Task" />
         {nextTask ? (
-          <div className="mt-5 flex h-full flex-col justify-between gap-6 lg:flex-row lg:items-end">
+          <div className="mt-3 flex h-full flex-col justify-between gap-4 sm:mt-5 sm:gap-6 lg:flex-row lg:items-end">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="truncate font-display text-3xl font-semibold text-foreground sm:text-[2.4rem]">
+                <p className="truncate font-display text-2xl font-semibold text-foreground sm:text-[2.4rem]">
                   {nextTask.title}
                 </p>
                 <StatusChip
@@ -174,7 +174,7 @@ function DashboardViewComponent({
                   tone={nextTask.task_type === "meeting" ? "brand" : "default"}
                 />
               </div>
-              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-secondary-foreground">
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-secondary-foreground sm:mt-4 sm:gap-x-4 sm:gap-y-2 sm:text-sm">
                 <span className="inline-flex items-center gap-1.5">
                   {nextTask.task_type === "meeting" ? (
                     <Video className="h-4 w-4 text-primary" />
@@ -209,9 +209,9 @@ function DashboardViewComponent({
             </div>
           </div>
         ) : (
-          <div className="mt-5 rounded-[20px] border border-dashed border-border/80 bg-muted/35 px-5 py-8">
-            <p className="text-lg font-semibold text-foreground">Nothing is queued next.</p>
-            <p className="mt-2 max-w-2xl text-sm text-secondary-foreground">
+          <div className="mt-3 rounded-[16px] border border-dashed border-border/80 bg-muted/35 px-4 py-5 sm:mt-5 sm:rounded-[20px] sm:px-5 sm:py-8">
+            <p className="text-base font-semibold text-foreground sm:text-lg">Nothing is queued next.</p>
+            <p className="mt-1.5 max-w-2xl text-xs text-secondary-foreground sm:mt-2 sm:text-sm">
               Add one clear block so the next move is obvious the moment you come back.
             </p>
             <Button size="sm" className="mt-4" onClick={onAddTask} disabled={isPending}>

@@ -206,46 +206,45 @@ export function AutomationKeysPanel({ compact = false, onNotice }: AutomationKey
     <section
       className={cn(
         compact
-          ? "mobile-card p-4"
+          ? "mobile-card p-3"
           : "rounded-[18px] border border-border/70 bg-white/78 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]",
       )}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/70">
             Automation API
           </p>
-          <p className="mt-2 text-sm text-secondary-foreground">
-            Create per-user API keys for Zapier, Make, n8n, or custom scripts. These keys call DayStack&apos;s
-            external <span className="font-medium text-foreground">/api/v1</span> routes without using your web session.
+          <p className={cn("mt-1.5 text-secondary-foreground", compact ? "text-xs" : "text-sm")}>
+            Create API keys for automations that call <span className="font-medium text-foreground">/api/v1</span>.
           </p>
         </div>
-        <Button size="sm" variant="secondary" disabled={isPending} onClick={handleRefresh}>
+        <Button size="sm" variant="secondary" className={compact ? "h-9 text-xs" : undefined} disabled={isPending} onClick={handleRefresh}>
           {isLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
           Refresh
         </Button>
       </div>
 
-      <div className="mt-4 rounded-[18px] border border-border/70 bg-muted/35 p-3.5">
-        <div className="flex items-start gap-3">
-          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-primary shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
-            <KeyRound className="h-5 w-5" />
+      <div className={cn("rounded-[18px] border border-border/70 bg-muted/35", compact ? "mt-3 p-3" : "mt-4 p-3.5")}>
+        <div className="flex items-start gap-2.5">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-primary shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
+            <KeyRound className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground">Create a new API key</p>
-            <p className="mt-1 text-sm text-secondary-foreground">
-              Label keys by use case so you can revoke a single integration without touching the rest.
+            <p className={cn("mt-1 text-secondary-foreground", compact ? "text-xs" : "text-sm")}>
+              Label keys so each integration is easy to manage.
             </p>
 
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="mt-2.5 flex flex-col gap-1.5 sm:flex-row sm:items-center">
               <Input
                 maxLength={80}
                 value={createLabel}
-                className="h-11 w-full sm:max-w-[15rem]"
+                className="h-10 w-full sm:max-w-[15rem]"
                 onChange={(event) => setCreateLabel(event.target.value)}
                 placeholder="Zapier"
               />
-              <Button size="sm" disabled={isPending} onClick={handleCreateKey}>
+              <Button size="sm" className={compact ? "h-9 text-xs" : undefined} disabled={isPending} onClick={handleCreateKey}>
                 {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
                 Create key
               </Button>

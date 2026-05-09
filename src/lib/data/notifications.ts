@@ -12,6 +12,7 @@ import {
   users,
 } from "@/db/schema";
 import { syncTaskRemindersForTask } from "@/lib/data/reminders";
+import { fetchAcceptedFriendIds } from "@/lib/data/friends";
 import { buildSummary, deriveDisplayName } from "@/lib/daystack";
 import { getAppBaseUrl } from "@/lib/env";
 import { isEmailServerConfigured, sendMeetingMentionEmail } from "@/lib/email/server";
@@ -221,6 +222,29 @@ export async function markTaskNotificationsRead(userId: string, notificationIds:
   return updatedRows.length;
 }
 
+export async function dismissTaskNotification(userId: string, notificationId: string) {
+  const db = getRequiredDb();
+  const [notification] = await db
+    .update(task_notifications)
+    .set({
+      read_at: new Date().toISOString(),
+      status: "dismissed",
+      updated_at: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(task_notifications.id, notificationId),
+        eq(task_notifications.user_id, userId),
+        eq(task_notifications.status, "pending"),
+      ),
+    )
+    .returning({ id: task_notifications.id });
+
+  if (!notification) {
+    throw new Error("This meeting request is no longer available.");
+  }
+}
+
 export async function syncTaskMentionNotificationsForTask(
   actorUserId: string,
   taskId: string,
@@ -261,16 +285,19 @@ export async function syncTaskMentionNotificationsForTask(
       ),
   ]);
 
-  const nextRecipientIds =
+  const participantRecipientIds =
     task.task_type === "meeting"
       ? [
           ...new Set(
-              participantRows
-                .map((row) => row.participant_id)
-                .filter((participantId): participantId is string => participantId !== actorUserId),
-            ),
+            participantRows
+              .map((row) => row.participant_id)
+              .filter((participantId): participantId is string => participantId !== actorUserId),
+          ),
         ]
       : [];
+  const acceptedFriendIds =
+    participantRecipientIds.length > 0 ? await fetchAcceptedFriendIds(actorUserId, participantRecipientIds) : new Set<string>();
+  const nextRecipientIds = participantRecipientIds.filter((participantId) => acceptedFriendIds.has(participantId));
   const nextRecipientIdSet = new Set(nextRecipientIds);
   const existingRowsByUserId = new Map(existingRows.map((notification) => [notification.user_id, notification]));
   const acceptedRows = existingRows.filter((notification) => notification.status === "accepted");

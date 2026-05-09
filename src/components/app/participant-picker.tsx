@@ -85,7 +85,7 @@ export function ParticipantPicker({
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground/70" />
         <Input
           className="h-11 rounded-[16px] border-border/80 bg-white/96 py-2.5 pl-10 pr-3.5 text-[15px] shadow-none"
-          placeholder="Search people to mention"
+          placeholder="Search accepted friends to mention"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           disabled={disabled}
@@ -141,7 +141,7 @@ export function ParticipantPicker({
           </div>
         ) : (
           <p className="px-3.5 py-3 text-sm text-secondary-foreground">
-            {error ?? "No people to add yet. Search by name or email."}
+            {error ?? "No accepted friends to add yet. Search by name or email."}
           </p>
         )}
       </div>

@@ -40,17 +40,17 @@ function TimelineListComponent({
       <button
         suppressHydrationWarning
         type="button"
-        className="mobile-card w-full border-dashed bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(243,247,252,0.92))] p-5 text-left transition-[border-color,background-color,box-shadow,transform] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-primary/35"
+        className="mobile-card w-full border-dashed bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,248,252,0.94))] p-4 text-left transition-[border-color,background-color,box-shadow,transform] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-primary/35"
         onClick={() => onAddTask()}
       >
-        <p className="text-base font-semibold tracking-tight text-foreground">Your day is open.</p>
-        <p className="mt-1 text-sm text-secondary-foreground">Add the first block and the schedule will take shape.</p>
+        <p className="text-[15px] font-semibold tracking-tight text-foreground">Your day is open.</p>
+        <p className="mt-1 text-xs text-secondary-foreground">Add the first block.</p>
       </button>
     );
   }
 
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-2.5">
       {tasks.map((task) => (
         <TaskCard
           key={task.id}
@@ -70,7 +70,7 @@ function TimelineListComponent({
 
       <Button
         variant="secondary"
-        className="mt-2 h-12 w-full justify-start rounded-[22px] border-dashed bg-white/92 text-secondary-foreground shadow-[0_14px_30px_rgba(15,23,42,0.06)] hover:border-primary/30 hover:bg-[linear-gradient(135deg,rgba(24,190,239,0.08),rgba(109,40,240,0.04))]"
+        className="mt-1 h-10 w-full justify-start rounded-[18px] border-dashed bg-white/92 text-xs text-secondary-foreground shadow-[0_8px_20px_rgba(15,23,42,0.055)] hover:border-primary/30 hover:bg-[linear-gradient(135deg,rgba(24,190,239,0.08),rgba(109,40,240,0.04))]"
         onClick={() => onAddTask(tasks.at(-1)?.end_time.slice(0, 5))}
       >
         <Plus className="h-4 w-4" />

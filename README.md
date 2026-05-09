@@ -18,6 +18,7 @@ DayStack is a timeline-based daily execution planner built on:
 - Daily timeline planning with create/edit/delete/complete flows
 - Execution score and streak tracking
 - Meeting blocks with participant mentions
+- Friend requests that gate who can mention whom in meetings
 - In-app notification center
 - Reminder preferences plus test email delivery
 - Reminder dispatch route for Vercel Cron
@@ -87,6 +88,7 @@ Main tables:
 - `api_keys`
 - `tasks`
 - `task_participants`
+- `friend_connections`
 - `daily_summaries`
 - `user_notification_preferences`
 - `task_reminders`

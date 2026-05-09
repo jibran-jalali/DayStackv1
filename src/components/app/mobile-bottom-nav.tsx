@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, CalendarDays, MessageSquareText, Settings2 } from "lucide-react";
+import { Bell, CalendarDays, MessageSquareText, Settings2, UserRoundPlus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-type MobileBottomNavTab = "assistant" | "notifications" | "plan" | "settings";
+type MobileBottomNavTab = "assistant" | "friends" | "notifications" | "plan" | "settings";
 
 interface MobileBottomNavProps {
   activeTab?: MobileBottomNavTab | null;
   assistantHref?: string;
+  friendsHref?: string;
   onOpenAssistant?: () => void;
   notificationsHref?: string;
   onOpenNotifications?: () => void;
@@ -37,6 +38,11 @@ const navItems = [
     label: "Inbox",
   },
   {
+    icon: UserRoundPlus,
+    key: "friends",
+    label: "Friends",
+  },
+  {
     icon: Settings2,
     key: "settings",
     label: "Settings",
@@ -56,17 +62,18 @@ export function MobileBottomNav({
   onOpenPlan,
   onOpenSettings,
   onPlayNavigate,
+  friendsHref = "/app/friends",
   plannerHref = "/app",
   settingsHref = "/app?tab=settings",
 }: MobileBottomNavProps) {
   return (
-    <div className="mobile-safe-x shrink-0 pb-[calc(0.85rem+env(safe-area-inset-bottom))] pt-3 lg:hidden">
-      <nav className="mobile-shell-width mobile-nav-shell mx-auto flex items-center gap-1.5 px-1.5 py-2">
+    <div className="mobile-safe-x shrink-0 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2 lg:hidden">
+      <nav className="mobile-shell-width mobile-nav-shell mx-auto flex items-center gap-1 px-1 py-1.5">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.key;
           const baseClassName = cn(
-            "inline-flex min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-1 rounded-[22px] px-2 py-2 text-[11px] font-semibold transition-[transform,box-shadow,background-color,color,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]",
+            "inline-flex min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-0.5 rounded-[17px] px-1 py-1.5 text-[10px] font-semibold transition-[transform,box-shadow,background-color,color,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]",
             isActive
               ? "bg-brand-gradient text-white shadow-[var(--shadow-brand-pill)]"
               : "text-secondary-foreground hover:bg-muted/70 hover:text-foreground",
@@ -76,11 +83,12 @@ export function MobileBottomNav({
             return onOpenPlan ? (
               <button
                 key={item.key}
+                suppressHydrationWarning
                 type="button"
                 className={baseClassName}
                 onClick={onOpenPlan}
               >
-                <Icon className="h-4.5 w-4.5" />
+                <Icon className="h-4 w-4" />
                 {item.label}
               </button>
             ) : (
@@ -90,7 +98,7 @@ export function MobileBottomNav({
                 className={baseClassName}
                 onClick={() => onPlayNavigate?.()}
               >
-                <Icon className="h-4.5 w-4.5" />
+                <Icon className="h-4 w-4" />
                 {item.label}
               </Link>
             );
@@ -100,11 +108,12 @@ export function MobileBottomNav({
             return onOpenNotifications ? (
               <button
                 key={item.key}
+                suppressHydrationWarning
                 type="button"
                 className={baseClassName}
                 onClick={onOpenNotifications}
               >
-                <Icon className="h-4.5 w-4.5" />
+                <Icon className="h-4 w-4" />
                 {item.label}
               </button>
             ) : (
@@ -114,7 +123,7 @@ export function MobileBottomNav({
                 className={baseClassName}
                 onClick={() => onPlayNavigate?.()}
               >
-                <Icon className="h-4.5 w-4.5" />
+                <Icon className="h-4 w-4" />
                 {item.label}
               </Link>
             );
@@ -124,11 +133,12 @@ export function MobileBottomNav({
             return onOpenAssistant ? (
               <button
                 key={item.key}
+                suppressHydrationWarning
                 type="button"
                 className={baseClassName}
                 onClick={onOpenAssistant}
               >
-                <Icon className="h-4.5 w-4.5" />
+                <Icon className="h-4 w-4" />
                 {item.label}
               </button>
             ) : (
@@ -138,7 +148,7 @@ export function MobileBottomNav({
                 className={baseClassName}
                 onClick={() => onPlayNavigate?.()}
               >
-                <Icon className="h-4.5 w-4.5" />
+                <Icon className="h-4 w-4" />
                 {item.label}
               </Link>
             );
@@ -148,11 +158,12 @@ export function MobileBottomNav({
             return onOpenSettings ? (
               <button
                 key={item.key}
+                suppressHydrationWarning
                 type="button"
                 className={baseClassName}
                 onClick={onOpenSettings}
               >
-                <Icon className="h-4.5 w-4.5" />
+                <Icon className="h-4 w-4" />
                 {item.label}
               </button>
             ) : (
@@ -162,12 +173,25 @@ export function MobileBottomNav({
                 className={baseClassName}
                 onClick={() => onPlayNavigate?.()}
               >
-                <Icon className="h-4.5 w-4.5" />
+                <Icon className="h-4 w-4" />
                 {item.label}
               </Link>
             );
           }
 
+          if (item.key === "friends") {
+            return (
+              <Link
+                key={item.key}
+                href={friendsHref}
+                className={baseClassName}
+                onClick={() => onPlayNavigate?.()}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          }
         })}
       </nav>
     </div>

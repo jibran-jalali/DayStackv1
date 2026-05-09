@@ -15,8 +15,8 @@
   --shadow-brand-md: 0 16px 34px rgba(83, 78, 222, 0.22);
   --shadow-brand-lg: 0 20px 42px rgba(83, 78, 222, 0.28);
   --shadow-brand-pill: 0 14px 28px rgba(83, 78, 222, 0.2);
-  --mobile-shell-max-width: 27rem;
-  --mobile-bottom-nav-height: 5.75rem;
+  --mobile-shell-max-width: 26rem;
+  --mobile-bottom-nav-height: 4.85rem;
   --primary: #1496e8;
   --primary-strong: #6d28f0;
   --primary-foreground: #ffffff;
@@ -317,9 +317,7 @@ button:disabled {
 
 @utility mobile-app-shell {
   background:
-    radial-gradient(circle at top center, rgba(24, 190, 239, 0.14), transparent 34%),
-    radial-gradient(circle at top right, rgba(109, 40, 240, 0.12), transparent 28%),
-    linear-gradient(180deg, rgba(252, 253, 255, 0.98), rgba(244, 247, 252, 0.98));
+    linear-gradient(180deg, rgba(252, 253, 255, 0.99), rgba(246, 248, 252, 0.99));
 }
 
 @utility mobile-viewport-shell {
@@ -328,8 +326,8 @@ button:disabled {
 }
 
 @utility mobile-safe-x {
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+  padding-right: max(0.75rem, env(safe-area-inset-right));
 }
 
 @utility mobile-shell-width {
@@ -337,19 +335,19 @@ button:disabled {
 }
 
 @utility mobile-stack {
-  @apply space-y-4;
+  @apply space-y-2.5;
 }
 
 @utility mobile-surface {
-  @apply rounded-[28px] border border-white/70 bg-white/92 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl;
+  @apply rounded-[20px] border border-white/75 bg-white/94 shadow-[0_10px_24px_rgba(15,23,42,0.06)] backdrop-blur-xl;
 }
 
 @utility mobile-card {
-  @apply rounded-[26px] border border-border/70 bg-white/96 shadow-[0_16px_34px_rgba(15,23,42,0.07)];
+  @apply rounded-[18px] border border-border/70 bg-white/96 shadow-[0_8px_20px_rgba(15,23,42,0.055)];
 }
 
 @utility mobile-nav-shell {
-  @apply rounded-[28px] border border-white/75 bg-white/92 shadow-[0_20px_44px_rgba(15,23,42,0.12)] backdrop-blur-xl;
+  @apply rounded-[22px] border border-white/75 bg-white/94 shadow-[0_12px_28px_rgba(15,23,42,0.1)] backdrop-blur-xl;
 }
 
 @utility content-auto {

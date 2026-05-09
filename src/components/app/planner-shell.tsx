@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Bell, Mail, Plus, Sparkles } from "lucide-react";
 
@@ -150,25 +149,6 @@ function getWorkspaceHref(taskDate: string, now: Date, tab: WorkspaceTab) {
   return query ? `/app?${query}` : "/app";
 }
 
-function getPomodoroHref(taskDate: string, now: Date, params?: Record<string, string>) {
-  const todayDate = formatDateKey(now);
-  const searchParams = new URLSearchParams();
-
-  if (taskDate !== todayDate) {
-    searchParams.set("date", taskDate);
-  }
-
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      searchParams.set(key, value);
-    });
-  }
-
-  const query = searchParams.toString();
-
-  return query ? `/app/pomodoro?${query}` : "/app/pomodoro";
-}
-
 function sortTasksForPlanner(tasks: PlannerTask[]) {
   return [...tasks].sort((left, right) => {
     const byStart = toMinutes(left.start_time) - toMinutes(right.start_time);
@@ -247,7 +227,6 @@ export function PlannerShell({
   userId,
   initialSnapshot,
 }: PlannerShellProps) {
-  const router = useRouter();
   const initialNow = useMemo(() => new Date(initialNowIso), [initialNowIso]);
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>(initialTab);
@@ -268,9 +247,11 @@ export function PlannerShell({
   const {
     isNotificationPending,
     notificationPreferences,
+    sendTestPush,
     sendTestNotification,
     toggleEmailReminders,
     toggleMeetingMentionEmails,
+    togglePushReminders,
     updateEmailReminderLeadMinutes,
   } = useNotificationSettings({
     initialPreferences: initialNotificationPreferences,
@@ -522,6 +503,7 @@ export function PlannerShell({
 
       const nextPlannerTask: PlannerTask = {
         acceptedCopiesCount: editorTask?.acceptedCopiesCount ?? 0,
+        acceptedParticipants: editorTask?.acceptedParticipants ?? [],
         ...savedTask,
         participants: values.taskType === "meeting" ? values.participants : [],
         recurringSeriesId: editorTask?.recurringSeriesId ?? null,
@@ -882,16 +864,11 @@ export function PlannerShell({
   }
 
   const handleStartFocusTask = useCallback(
-    function handleStartFocusTask(task: PlannerTask) {
+    function handleStartFocusTask() {
       playActionFeedback("navigate");
-      router.push(
-        getPomodoroHref(task.task_date, new Date(), {
-          autostart: "1",
-          taskId: task.id,
-        }),
-      );
+      window.open("https://flocus.com/", "_blank", "noreferrer");
     },
-    [playActionFeedback, router],
+    [playActionFeedback],
   );
 
   async function handleNotificationAccepted(result: TaskNotificationAcceptResult) {
@@ -939,7 +916,6 @@ export function PlannerShell({
 
   const dateMode = useMemo(() => getPlannerDateMode(snapshot.taskDate, now), [now, snapshot.taskDate]);
   const dateLabel = useMemo(() => formatDateLabel(snapshot.taskDate), [snapshot.taskDate]);
-  const pomodoroHref = useMemo(() => getPomodoroHref(snapshot.taskDate, now), [now, snapshot.taskDate]);
   const plannerHref = useMemo(
     () => getWorkspaceHref(snapshot.taskDate, now, "plan"),
     [now, snapshot.taskDate],
@@ -1079,6 +1055,7 @@ export function PlannerShell({
     viewMode,
   ]);
   const activeChannelCount = [
+    notificationPreferences.push_enabled,
     notificationPreferences.email_enabled,
     notificationPreferences.meeting_mention_email_enabled,
   ].filter(Boolean).length;
@@ -1228,7 +1205,7 @@ export function PlannerShell({
                   workspaceTab === "plan" ? (
                     <Button
                       size="sm"
-                      className="h-11 min-w-[7.25rem] px-4"
+                      className="h-9 min-w-[6.35rem] px-3 text-xs"
                       onClick={() => handleCreateTask()}
                       disabled={isPending}
                     >
@@ -1246,7 +1223,7 @@ export function PlannerShell({
                   "pointer-events-none fixed inset-x-0 z-40 flex justify-center lg:hidden",
                   workspaceTab === "assistant"
                     ? "top-[calc(env(safe-area-inset-top)+1rem)]"
-                    : "top-[calc(env(safe-area-inset-top)+8.75rem)]",
+                    : "top-[calc(env(safe-area-inset-top)+6.75rem)]",
                 )}
               >
                 <div className="mobile-shell-width mx-auto">
@@ -1269,27 +1246,33 @@ export function PlannerShell({
                 "mobile-shell-width mx-auto",
                 workspaceTab === "assistant"
                   ? "flex min-h-0 flex-1 flex-col px-0 pb-2 pt-[max(0.85rem,env(safe-area-inset-top))]"
-                  : "mobile-stack pb-4 pt-4",
+                  : "mobile-stack pb-3 pt-2.5",
               )}
             >
           {workspaceTab === "plan" ? (
             <>
-              <section className="mobile-surface relative overflow-hidden px-4 py-4">
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[linear-gradient(180deg,rgba(24,190,239,0.16),transparent)]" />
+              <section className="mobile-surface relative overflow-hidden px-3 py-3">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-[linear-gradient(180deg,rgba(24,190,239,0.08),transparent)]" />
                 <div className="relative">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="section-label">Daily progress</p>
-                      <p className="mt-2 font-display text-[2.8rem] font-semibold tracking-[-0.06em] text-foreground">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-secondary-foreground/70">
+                        Daily progress
+                      </p>
+                      <div className="mt-1 flex min-w-0 items-end gap-2">
+                        <p className="font-display text-3xl font-semibold leading-none tracking-[-0.05em] text-foreground">
                         {snapshot.summary.completionRate}%
                       </p>
-                      <p className="mt-1 text-sm text-secondary-foreground">{snapshot.summary.summaryLine}</p>
+                        <p className="min-w-0 truncate pb-0.5 text-xs font-medium text-secondary-foreground">
+                          {snapshot.summary.summaryLine}
+                        </p>
+                      </div>
                     </div>
-                    <div className="rounded-[22px] bg-white/82 px-3 py-2 text-right shadow-[0_12px_26px_rgba(15,23,42,0.08)]">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/72">
+                    <div className="shrink-0 rounded-[16px] bg-white/86 px-2.5 py-1.5 text-right shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-secondary-foreground/72">
                         {dateMode === "future" ? "Planned" : "Done"}
                       </p>
-                      <p className="mt-1 text-lg font-semibold text-foreground">
+                      <p className="mt-0.5 text-base font-semibold text-foreground">
                         {dateMode === "future"
                           ? snapshot.summary.totalTasks
                           : `${snapshot.summary.completedTasks}/${snapshot.summary.totalTasks || 0}`}
@@ -1297,29 +1280,29 @@ export function PlannerShell({
                     </div>
                   </div>
 
-                  <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/72">
+                  <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-white/72">
                     <div
                       className="h-full rounded-full bg-brand-gradient transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
                       style={{ width: `${snapshot.summary.completionRate}%` }}
                     />
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <div className="rounded-full border border-border/70 bg-white/84 px-3 py-1.5 text-xs font-semibold text-secondary-foreground shadow-[0_10px_22px_rgba(15,23,42,0.05)]">
+                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                    <div className="rounded-full border border-border/70 bg-white/84 px-2.5 py-1 text-[11px] font-semibold text-secondary-foreground shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
                       {relativeDateLabel}
                     </div>
-                    <div className="rounded-full border border-border/70 bg-white/84 px-3 py-1.5 text-xs font-semibold text-secondary-foreground shadow-[0_10px_22px_rgba(15,23,42,0.05)]">
+                    <div className="rounded-full border border-border/70 bg-white/84 px-2.5 py-1 text-[11px] font-semibold text-secondary-foreground shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
                       {snapshot.tasks.length} block{snapshot.tasks.length === 1 ? "" : "s"}
                     </div>
                     {snapshot.streak > 0 ? (
-                      <div className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-[0_10px_22px_rgba(34,197,94,0.08)]">
+                      <div className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 shadow-[0_8px_18px_rgba(34,197,94,0.07)]">
                         {snapshot.streak} day streak
                       </div>
                     ) : null}
                     {mobilePlanView === "list" && snapshot.tasks.length > 0 && !selectionMode ? (
                       <button
                         type="button"
-                        className="ml-auto inline-flex h-9 items-center justify-center rounded-full border border-border/80 bg-white px-3 text-sm font-semibold text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-[transform,box-shadow,background-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]"
+                        className="ml-auto inline-flex h-8 items-center justify-center rounded-full border border-border/80 bg-white px-2.5 text-xs font-semibold text-foreground shadow-[0_8px_18px_rgba(15,23,42,0.05)] transition-[transform,box-shadow,background-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]"
                         onClick={() => setSelectionMode(true)}
                         disabled={isPending}
                       >
@@ -1337,13 +1320,13 @@ export function PlannerShell({
                 todayDate={todayDate}
               />
 
-              <section className="mobile-surface px-3 py-3">
-                <div className="grid grid-cols-3 gap-2">
+              <section className="mobile-surface px-2 py-2">
+                <div className="grid grid-cols-5 gap-1.5">
                   {[
                     { key: "list", label: "Tasks" },
                     { key: "grid", label: "Grid" },
                     { key: "dashboard", label: "Overview" },
-                    { key: "recurring", label: "Recurring" },
+                    { key: "recurring", label: "Repeat" },
                     { key: "leaderboard", label: "Top" },
                   ].map((option) => {
                     const isActive = mobilePlanView === option.key;
@@ -1353,7 +1336,7 @@ export function PlannerShell({
                         key={option.key}
                         type="button"
                         className={cn(
-                          "inline-flex h-11 min-w-0 items-center justify-center rounded-full px-3 text-sm font-semibold transition-[transform,box-shadow,background-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]",
+                          "inline-flex h-8 min-w-0 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold transition-[transform,box-shadow,background-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]",
                           isActive
                             ? "bg-brand-gradient text-white shadow-[var(--shadow-brand-pill)]"
                             : "bg-muted/52 text-secondary-foreground",
@@ -1374,7 +1357,7 @@ export function PlannerShell({
               </section>
 
               {mobilePlanView === "list" && selectionMode ? (
-                <section className="mobile-card p-4">
+                <section className="mobile-card p-3">
                   <div className="flex flex-col gap-3">
                     <div>
                       <p className="text-sm font-semibold text-foreground">{selectedTaskIds.length} selected</p>
@@ -1479,14 +1462,15 @@ export function PlannerShell({
               email={email}
               isBusy={isNotificationPending}
               notificationPreferences={notificationPreferences}
-              onNotice={setNotice}
               onOpenPlanner={() => handleOpenWorkspaceTab("plan")}
+              onSendTestPush={sendTestPush}
               onSendTest={sendTestNotification}
               onSaveLeadMinutes={updateEmailReminderLeadMinutes}
               onSignOut={handleSignOut}
               onToggleActionSounds={setSoundsEnabled}
               onToggleEmail={toggleEmailReminders}
               onToggleMeetingMentionEmail={toggleMeetingMentionEmails}
+              onTogglePush={togglePushReminders}
               selectedDate={auxiliarySelectedDate}
             />
           ) : (
@@ -1556,7 +1540,7 @@ export function PlannerShell({
             streak={workspaceTab === "plan" ? snapshot.streak : undefined}
             subtitle={activeSubtitle}
             viewMode={viewMode}
-            pomodoroHref={pomodoroHref}
+            pomodoroHref="https://flocus.com/"
             onAddTask={workspaceTab === "plan" ? () => handleCreateTask() : undefined}
             onViewChange={handleChangePlannerView}
             onSignOutError={(message) =>
@@ -1766,14 +1750,15 @@ export function PlannerShell({
                 email={email}
                 isBusy={isNotificationPending}
                 notificationPreferences={notificationPreferences}
-                onNotice={setNotice}
                 onOpenPlanner={() => handleOpenWorkspaceTab("plan")}
+                onSendTestPush={sendTestPush}
                 onSendTest={sendTestNotification}
                 onSaveLeadMinutes={updateEmailReminderLeadMinutes}
                 onSignOut={handleSignOut}
                 onToggleActionSounds={setSoundsEnabled}
                 onToggleEmail={toggleEmailReminders}
                 onToggleMeetingMentionEmail={toggleMeetingMentionEmails}
+                onTogglePush={togglePushReminders}
                 selectedDate={auxiliarySelectedDate}
               />
             </section>

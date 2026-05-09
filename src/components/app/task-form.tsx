@@ -6,7 +6,7 @@ import { CalendarRange, Link2, MoonStar, Repeat, Trash2, Users, Video } from "lu
 import { ParticipantPicker } from "@/components/app/participant-picker";
 import { Button } from "@/components/shared/button";
 import { Input } from "@/components/shared/input";
-import { addMinutesToTime, formatDateLabel } from "@/lib/daystack";
+import { addMinutesToTime } from "@/lib/daystack";
 import { cn } from "@/lib/utils";
 import { taskFormSchema, type TaskFormValues } from "@/types/daystack";
 
@@ -198,23 +198,10 @@ export function TaskForm({
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
-      <div className="rounded-[18px] border border-cyan-200/60 bg-[linear-gradient(135deg,rgba(24,190,239,0.08),rgba(109,40,240,0.04))] px-4 py-3 shadow-[0_12px_26px_rgba(15,23,42,0.04)]">
-        <p className="section-label text-sky-700/80">
-          {values.blockMode === "recurring" ? "Recurring start date" : "Planner date"}
-        </p>
-        <p className="mt-1 text-sm font-semibold text-foreground">{formatDateLabel(values.taskDate)}</p>
-        <p className="mt-1 text-[13px] text-secondary-foreground">
-          {values.blockMode === "recurring"
-            ? "DayStack will repeat this block weekly from the selected date onward."
-            : "Set one clear block for this day and keep the details tight."}
-        </p>
-      </div>
-
       <section className="rounded-[22px] border border-border/75 bg-muted/28 p-4 sm:p-5">
         <SectionHeader
           eyebrow="Block type"
-          title="How should this block behave?"
-          description="Choose the block style first so the rest of the form stays focused."
+          title="Choose a block type"
         />
 
         <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
@@ -223,19 +210,16 @@ export function TaskForm({
               value: "generic",
               label: "Generic",
               icon: CalendarRange,
-              description: "Flexible task block",
             },
             {
               value: "meeting",
               label: "Meeting",
               icon: Video,
-              description: "Link and mentions",
             },
             {
               value: "blocked",
               label: "Blocked",
               icon: MoonStar,
-              description: "Sleep, breaks, commute",
             },
           ].map((option) => {
             const Icon = option.icon;
@@ -269,9 +253,8 @@ export function TaskForm({
                 >
                   <Icon className="h-4 w-4" />
                 </span>
-                <span className="min-w-0 pt-0.5">
+                <span className="min-w-0 pt-1.5">
                   <span className="block text-sm font-semibold tracking-tight text-foreground">{option.label}</span>
-                  <span className="mt-1 block text-[12px] leading-5 text-secondary-foreground">{option.description}</span>
                 </span>
               </button>
             );
@@ -283,8 +266,7 @@ export function TaskForm({
       <section className="rounded-[22px] border border-border/75 bg-white/78 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.03)] sm:p-5">
         <SectionHeader
           eyebrow="Scheduling mode"
-          title="One-time or recurring?"
-          description="Use recurring only when this same block should keep coming back every week."
+          title="One-time or recurring"
         />
 
         <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
@@ -293,13 +275,11 @@ export function TaskForm({
               value: "one_time",
               label: "One-time block",
               icon: CalendarRange,
-              description: "Just this one date",
             },
             {
               value: "recurring",
               label: "Recurring block",
               icon: Repeat,
-              description: "Repeat weekly on selected days",
             },
           ].map((option) => {
             const Icon = option.icon;
@@ -334,9 +314,8 @@ export function TaskForm({
                 >
                   <Icon className="h-4 w-4" />
                 </span>
-                <span className="min-w-0 pt-0.5">
+                <span className="min-w-0 pt-1.5">
                   <span className="block text-sm font-semibold tracking-tight text-foreground">{option.label}</span>
-                  <span className="mt-1 block text-[12px] leading-5 text-secondary-foreground">{option.description}</span>
                 </span>
               </button>
             );
@@ -353,11 +332,8 @@ export function TaskForm({
 
         {values.blockMode === "recurring" ? (
           <div className="mt-4 rounded-[18px] border border-amber-200/70 bg-amber-50/60 p-4">
-            <div className="space-y-2">
+            <div>
               <p className="text-sm font-semibold tracking-tight text-foreground">Repeat on these weekdays</p>
-              <p className="text-[13px] leading-5 text-secondary-foreground">
-                Include the selected start date&apos;s weekday so the recurring block can begin on that day.
-              </p>
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
@@ -389,27 +365,10 @@ export function TaskForm({
         ) : null}
       </section>
 
-      {values.taskType === "blocked" ? (
-        <section className="rounded-[20px] border border-slate-200 bg-slate-100/88 px-4 py-3.5 shadow-[0_10px_22px_rgba(15,23,42,0.03)]">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-700">
-              <MoonStar className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-slate-800">Blocked time stays visible in the timeline.</p>
-              <p className="mt-1 text-[13px] leading-5 text-slate-600">
-                It holds space on the day, but does not count toward the execution score.
-              </p>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
       <section className="rounded-[22px] border border-border/75 bg-white/78 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.03)] sm:p-5">
         <SectionHeader
           eyebrow="Block details"
-          title="Title, date, and timing"
-          description="Keep the core details precise so this block is easy to act on later."
+          title="Details"
         />
 
         <div className="mt-4 space-y-4">
@@ -468,14 +427,6 @@ export function TaskForm({
             </label>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-[16px] border border-border/70 bg-muted/30 px-3.5 py-2.5 text-[13px] leading-5 text-secondary-foreground">
-            <span>
-              {values.blockMode === "recurring"
-                ? `This recurring block starts on ${formatDateLabel(values.taskDate)}.`
-                : `This block lands on ${formatDateLabel(values.taskDate)}.`}
-            </span>
-            {!isEndTimeDirty && mode === "create" ? <span>End time follows the start until you change it.</span> : null}
-          </div>
         </div>
 
         {values.taskType === "meeting" ? (
@@ -483,7 +434,6 @@ export function TaskForm({
             <SectionHeader
               eyebrow="Meeting details"
               title="Link and mentions"
-              description="Keep the join link close and mention the people who should see this block."
             />
 
             <div className="mt-4 grid gap-4">
@@ -508,9 +458,6 @@ export function TaskForm({
                   <Users className="h-4 w-4 text-secondary-foreground" />
                   Mention people
                 </span>
-                <p className="text-[13px] leading-5 text-secondary-foreground">
-                  Mentioned people get a notification and can accept this task into their own timeline.
-                </p>
                 <ParticipantPicker
                   currentUserId={currentUserId}
                   value={values.participants}

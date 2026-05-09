@@ -106,7 +106,7 @@ export function NotificationsShell({
           metricTone="brand"
           plannerHref={plannerHref}
           settingsHref={settingsHref}
-          subtitle="Approve meeting blocks and open the linked schedule in one place."
+          subtitle="Accept to add a meeting block, or reject it without adding anything."
           onNotice={setNotice}
           onSignOutError={(message) =>
             setNotice({
@@ -170,7 +170,7 @@ export function NotificationsShell({
                 <div>
                   <p className="text-sm font-semibold text-foreground">Approval adds the block immediately</p>
                   <p className="mt-1 text-sm text-secondary-foreground">
-                    Accepting a meeting mention clones the block into your schedule and keeps the meeting link attached.
+                    Accept adds the meeting block to your schedule. Reject only dismisses it for you.
                   </p>
                 </div>
               </div>

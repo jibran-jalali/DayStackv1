@@ -7,6 +7,7 @@ import { fetchNotificationPreferences, updateNotificationPreferences } from "@/l
 const preferenceUpdateSchema = z
   .object({
     email_enabled: z.boolean().optional(),
+    push_enabled: z.boolean().optional(),
     meeting_mention_email_enabled: z.boolean().optional(),
     email_reminder_lead_minutes: z.number().int().min(0).max(1440).optional(),
   })
