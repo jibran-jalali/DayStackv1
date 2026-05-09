@@ -538,10 +538,14 @@ function TimelineGridComponent({
                       <Button
                         size="sm"
                         variant="ghost"
-                        className={controlButtonClass}
+                        className={cn("hidden sm:inline-flex", controlButtonClass)}
                         onPointerDown={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
+
+                          if (event.pointerType !== "mouse") {
+                            return;
+                          }
 
                           if (isPending) {
                             return;

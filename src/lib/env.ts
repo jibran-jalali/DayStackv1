@@ -83,6 +83,10 @@ export function getAppBaseUrl() {
   return normalizeEnvValue(process.env.NEXTAUTH_URL) ?? "http://localhost:3000";
 }
 
+export function getAppTimeZone() {
+  return normalizeEnvValue(process.env.DAYSTACK_TIME_ZONE) ?? "Asia/Karachi";
+}
+
 export function getWebPushEnv(): WebPushEnv | null {
   const publicKey = normalizeEnvValue(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
   const privateKey = normalizeEnvValue(process.env.VAPID_PRIVATE_KEY);

@@ -4,6 +4,7 @@ import {
   fetchDueTaskReminders,
   isEmailReminderType,
   isPushReminderType,
+  syncTaskRemindersForActiveUsers,
   updateTaskReminderStatus,
 } from "@/lib/data/reminders";
 import { getSessionUser } from "@/lib/auth";
@@ -113,6 +114,7 @@ async function dispatchDueReminders({
   pushConfigured: boolean;
   userId?: string;
 }) {
+  const syncedUsers = userId ? 0 : await syncTaskRemindersForActiveUsers();
   const reminders = await fetchDueTaskReminders({
     limit,
     userId,
@@ -148,6 +150,7 @@ async function dispatchDueReminders({
     processed: reminders.length,
     sent,
     skipped,
+    syncedUsers,
   };
 }
 

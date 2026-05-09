@@ -1,10 +1,11 @@
 import "server-only";
 
-import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lte, or } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { task_reminders, tasks, user_notification_preferences, users } from "@/db/schema";
 import { formatClockTime, formatDateKey } from "@/lib/daystack";
+import { getAppTimeZone } from "@/lib/env";
 import type {
   DueTaskReminder,
   ReminderStatus,
@@ -59,8 +60,53 @@ function createDefaultPreferences(userId: string): UserNotificationPreferencesRe
   };
 }
 
+function getTimeZoneDateParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+    minute: "2-digit",
+    month: "2-digit",
+    second: "2-digit",
+    timeZone,
+    year: "numeric",
+  }).formatToParts(date);
+  const values = new Map(parts.map((part) => [part.type, part.value]));
+
+  return {
+    day: Number(values.get("day")),
+    hour: Number(values.get("hour")),
+    minute: Number(values.get("minute")),
+    month: Number(values.get("month")),
+    second: Number(values.get("second")),
+    year: Number(values.get("year")),
+  };
+}
+
+function zonedTimeToUtc(taskDate: string, time: string, timeZone: string) {
+  const [year, month, day] = taskDate.split("-").map(Number);
+  const [hour, minute, second = 0] = time.split(":").map(Number);
+
+  if (![year, month, day, hour, minute, second].every(Number.isFinite)) {
+    throw new Error("Unable to schedule the reminder for this task.");
+  }
+
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second);
+  const zoneParts = getTimeZoneDateParts(new Date(utcGuess), timeZone);
+  const zoneAsUtc = Date.UTC(
+    zoneParts.year,
+    zoneParts.month - 1,
+    zoneParts.day,
+    zoneParts.hour,
+    zoneParts.minute,
+    zoneParts.second,
+  );
+
+  return new Date(utcGuess - (zoneAsUtc - utcGuess));
+}
+
 function buildReminderTimestamp(taskDate: string, time: string, offsetMinutes = 0) {
-  const localDate = new Date(`${taskDate}T${time}`);
+  const localDate = zonedTimeToUtc(taskDate, time, getAppTimeZone());
 
   if (Number.isNaN(localDate.getTime())) {
     throw new Error("Unable to schedule the reminder for this task.");
@@ -163,12 +209,15 @@ export async function syncTaskRemindersForTask(
     return;
   }
 
-  await db.insert(task_reminders).values(
-    reminderRows.map((row) => ({
-      id: crypto.randomUUID(),
-      ...row,
-    })),
-  );
+  await db
+    .insert(task_reminders)
+    .values(
+      reminderRows.map((row) => ({
+        id: crypto.randomUUID(),
+        ...row,
+      })),
+    )
+    .onConflictDoNothing();
 }
 
 export async function syncTaskRemindersForUser(
@@ -187,6 +236,23 @@ export async function syncTaskRemindersForUser(
   await Promise.all(pendingTasks.map((task) => syncTaskRemindersForTask(userId, task, activePreferences)));
 
   return activePreferences;
+}
+
+export async function syncTaskRemindersForActiveUsers(now = new Date()) {
+  const db = getRequiredDb();
+  const preferenceRows = await db
+    .select()
+    .from(user_notification_preferences)
+    .where(
+      or(
+        eq(user_notification_preferences.push_enabled, true),
+        eq(user_notification_preferences.email_enabled, true),
+      ),
+    );
+
+  await Promise.all(preferenceRows.map((preferences) => syncTaskRemindersForUser(preferences.user_id, preferences, now)));
+
+  return preferenceRows.length;
 }
 
 export async function updateNotificationPreferences(
