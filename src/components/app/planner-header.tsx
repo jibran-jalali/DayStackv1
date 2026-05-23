@@ -29,6 +29,7 @@ interface PlannerHeaderProps {
   onAddTask?: () => void;
   onNotice?: (notice: { message: string; type: "error" | "success" }) => void;
   onOpenAssistant?: () => void;
+  onOpenFriends?: () => void;
   onOpenNotifications?: () => void;
   onOpenPlanner?: () => void;
   onOpenSettings?: () => void;
@@ -92,6 +93,7 @@ export function PlannerHeader({
   onAddTask,
   onNotice,
   onOpenAssistant,
+  onOpenFriends,
   onOpenNotifications,
   onOpenPlanner,
   onOpenSettings,
@@ -243,6 +245,7 @@ export function PlannerHeader({
             href: friendsHref,
             icon: UserRoundPlus,
             label: "Friends",
+            onClick: activePage === "friends" ? undefined : onOpenFriends,
           })}
 
           {renderNavPill({

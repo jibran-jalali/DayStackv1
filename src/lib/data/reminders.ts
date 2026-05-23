@@ -142,14 +142,26 @@ function getReminderRowsForTask(
     });
   }
 
-  if (preferences.push_enabled && preferences.remind_5_min_before) {
-    rows.push({
-      user_id: userId,
-      task_id: task.id,
-      reminder_type: "5_minutes_before",
-      remind_at: buildReminderTimestamp(task.task_date, task.start_time, -5),
-      status: "pending",
-    });
+  if (preferences.push_enabled) {
+    if (preferences.remind_5_min_before) {
+      rows.push({
+        user_id: userId,
+        task_id: task.id,
+        reminder_type: "5_minutes_before",
+        remind_at: buildReminderTimestamp(task.task_date, task.start_time, -5),
+        status: "pending",
+      });
+    }
+
+    if (preferences.remind_at_start) {
+      rows.push({
+        user_id: userId,
+        task_id: task.id,
+        reminder_type: "at_start",
+        remind_at: buildReminderTimestamp(task.task_date, task.start_time, 0),
+        status: "pending",
+      });
+    }
   }
 
   return rows;
@@ -420,7 +432,7 @@ export function isEmailReminderType(reminderType: ReminderType) {
 }
 
 export function isPushReminderType(reminderType: ReminderType) {
-  return reminderType === "5_minutes_before";
+  return reminderType === "5_minutes_before" || reminderType === "at_start";
 }
 
 export function buildReminderCopy(
@@ -449,6 +461,13 @@ export function buildReminderCopy(
   if (reminderType === "5_minutes_before") {
     return {
       title: "Block starting in 5 minutes",
+      body: `${task.title} begins at ${formatClockTime(task.start_time)}.`,
+    };
+  }
+
+  if (reminderType === "at_start") {
+    return {
+      title: "Block starting now",
       body: `${task.title} begins at ${formatClockTime(task.start_time)}.`,
     };
   }

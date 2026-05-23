@@ -92,7 +92,7 @@ export function PushSettingsPanel({
             Push reminders
           </p>
           <p className={cn("mt-1.5 text-secondary-foreground", compact ? "text-xs" : "text-sm")}>
-            5-minute task alerts on this device.
+            Alerts before each block using your reminder timing on this device.
           </p>
         </div>
         <StatusChip

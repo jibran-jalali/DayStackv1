@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, CalendarDays, MessageSquareText, Settings2, UserRoundPlus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -13,6 +14,7 @@ interface MobileBottomNavProps {
   friendsHref?: string;
   onOpenAssistant?: () => void;
   notificationsHref?: string;
+  onOpenFriends?: () => void;
   onOpenNotifications?: () => void;
   onOpenPlan?: () => void;
   onOpenSettings?: () => void;
@@ -22,31 +24,11 @@ interface MobileBottomNavProps {
 }
 
 const navItems = [
-  {
-    icon: CalendarDays,
-    key: "plan",
-    label: "Plan",
-  },
-  {
-    icon: MessageSquareText,
-    key: "assistant",
-    label: "Assistant",
-  },
-  {
-    icon: Bell,
-    key: "notifications",
-    label: "Inbox",
-  },
-  {
-    icon: UserRoundPlus,
-    key: "friends",
-    label: "Friends",
-  },
-  {
-    icon: Settings2,
-    key: "settings",
-    label: "Settings",
-  },
+  { icon: CalendarDays, key: "plan", label: "Plan" },
+  { icon: MessageSquareText, key: "assistant", label: "AI" },
+  { icon: Bell, key: "notifications", label: "Inbox" },
+  { icon: UserRoundPlus, key: "friends", label: "Friends" },
+  { icon: Settings2, key: "settings", label: "Settings" },
 ] as const satisfies Array<{
   icon: typeof CalendarDays;
   key: MobileBottomNavTab;
@@ -58,6 +40,7 @@ export function MobileBottomNav({
   assistantHref = "/app?tab=assistant",
   onOpenAssistant,
   notificationsHref = "/app?tab=notifications",
+  onOpenFriends,
   onOpenNotifications,
   onOpenPlan,
   onOpenSettings,
@@ -66,133 +49,135 @@ export function MobileBottomNav({
   plannerHref = "/app",
   settingsHref = "/app?tab=settings",
 }: MobileBottomNavProps) {
+  const trackRef = useRef<HTMLElement>(null);
+  const [indicator, setIndicator] = useState({ left: 0, width: 0 });
+
+  const updateIndicator = useCallback(() => {
+    const track = trackRef.current;
+    if (!track || !activeTab) return;
+
+    const activeIndex = navItems.findIndex((item) => item.key === activeTab);
+    const buttons = track.querySelectorAll<HTMLElement>("[data-nav-item]");
+    const activeButton = buttons[activeIndex];
+    if (!activeButton) return;
+
+    setIndicator({
+      left: activeButton.offsetLeft,
+      width: activeButton.offsetWidth,
+    });
+  }, [activeTab]);
+
+  useEffect(() => {
+    updateIndicator();
+    window.addEventListener("resize", updateIndicator);
+    return () => window.removeEventListener("resize", updateIndicator);
+  }, [updateIndicator]);
+
+  const renderItem = (item: (typeof navItems)[number]) => {
+    const Icon = item.icon;
+    const isActive = activeTab === item.key;
+    const className = cn("mobile-nav-item", isActive && "mobile-nav-item--active");
+
+    const content = (
+      <>
+        <Icon className={cn("h-[1.15rem] w-[1.15rem]", isActive && "drop-shadow-sm")} strokeWidth={isActive ? 2.25 : 2} />
+        <span>{item.label}</span>
+      </>
+    );
+
+    if (item.key === "plan") {
+      return onOpenPlan ? (
+        <button key={item.key} type="button" data-nav-item className={className} onClick={onOpenPlan}>
+          {content}
+        </button>
+      ) : (
+        <Link key={item.key} href={plannerHref} data-nav-item className={className} onClick={() => onPlayNavigate?.()}>
+          {content}
+        </Link>
+      );
+    }
+
+    if (item.key === "notifications") {
+      return onOpenNotifications ? (
+        <button key={item.key} type="button" data-nav-item className={className} onClick={onOpenNotifications}>
+          {content}
+        </button>
+      ) : (
+        <Link
+          key={item.key}
+          href={notificationsHref}
+          data-nav-item
+          className={className}
+          onClick={() => onPlayNavigate?.()}
+        >
+          {content}
+        </Link>
+      );
+    }
+
+    if (item.key === "assistant") {
+      return onOpenAssistant ? (
+        <button key={item.key} type="button" data-nav-item className={className} onClick={onOpenAssistant}>
+          {content}
+        </button>
+      ) : (
+        <Link
+          key={item.key}
+          href={assistantHref}
+          data-nav-item
+          className={className}
+          onClick={() => onPlayNavigate?.()}
+        >
+          {content}
+        </Link>
+      );
+    }
+
+    if (item.key === "settings") {
+      return onOpenSettings ? (
+        <button key={item.key} type="button" data-nav-item className={className} onClick={onOpenSettings}>
+          {content}
+        </button>
+      ) : (
+        <Link key={item.key} href={settingsHref} data-nav-item className={className} onClick={() => onPlayNavigate?.()}>
+          {content}
+        </Link>
+      );
+    }
+
+    if (item.key === "friends") {
+      return onOpenFriends ? (
+        <button key={item.key} type="button" data-nav-item className={className} onClick={onOpenFriends}>
+          {content}
+        </button>
+      ) : (
+        <Link key={item.key} href={friendsHref} data-nav-item className={className} onClick={() => onPlayNavigate?.()}>
+          {content}
+        </Link>
+      );
+    }
+
+    return null;
+  };
+
   return (
-    <div className="mobile-safe-x shrink-0 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2 lg:hidden">
-      <nav className="mobile-shell-width mobile-nav-shell mx-auto grid grid-cols-5 gap-1 px-1.5 py-1.5">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.key;
-          const baseClassName = cn(
-            "inline-flex h-10 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[16px] px-0.5 text-[9.5px] font-semibold leading-none transition-[transform,box-shadow,background-color,color,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]",
-            isActive
-              ? "bg-brand-gradient text-white shadow-[0_10px_20px_rgba(83,78,222,0.18)]"
-              : "text-secondary-foreground hover:bg-muted/70 hover:text-foreground",
-          );
-
-          if (item.key === "plan") {
-            return onOpenPlan ? (
-              <button
-                key={item.key}
-                suppressHydrationWarning
-                type="button"
-                className={baseClassName}
-                onClick={onOpenPlan}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </button>
-            ) : (
-              <Link
-                key={item.key}
-                href={plannerHref}
-                className={baseClassName}
-                onClick={() => onPlayNavigate?.()}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          }
-
-          if (item.key === "notifications") {
-            return onOpenNotifications ? (
-              <button
-                key={item.key}
-                suppressHydrationWarning
-                type="button"
-                className={baseClassName}
-                onClick={onOpenNotifications}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </button>
-            ) : (
-              <Link
-                key={item.key}
-                href={notificationsHref}
-                className={baseClassName}
-                onClick={() => onPlayNavigate?.()}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          }
-
-          if (item.key === "assistant") {
-            return onOpenAssistant ? (
-              <button
-                key={item.key}
-                suppressHydrationWarning
-                type="button"
-                className={baseClassName}
-                onClick={onOpenAssistant}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </button>
-            ) : (
-              <Link
-                key={item.key}
-                href={assistantHref}
-                className={baseClassName}
-                onClick={() => onPlayNavigate?.()}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          }
-
-          if (item.key === "settings") {
-            return onOpenSettings ? (
-              <button
-                key={item.key}
-                suppressHydrationWarning
-                type="button"
-                className={baseClassName}
-                onClick={onOpenSettings}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </button>
-            ) : (
-              <Link
-                key={item.key}
-                href={settingsHref}
-                className={baseClassName}
-                onClick={() => onPlayNavigate?.()}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          }
-
-          if (item.key === "friends") {
-            return (
-              <Link
-                key={item.key}
-                href={friendsHref}
-                className={baseClassName}
-                onClick={() => onPlayNavigate?.()}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          }
-        })}
+    <div className="mobile-safe-x shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 lg:hidden">
+      <nav
+        ref={trackRef}
+        className="mobile-shell-width mobile-nav-shell relative mx-auto flex gap-0.5 px-1 py-1"
+        aria-label="Main navigation"
+      >
+        {activeTab ? (
+          <span
+            className="mobile-nav-indicator"
+            style={{
+              transform: `translateX(${indicator.left}px)`,
+              width: indicator.width,
+            }}
+            aria-hidden
+          />
+        ) : null}
+        {navItems.map((item) => renderItem(item))}
       </nav>
     </div>
   );

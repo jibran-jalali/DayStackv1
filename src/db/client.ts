@@ -5,6 +5,7 @@ import postgres from "postgres";
 
 import { getDatabaseUrl } from "@/lib/env";
 import * as schema from "@/db/schema";
+import { startBackgroundScheduler } from "@/lib/push/scheduler";
 
 function createDatabase(url: string) {
   const sql = postgres(url, {
@@ -72,6 +73,9 @@ export function getDb() {
     globalThis.__daystack_db = null;
     return null;
   }
+
+  // Start the background reminder scheduler on first db access
+  startBackgroundScheduler();
 
   if (isDatabaseState(globalThis.__daystack_db) && globalThis.__daystack_db.url === url) {
     return globalThis.__daystack_db.db;

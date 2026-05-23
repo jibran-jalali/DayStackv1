@@ -140,7 +140,7 @@ export function EmailSettingsPanel({
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground">Email reminder timing</p>
             <p className={cn("mt-1 text-secondary-foreground", compact ? "text-xs" : "text-sm")}>
-              Minutes before each block. Use <span className="font-medium text-foreground">0</span> for start time.
+              Minutes before each block for email and push. Use <span className="font-medium text-foreground">0</span> to skip the early nudge and rely on the start-time alert.
             </p>
 
             <div className="mt-2.5 flex flex-col gap-1.5 sm:flex-row sm:items-center">

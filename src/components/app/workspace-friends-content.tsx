@@ -1,51 +1,20 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
+import { useDeferredValue, useEffect, useState, useTransition } from "react";
 import { Check, Clock3, Search, UserMinus, UserPlus, Users, X } from "lucide-react";
 
-import { MobileBottomNav } from "@/components/app/mobile-bottom-nav";
-import { MobileWorkspaceHeader } from "@/components/app/mobile-workspace-header";
-import { PlannerHeader } from "@/components/app/planner-header";
 import { Button, buttonVariants } from "@/components/shared/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Input } from "@/components/shared/input";
-import { formatDateLabel } from "@/lib/daystack";
 import { cn, getErrorMessage } from "@/lib/utils";
 import type { FriendConnectionSummary, FriendSearchResult, FriendsSnapshot } from "@/types/daystack";
 
-interface FriendsShellProps {
-  displayName: string;
-  email?: string;
+interface WorkspaceFriendsContentProps {
+  compact?: boolean;
   initialSnapshot: FriendsSnapshot;
-  returnDate?: string;
-}
-
-type NoticeState =
-  | {
-      message: string;
-      type: "error" | "success";
-    }
-  | null;
-
-function getPlannerHref(returnDate?: string) {
-  return returnDate ? `/app?date=${returnDate}` : "/app";
-}
-
-function getAssistantHref(returnDate?: string) {
-  return returnDate ? `/app?tab=assistant&date=${returnDate}` : "/app?tab=assistant";
-}
-
-function getNotificationsHref(returnDate?: string) {
-  return returnDate ? `/app/notifications?date=${returnDate}` : "/app/notifications";
-}
-
-function getSettingsHref(returnDate?: string) {
-  return returnDate ? `/app/settings?date=${returnDate}` : "/app/settings";
-}
-
-function getFriendsHref(returnDate?: string) {
-  return returnDate ? `/app/friends?date=${returnDate}` : "/app/friends";
+  onNotice?: (notice: { message: string; type: "error" | "success" }) => void;
+  onSnapshotChange?: (snapshot: FriendsSnapshot) => void;
 }
 
 async function readJsonResponse<T>(response: Response): Promise<T> {
@@ -96,26 +65,27 @@ function SectionShell({
   );
 }
 
-export function FriendsShell({ displayName, email, initialSnapshot, returnDate }: FriendsShellProps) {
+export function WorkspaceFriendsContent({
+  compact = false,
+  initialSnapshot,
+  onNotice,
+  onSnapshotChange,
+}: WorkspaceFriendsContentProps) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<FriendSearchResult[]>([]);
-  const [notice, setNotice] = useState<NoticeState>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const deferredQuery = useDeferredValue(query);
-  const plannerHref = useMemo(() => getPlannerHref(returnDate), [returnDate]);
-  const assistantHref = useMemo(() => getAssistantHref(returnDate), [returnDate]);
-  const notificationsHref = useMemo(() => getNotificationsHref(returnDate), [returnDate]);
-  const settingsHref = useMemo(() => getSettingsHref(returnDate), [returnDate]);
-  const friendsHref = useMemo(() => getFriendsHref(returnDate), [returnDate]);
+
+  useEffect(() => {
+    setSnapshot(initialSnapshot);
+  }, [initialSnapshot]);
 
   useEffect(() => {
     const controller = new AbortController();
-    const searchParams = new URLSearchParams({
-      limit: "8",
-    });
+    const searchParams = new URLSearchParams({ limit: "8" });
 
     if (deferredQuery.trim()) {
       searchParams.set("q", deferredQuery.trim());
@@ -129,18 +99,15 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
       .then((response) => readJsonResponse<{ results: FriendSearchResult[] }>(response))
       .then((payload) => {
         setResults(payload.results);
-        setNotice(null);
       })
       .catch((error) => {
-        if (controller.signal.aborted) {
-          return;
+        if (!controller.signal.aborted) {
+          setResults([]);
+          onNotice?.({
+            message: getErrorMessage(error),
+            type: "error",
+          });
         }
-
-        setResults([]);
-        setNotice({
-          message: getErrorMessage(error),
-          type: "error",
-        });
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -149,18 +116,13 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
       });
 
     return () => controller.abort();
-  }, [deferredQuery]);
+  }, [deferredQuery, onNotice]);
 
-  useEffect(() => {
-    if (notice?.type !== "success") {
-      return;
-    }
-
-    const timer = window.setTimeout(() => setNotice(null), 2400);
-    return () => window.clearTimeout(timer);
-  }, [notice]);
-
-  function runFriendAction(actionId: string, action: () => Promise<{ snapshot?: FriendsSnapshot }>, successMessage: string) {
+  function runFriendAction(
+    actionId: string,
+    action: () => Promise<{ snapshot?: FriendsSnapshot }>,
+    successMessage: string,
+  ) {
     setBusyId(actionId);
     startTransition(async () => {
       try {
@@ -168,14 +130,15 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
 
         if (payload.snapshot) {
           setSnapshot(payload.snapshot);
+          onSnapshotChange?.(payload.snapshot);
         }
 
-        setNotice({
+        onNotice?.({
           message: successMessage,
           type: "success",
         });
       } catch (error) {
-        setNotice({
+        onNotice?.({
           message: getErrorMessage(error),
           type: "error",
         });
@@ -192,21 +155,14 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
         const response = await fetch("/api/friends", {
           body: JSON.stringify({ addresseeId }),
           credentials: "same-origin",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           method: "POST",
         });
         const payload = await readJsonResponse<{ snapshot: FriendsSnapshot }>(response);
 
         setResults((current) =>
           current.map((result) =>
-            result.id === addresseeId
-              ? {
-                  ...result,
-                  friendshipStatus: "outgoing",
-                }
-              : result,
+            result.id === addresseeId ? { ...result, friendshipStatus: "outgoing" } : result,
           ),
         );
 
@@ -258,15 +214,13 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
     );
   }
 
-  const friendCountLabel = `${snapshot.friends.length} friend${snapshot.friends.length === 1 ? "" : "s"}`;
-
   const searchPanel = (
-    <section className="mobile-surface p-3 lg:glass-panel lg:p-4 xl:p-5">
+    <section className={cn(compact ? "mobile-surface p-3" : "glass-panel p-4 xl:p-5")}>
       <div className="border-b border-border/70 pb-3 lg:pb-4">
         <p className="section-label">Find people</p>
-        <h1 className="mt-1 hidden font-display text-2xl font-semibold text-foreground sm:text-[2rem] lg:block">
-          Friends
-        </h1>
+        {!compact ? (
+          <h2 className="mt-1 font-display text-2xl font-semibold text-foreground sm:text-[2rem]">Friends</h2>
+        ) : null}
         <p className="mt-1.5 text-xs text-secondary-foreground lg:text-sm">
           Send a request first. Accepted friends can mention each other in meeting blocks.
         </p>
@@ -276,14 +230,14 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-foreground/70" />
           <Input
-            className="h-10 rounded-[16px] border-border/80 bg-white/96 py-2.5 pl-10 pr-3.5 text-sm shadow-none lg:h-11 lg:text-[15px]"
+            className="h-10 rounded-[16px] border-border/80 bg-white/96 py-2.5 pl-10 pr-3.5 text-sm shadow-none lg:h-11"
             placeholder="Search by name or email"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
 
-        <div className="overflow-hidden rounded-[18px] border border-border/70 bg-white/75 lg:rounded-[20px]">
+        <div className="overflow-hidden rounded-[18px] border border-border/70 bg-white/75">
           {isSearching ? (
             <p className="px-4 py-4 text-sm text-secondary-foreground">Searching...</p>
           ) : results.length > 0 ? (
@@ -295,19 +249,14 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
                 return (
                   <div
                     key={result.id}
-                    className="flex flex-col gap-2.5 px-3 py-3 sm:flex-row sm:items-center sm:justify-between lg:gap-3 lg:px-4"
+                    className="flex flex-col gap-2.5 px-3 py-3 sm:flex-row sm:items-center sm:justify-between lg:px-4"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{result.fullName}</p>
                       <p className="truncate text-xs text-secondary-foreground">{result.email ?? "DayStack user"}</p>
                     </div>
                     {result.friendshipStatus === "none" ? (
-                      <Button
-                        size="sm"
-                        className="h-9 shrink-0 text-xs lg:h-10 lg:text-sm"
-                        onClick={() => sendRequest(result.id)}
-                        disabled={isBusy}
-                      >
+                      <Button size="sm" className="h-9 shrink-0 text-xs" onClick={() => sendRequest(result.id)} disabled={isBusy}>
                         <UserPlus className="h-4 w-4" />
                         Add friend
                       </Button>
@@ -315,7 +264,7 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
                       <span
                         className={cn(
                           buttonVariants({ variant: "secondary", size: "sm" }),
-                          "pointer-events-none h-9 shrink-0 text-xs lg:h-10 lg:text-sm",
+                          "pointer-events-none h-9 shrink-0 text-xs",
                         )}
                       >
                         {result.friendshipStatus === "accepted"
@@ -351,7 +300,7 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
                 <>
                   <Button
                     size="sm"
-                    className="h-9 text-xs lg:h-10 lg:text-sm"
+                    className="h-9 text-xs"
                     onClick={() => acceptRequest(connection.id)}
                     disabled={busyId === `accept-${connection.id}` || isPending}
                   >
@@ -361,7 +310,7 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="h-9 text-xs lg:h-10 lg:text-sm"
+                    className="h-9 text-xs"
                     onClick={() => declineRequest(connection.id)}
                     disabled={busyId === `decline-${connection.id}` || isPending}
                   >
@@ -384,7 +333,7 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
               key={connection.id}
               connection={connection}
               action={
-                <span className="inline-flex h-9 items-center gap-2 rounded-full border border-border/80 bg-white/92 px-3 text-xs font-semibold text-secondary-foreground lg:h-10 lg:text-sm">
+                <span className="inline-flex h-9 items-center gap-2 rounded-full border border-border/80 bg-white/92 px-3 text-xs font-semibold text-secondary-foreground">
                   <Clock3 className="h-4 w-4" />
                   Pending
                 </span>
@@ -401,12 +350,9 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
   const friendsList = (
     <section>
       {snapshot.friends.length > 0 ? (
-        <div className="grid gap-2.5 md:grid-cols-2 lg:gap-3 xl:grid-cols-3">
+        <div className={cn("grid gap-2.5", compact ? "grid-cols-1" : "md:grid-cols-2 xl:grid-cols-3 lg:gap-3")}>
           {snapshot.friends.map((connection) => (
-            <div
-              key={connection.id}
-              className="mobile-card p-3 lg:rounded-[22px] lg:border lg:border-border/75 lg:bg-white/84 lg:p-4 lg:shadow-[0_12px_28px_rgba(15,23,42,0.04)]"
-            >
+            <div key={connection.id} className="mobile-card p-3 lg:p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-foreground">{connection.otherUser.fullName}</p>
@@ -417,7 +363,7 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-8 px-2 text-xs text-danger lg:h-9 lg:px-3"
+                  className="h-8 px-2 text-xs text-danger"
                   onClick={() => removeFriend(connection.otherUser.id)}
                   disabled={busyId === `remove-${connection.otherUser.id}` || isPending}
                 >
@@ -433,117 +379,26 @@ export function FriendsShell({ displayName, email, initialSnapshot, returnDate }
           icon={<Users className="h-5 w-5" />}
           title="No friends yet"
           description="Search active DayStack users and send a request. Accepted friends are the only people you can mention in meeting blocks."
-          action={
-            returnDate ? (
-              <div className="rounded-full border border-border/80 bg-white/90 px-3 py-1.5 text-sm text-secondary-foreground">
-                Returning from {formatDateLabel(returnDate)}
-              </div>
-            ) : null
-          }
         />
       )}
     </section>
   );
 
-  return (
-    <>
-      <main className="mobile-app-shell mobile-safe-x mobile-viewport-shell overflow-hidden lg:hidden">
-        <div className="flex h-full flex-col">
-          <div className="soft-scrollbar flex-1 overflow-y-auto overscroll-y-contain">
-            <MobileWorkspaceHeader
-              title="Friends"
-              subtitle="Accepted friends can be added to meeting blocks."
-              metricLabel={friendCountLabel}
-              metricTone={snapshot.incoming.length > 0 ? "warning" : "brand"}
-              secondaryMetricLabel={
-                snapshot.incoming.length > 0 ? `${snapshot.incoming.length} request${snapshot.incoming.length === 1 ? "" : "s"}` : undefined
-              }
-              secondaryMetricTone="warning"
-            />
-
-            {notice ? (
-              <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+6.75rem)] z-40 flex justify-center px-4">
-                <div
-                  aria-live="polite"
-                  className={cn(
-                    "pointer-events-auto min-w-[16rem] rounded-full border px-4 py-2.5 text-sm shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl",
-                    notice.type === "success"
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border-red-200 bg-red-50 text-danger",
-                  )}
-                >
-                  {notice.message}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="mobile-shell-width mobile-stack mx-auto pb-3 pt-2.5">
-              {searchPanel}
-              {requestPanels}
-              {friendsList}
-            </div>
-          </div>
-
-          <MobileBottomNav
-            activeTab="friends"
-            assistantHref={assistantHref}
-            friendsHref={friendsHref}
-            notificationsHref={notificationsHref}
-            plannerHref={plannerHref}
-            settingsHref={settingsHref}
-          />
-        </div>
-      </main>
-
-      <main className="container-shell hidden min-h-screen py-4 sm:py-6 lg:block">
-      <div className="space-y-4 sm:space-y-5">
-        <PlannerHeader
-          activePage="friends"
-          assistantHref={assistantHref}
-          dateLabel="Friend requests"
-          displayName={displayName}
-          email={email}
-          friendsHref={friendsHref}
-          metricIcon={Users}
-          metricLabel={friendCountLabel}
-          metricTone={snapshot.incoming.length > 0 ? "warning" : "brand"}
-          notificationsHref={notificationsHref}
-          plannerHref={plannerHref}
-          settingsHref={settingsHref}
-          subtitle="Only accepted friends can be mentioned in meeting blocks."
-          onSignOutError={(message) =>
-            setNotice({
-              message,
-              type: "error",
-            })
-          }
-        />
-
-        {notice ? (
-          <div className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center px-4">
-            <div
-              aria-live="polite"
-              className={cn(
-                "pointer-events-auto min-w-[16rem] rounded-full border px-4 py-2.5 text-sm shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl",
-                notice.type === "success"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-red-200 bg-red-50 text-danger",
-              )}
-            >
-              {notice.message}
-            </div>
-          </div>
-        ) : null}
-
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          {searchPanel}
-
-          <aside className="xl:sticky xl:top-24 xl:self-start">{requestPanels}</aside>
-        </div>
-
+  if (compact) {
+    return (
+      <div className="mobile-stack">
+        {searchPanel}
+        {requestPanels}
         {friendsList}
       </div>
-    </main>
-    </>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      {searchPanel}
+      <aside className="xl:sticky xl:top-24 xl:self-start">{requestPanels}</aside>
+      <div className="xl:col-span-2">{friendsList}</div>
+    </div>
   );
 }

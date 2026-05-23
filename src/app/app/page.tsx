@@ -3,6 +3,7 @@ import { SetupNotice } from "@/components/shared/setup-notice";
 import { fetchDashboardSnapshot } from "@/lib/data/daystack";
 import { getSessionUser } from "@/lib/auth";
 import { deriveDisplayName, formatDateKey, isValidDateKey } from "@/lib/daystack";
+import { fetchFriendsSnapshot } from "@/lib/data/friends";
 import { fetchTaskNotifications } from "@/lib/data/notifications";
 import { fetchNotificationPreferences } from "@/lib/data/reminders";
 import { isAuthConfigured, isDatabaseConfigured } from "@/lib/env";
@@ -32,7 +33,12 @@ interface AppPageProps {
 }
 
 function getWorkspaceTab(value: string | undefined): WorkspaceTab {
-  if (value === "assistant" || value === "notifications" || value === "settings") {
+  if (
+    value === "assistant" ||
+    value === "friends" ||
+    value === "notifications" ||
+    value === "settings"
+  ) {
     return value;
   }
 
@@ -67,12 +73,14 @@ export default async function AppPage({ searchParams }: AppPageProps) {
   let snapshot;
   let notificationPreferences;
   let notifications;
+  let friendsSnapshot;
 
   try {
-    [snapshot, notificationPreferences, notifications] = await Promise.all([
+    [snapshot, notificationPreferences, notifications, friendsSnapshot] = await Promise.all([
       fetchDashboardSnapshot(user.id, taskDate),
       fetchNotificationPreferences(user.id),
       fetchTaskNotifications(user.id, 40),
+      fetchFriendsSnapshot(user.id),
     ]);
   } catch (error) {
     console.error("DayStack dashboard bootstrap failed:", error);
@@ -114,6 +122,7 @@ export default async function AppPage({ searchParams }: AppPageProps) {
       userId={user.id}
       email={user.email}
       displayName={deriveDisplayName(user.full_name, user.email)}
+      initialFriendsSnapshot={friendsSnapshot}
       initialNotificationPreferences={notificationPreferences}
       initialNotifications={notifications}
       initialNowIso={initialNowIso}

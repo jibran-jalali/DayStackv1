@@ -65,7 +65,7 @@ function TaskCardComponent({
     <div
       id={getTaskAnchorId(task.id)}
       className={cn(
-        "rounded-[18px] border px-3 py-3 transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 active:scale-[0.995] sm:px-4 sm:py-4",
+        "mobile-task-card rounded-[18px] border px-3 py-3 transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-4 sm:py-4 lg:hover:-translate-y-0.5",
         isBlocked ? blockedStateStyles[visualState] : stateStyles[visualState],
         selectionMode && isSelected && "border-primary/35 ring-2 ring-primary/25 ring-offset-2 ring-offset-background",
         focusedTaskId === task.id && "ring-2 ring-primary/35 ring-offset-2 ring-offset-background",
