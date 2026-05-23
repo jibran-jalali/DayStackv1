@@ -158,12 +158,24 @@ export function getAssistantActionTitle(action: AssistantMutationAction) {
     return "Reschedule block";
   }
 
+  if (action.kind === "batch_reschedule_tasks") {
+    return "Reschedule blocks";
+  }
+
   if (action.kind === "toggle_task_status") {
     return action.status === "completed" ? "Mark complete" : "Reopen block";
   }
 
+  if (action.kind === "batch_toggle_task_status") {
+    return action.status === "completed" ? "Mark blocks complete" : "Reopen blocks";
+  }
+
   if (action.kind === "delete_task") {
     return "Delete block";
+  }
+
+  if (action.kind === "batch_delete_tasks") {
+    return "Delete blocks";
   }
 
   if (action.kind === "update_recurring_series") {
@@ -220,6 +232,21 @@ export function getAssistantActionLines(action: AssistantMutationAction, context
     ];
   }
 
+  if (action.kind === "batch_reschedule_tasks") {
+    const taskLines = action.taskIds
+      .slice(0, 6)
+      .map((taskId) => `Target: ${getTaskTitle(taskId, context)}`);
+    const remainingCount = action.taskIds.length - taskLines.length;
+
+    return [
+      `Move ${action.taskIds.length} visible block${action.taskIds.length === 1 ? "" : "s"}.`,
+      `New schedule: ${action.changes.taskDate ? formatDateLabel(action.changes.taskDate) : formatDateLabel(context.currentDate)}`,
+      `${action.changes.startTime ? formatClockTime(action.changes.startTime) : "Keep current starts"} to ${action.changes.endTime ? formatClockTime(action.changes.endTime) : "keep current ends"}`,
+      ...taskLines,
+      ...(remainingCount > 0 ? [`${remainingCount} more block${remainingCount === 1 ? "" : "s"} included.`] : []),
+    ];
+  }
+
   if (action.kind === "toggle_task_status") {
     return [
       `Target: ${getTaskTitle(action.taskId, context)}`,
@@ -227,10 +254,36 @@ export function getAssistantActionLines(action: AssistantMutationAction, context
     ];
   }
 
+  if (action.kind === "batch_toggle_task_status") {
+    const taskLines = action.taskIds
+      .slice(0, 6)
+      .map((taskId) => `Target: ${getTaskTitle(taskId, context)}`);
+    const remainingCount = action.taskIds.length - taskLines.length;
+
+    return [
+      `${action.taskIds.length} visible block${action.taskIds.length === 1 ? "" : "s"} will change to ${action.status}.`,
+      ...taskLines,
+      ...(remainingCount > 0 ? [`${remainingCount} more block${remainingCount === 1 ? "" : "s"} included.`] : []),
+    ];
+  }
+
   if (action.kind === "delete_task") {
     return [
       `Target: ${getTaskTitle(action.taskId, context)}`,
       action.recurrenceScope === "this_and_future" ? "Scope: this and future" : "Scope: this block",
+    ];
+  }
+
+  if (action.kind === "batch_delete_tasks") {
+    const taskLines = action.taskIds
+      .slice(0, 6)
+      .map((taskId) => `Target: ${getTaskTitle(taskId, context)}`);
+    const remainingCount = action.taskIds.length - taskLines.length;
+
+    return [
+      `Delete ${action.taskIds.length} visible block${action.taskIds.length === 1 ? "" : "s"}.`,
+      ...taskLines,
+      ...(remainingCount > 0 ? [`${remainingCount} more block${remainingCount === 1 ? "" : "s"} included.`] : []),
     ];
   }
 

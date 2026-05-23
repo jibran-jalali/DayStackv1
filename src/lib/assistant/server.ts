@@ -75,8 +75,11 @@ Action rules:
 - create_task: only when title, taskDate, startTime, endTime, and taskType are all known.
 - update_task: for content/detail changes to an existing visible task.
 - reschedule_task: for moving a visible task to a new date and/or time.
+- batch_reschedule_tasks: for moving multiple visible tasks when the user says all/every/pending/completed/meetings/blocked.
 - toggle_task_status: for marking a visible task completed or pending.
+- batch_toggle_task_status: for marking multiple visible tasks completed or pending.
 - delete_task: for removing a visible task. Use recurrenceScope this_and_future only when the user clearly wants the recurring series from this occurrence onward.
+- batch_delete_tasks: for removing multiple visible one-time task occurrences.
 - update_recurring_series: for editing a visible recurring series from a date onward.
 - delete_recurring_series: for deleting a visible recurring series from a date onward.
 
@@ -92,6 +95,7 @@ Important constraints:
 - Never invent tasks outside the provided context.
 - If the user asks to change recurrence mode between one-time and recurring, ask a follow-up instead of forcing a conversion.
 - If a recurring action needs a scope choice and the user did not make it clear, ask a follow-up.
+- For bulk actions, only include visible task IDs from context and always summarize the count before confirmation.
 - Return JSON only. No markdown, no code fences, no prose outside JSON.
 - Always return an object with exactly four keys: reply, action, answerMode, and sources.
 - The reply should be concise and natural.
@@ -1085,6 +1089,45 @@ function extractRescheduleChanges(message: string, task: AssistantContextTask | 
   return Object.values(changes).some((value) => value !== undefined) ? changes : null;
 }
 
+function extractBulkRescheduleChanges(message: string, context: AssistantContext) {
+  const timeRange = extractTimeRange(message);
+  const changes: { endTime?: string; startTime?: string; taskDate?: string } = {};
+  const nextDate = extractDateFromMessage(message, context);
+
+  if (nextDate) {
+    changes.taskDate = nextDate;
+  }
+
+  if (timeRange) {
+    changes.startTime = timeRange.startTime;
+    changes.endTime = timeRange.endTime;
+  }
+
+  return Object.values(changes).some((value) => value !== undefined) ? changes : null;
+}
+
+function isBulkTaskRequest(message: string) {
+  return /\b(all|every|everything|pending tasks|completed tasks|meetings|meeting blocks|blocked blocks|blocks|tasks)\b/i.test(message);
+}
+
+function getBulkTaskTargets(message: string, context: AssistantContext) {
+  let tasks = context.tasks;
+
+  if (/\bpending|unfinished|incomplete|open\b/i.test(message)) {
+    tasks = tasks.filter((task) => task.status === "pending");
+  } else if (/\bcompleted|done|finished\b/i.test(message)) {
+    tasks = tasks.filter((task) => task.status === "completed");
+  }
+
+  if (/\bmeetings?|meeting blocks?\b/i.test(message)) {
+    tasks = tasks.filter((task) => task.taskType === "meeting");
+  } else if (/\bblocked|blocked blocks?|busy blocks?\b/i.test(message)) {
+    tasks = tasks.filter((task) => task.taskType === "blocked");
+  }
+
+  return sortTasksByTime(tasks);
+}
+
 function extractUpdateChanges(message: string) {
   const changes: {
     meetingLink?: string | null;
@@ -1147,6 +1190,22 @@ function buildCreateTaskResponse(message: string, context: AssistantContext) {
 }
 
 function buildDeleteTaskResponse(message: string, context: AssistantContext) {
+  if (isBulkTaskRequest(message)) {
+    const targets = getBulkTaskTargets(message, context);
+
+    if (targets.length === 0) {
+      return createFollowUp("I could not find any visible blocks matching that bulk delete request.");
+    }
+
+    return createAssistantResponse(
+      `I can delete ${targets.length} visible block${targets.length === 1 ? "" : "s"}. Confirm it and I will remove them from this day.`,
+      {
+        kind: "batch_delete_tasks",
+        taskIds: targets.map((task) => task.id),
+      },
+    );
+  }
+
   const match = matchVisibleTasks(message, context);
 
   if (match.selected) {
@@ -1181,6 +1240,23 @@ function buildToggleTaskStatusResponse(message: string, context: AssistantContex
     return createFollowUp("Should I mark it complete or move it back to pending?");
   }
 
+  if (isBulkTaskRequest(message)) {
+    const targets = getBulkTaskTargets(message, context).filter((task) => task.status !== status);
+
+    if (targets.length === 0) {
+      return createFollowUp(`I could not find any visible blocks that need to be marked ${status}.`);
+    }
+
+    return createAssistantResponse(
+      `I can mark ${targets.length} visible block${targets.length === 1 ? "" : "s"} ${status}. Confirm it and I will update them.`,
+      {
+        kind: "batch_toggle_task_status",
+        status,
+        taskIds: targets.map((task) => task.id),
+      },
+    );
+  }
+
   const match = matchVisibleTasks(message, context);
 
   if (match.selected) {
@@ -1211,6 +1287,28 @@ function buildToggleTaskStatusResponse(message: string, context: AssistantContex
 }
 
 function buildRescheduleTaskResponse(message: string, context: AssistantContext) {
+  if (isBulkTaskRequest(message)) {
+    const targets = getBulkTaskTargets(message, context);
+    const changes = extractBulkRescheduleChanges(message, context);
+
+    if (targets.length === 0) {
+      return createFollowUp("I could not find any visible blocks matching that bulk move request.");
+    }
+
+    if (!changes) {
+      return createFollowUp(`Where should I move those ${targets.length} block${targets.length === 1 ? "" : "s"}?`);
+    }
+
+    return createAssistantResponse(
+      `I can move ${targets.length} visible block${targets.length === 1 ? "" : "s"} to the schedule you asked for. Confirm it and I will update them.`,
+      {
+        changes,
+        kind: "batch_reschedule_tasks",
+        taskIds: targets.map((task) => task.id),
+      },
+    );
+  }
+
   const match = matchVisibleTasks(message, context);
   const changes = match.selected ? extractRescheduleChanges(message, match.selected) : null;
 
@@ -2300,6 +2398,10 @@ function buildSuccessMessage(action: AssistantMutationAction, context: Assistant
     return `Rescheduled "${task?.title ?? "your block"}".`;
   }
 
+  if (action.kind === "batch_reschedule_tasks") {
+    return `Rescheduled ${action.taskIds.length} block${action.taskIds.length === 1 ? "" : "s"}.`;
+  }
+
   if (action.kind === "toggle_task_status") {
     const task = findContextTask(context, action.taskId);
     return action.status === "completed"
@@ -2307,9 +2409,19 @@ function buildSuccessMessage(action: AssistantMutationAction, context: Assistant
       : `Reopened "${task?.title ?? "your block"}".`;
   }
 
+  if (action.kind === "batch_toggle_task_status") {
+    return action.status === "completed"
+      ? `Marked ${action.taskIds.length} block${action.taskIds.length === 1 ? "" : "s"} complete.`
+      : `Reopened ${action.taskIds.length} block${action.taskIds.length === 1 ? "" : "s"}.`;
+  }
+
   if (action.kind === "delete_task") {
     const task = findContextTask(context, action.taskId);
     return `Deleted "${task?.title ?? "your block"}".`;
+  }
+
+  if (action.kind === "batch_delete_tasks") {
+    return `Deleted ${action.taskIds.length} block${action.taskIds.length === 1 ? "" : "s"}.`;
   }
 
   if (action.kind === "update_recurring_series") {
@@ -2390,6 +2502,32 @@ export async function executeAssistantAction(
     };
   }
 
+  if (action.kind === "batch_reschedule_tasks") {
+    let recommendedDate = context.currentDate;
+
+    for (const taskId of action.taskIds) {
+      const baseTask = requireContextTask(context, taskId);
+      const mergedValues = mergeTaskFormValues(buildTaskFormValuesFromContextTask(baseTask), action.changes);
+      const task = await rescheduleTask(
+        userId,
+        taskId,
+        {
+          endTime: mergedValues.endTime,
+          startTime: mergedValues.startTime,
+          taskDate: mergedValues.taskDate,
+        },
+        "owner_only",
+        "occurrence_only",
+      );
+      recommendedDate = task.task_date;
+    }
+
+    return {
+      message: buildSuccessMessage(action, context),
+      recommendedDate,
+    };
+  }
+
   if (action.kind === "toggle_task_status") {
     const task = await toggleTaskStatus(userId, action.taskId, action.status);
 
@@ -2399,12 +2537,39 @@ export async function executeAssistantAction(
     };
   }
 
+  if (action.kind === "batch_toggle_task_status") {
+    let recommendedDate = context.currentDate;
+
+    for (const taskId of action.taskIds) {
+      const task = await toggleTaskStatus(userId, taskId, action.status);
+      recommendedDate = task.task_date;
+    }
+
+    return {
+      message: buildSuccessMessage(action, context),
+      recommendedDate,
+    };
+  }
+
   if (action.kind === "delete_task") {
     const taskDate = await deleteTask(userId, action.taskId, action.recurrenceScope ?? "occurrence_only");
 
     return {
       message: buildSuccessMessage(action, context),
       recommendedDate: taskDate,
+    };
+  }
+
+  if (action.kind === "batch_delete_tasks") {
+    let recommendedDate = context.currentDate;
+
+    for (const taskId of action.taskIds) {
+      recommendedDate = await deleteTask(userId, taskId, "occurrence_only");
+    }
+
+    return {
+      message: buildSuccessMessage(action, context),
+      recommendedDate,
     };
   }
 
@@ -2445,6 +2610,14 @@ export function buildAssistantActionHint(action: AssistantMutationAction, contex
 
   if (action.kind === "batch_create_tasks") {
     return `${action.values.length} planned block${action.values.length === 1 ? "" : "s"} for ${formatDateLabel(action.values[0]?.taskDate ?? context.currentDate)}.`;
+  }
+
+  if (
+    action.kind === "batch_reschedule_tasks" ||
+    action.kind === "batch_toggle_task_status" ||
+    action.kind === "batch_delete_tasks"
+  ) {
+    return `${action.taskIds.length} visible block${action.taskIds.length === 1 ? "" : "s"}.`;
   }
 
   if (action.kind === "update_recurring_series" || action.kind === "delete_recurring_series") {

@@ -199,16 +199,33 @@ export const assistantRescheduleTaskActionSchema = z.object({
   taskId: z.string().uuid(),
 });
 
+export const assistantBatchRescheduleTasksActionSchema = z.object({
+  changes: assistantRescheduleChangesSchema,
+  kind: z.literal("batch_reschedule_tasks"),
+  taskIds: z.array(z.string().uuid()).min(1).max(50),
+});
+
 export const assistantToggleTaskStatusActionSchema = z.object({
   kind: z.literal("toggle_task_status"),
   status: z.enum(["completed", "pending"]),
   taskId: z.string().uuid(),
 });
 
+export const assistantBatchToggleTaskStatusActionSchema = z.object({
+  kind: z.literal("batch_toggle_task_status"),
+  status: z.enum(["completed", "pending"]),
+  taskIds: z.array(z.string().uuid()).min(1).max(50),
+});
+
 export const assistantDeleteTaskActionSchema = z.object({
   kind: z.literal("delete_task"),
   recurrenceScope: z.enum(["occurrence_only", "this_and_future"]).optional(),
   taskId: z.string().uuid(),
+});
+
+export const assistantBatchDeleteTasksActionSchema = z.object({
+  kind: z.literal("batch_delete_tasks"),
+  taskIds: z.array(z.string().uuid()).min(1).max(50),
 });
 
 export const assistantUpdateRecurringSeriesActionSchema = z.object({
@@ -231,8 +248,11 @@ export const assistantActionSchema = z.discriminatedUnion("kind", [
   assistantBatchCreateTasksActionSchema,
   assistantUpdateTaskActionSchema,
   assistantRescheduleTaskActionSchema,
+  assistantBatchRescheduleTasksActionSchema,
   assistantToggleTaskStatusActionSchema,
+  assistantBatchToggleTaskStatusActionSchema,
   assistantDeleteTaskActionSchema,
+  assistantBatchDeleteTasksActionSchema,
   assistantUpdateRecurringSeriesActionSchema,
   assistantDeleteRecurringSeriesActionSchema,
 ]);
@@ -242,8 +262,11 @@ export const assistantMutationActionSchema = z.discriminatedUnion("kind", [
   assistantBatchCreateTasksActionSchema,
   assistantUpdateTaskActionSchema,
   assistantRescheduleTaskActionSchema,
+  assistantBatchRescheduleTasksActionSchema,
   assistantToggleTaskStatusActionSchema,
+  assistantBatchToggleTaskStatusActionSchema,
   assistantDeleteTaskActionSchema,
+  assistantBatchDeleteTasksActionSchema,
   assistantUpdateRecurringSeriesActionSchema,
   assistantDeleteRecurringSeriesActionSchema,
 ]);

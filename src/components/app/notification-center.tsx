@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, BellRing, Check, CheckCheck, ExternalLink, Inbox, LoaderCircle, X } from "lucide-react";
+import { Bell, BellRing, Check, CheckCheck, Clock3, ExternalLink, Inbox, LoaderCircle, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { Button, buttonVariants } from "@/components/shared/button";
@@ -28,7 +28,6 @@ interface NotificationCenterProps {
   onTaskAccepted?: (result: TaskNotificationAcceptResult) => Promise<void> | void;
   openInboxHref?: string;
 }
-
 function getStatusTone(status: PlannerNotification["status"]) {
   if (status === "accepted") {
     return "success" as const;
@@ -83,6 +82,7 @@ export function NotificationCenter({
     [notifications],
   );
   const unreadCount = unreadIds.length;
+  const pendingCount = notifications.filter((notification) => notification.status === "pending").length;
   const isVisible = mode === "page" ? isActive : isOpen;
 
   const loadNotifications = useCallback(
@@ -232,19 +232,40 @@ export function NotificationCenter({
 
   function renderNotificationList(maxHeightClassName: string) {
     if (loadError) {
-      return <div className="px-1 py-4 text-sm text-danger">{loadError}</div>;
+      return (
+        <div className={cn("px-1 py-4 text-sm text-danger", compact && "mobile-card p-4")}>
+          {loadError}
+        </div>
+      );
     }
 
     if (notifications.length === 0) {
       return (
-        <div className="px-1 py-4 text-sm text-secondary-foreground">
-          Meeting requests will show up here when a friend tags you in a meeting block.
+        <div
+          className={cn(
+            "px-1 py-4 text-sm text-secondary-foreground",
+            compact && "mobile-card flex min-h-[12rem] flex-col items-center justify-center p-5 text-center",
+          )}
+        >
+          {compact ? (
+            <>
+              <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-secondary-foreground">
+                <Inbox className="h-5 w-5" />
+              </span>
+              <p className="text-sm font-semibold text-foreground">Inbox is clear</p>
+              <p className="mt-1 max-w-[18rem] text-xs leading-5 text-secondary-foreground">
+                Meeting requests will appear here when a friend tags you in a meeting block.
+              </p>
+            </>
+          ) : (
+            "Meeting requests will show up here when a friend tags you in a meeting block."
+          )}
         </div>
       );
     }
 
     return (
-      <div className={cn("space-y-2.5 overflow-y-auto soft-scrollbar", maxHeightClassName)}>
+      <div className={cn("space-y-2.5 overflow-y-auto soft-scrollbar", compact && "space-y-3", maxHeightClassName)}>
         {notifications.map((notification) => {
           const actorName = notification.actor?.fullName ?? "A DayStack user";
           const isPendingAction = activeNotificationId === notification.id;
@@ -254,40 +275,63 @@ export function NotificationCenter({
               key={notification.id}
               className={cn(
                 "rounded-[20px] border px-3.5 py-3 transition-[border-color,box-shadow,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                notification.readAt ? "border-border/70 bg-white/82" : "border-cyan-200 bg-cyan-50/56",
+                compact &&
+                  "relative overflow-hidden rounded-[24px] border-white/80 bg-white/94 p-3.5 shadow-[0_16px_36px_rgba(83,78,222,0.1)] backdrop-blur-xl",
+                notification.readAt
+                  ? "border-border/70 bg-white/82"
+                  : compact
+                    ? "border-cyan-200/80 bg-[linear-gradient(135deg,rgba(24,190,239,0.12),rgba(109,40,240,0.07)_42%,rgba(255,255,255,0.96)_78%)]"
+                    : "border-cyan-200 bg-cyan-50/56",
               )}
             >
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground">{actorName} sent a meeting request</p>
-                  <p className="mt-1 text-sm leading-6 text-secondary-foreground">
-                    In <span className="font-medium text-foreground">{notification.taskTitle}</span>
-                  </p>
-                </div>
-                <StatusChip label={getStatusLabel(notification.status)} tone={getStatusTone(notification.status)} />
-              </div>
+              {compact && !notification.readAt ? (
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-brand-gradient" />
+              ) : null}
+              <div className="flex items-start gap-3">
+                {compact ? (
+                  <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-gradient text-white shadow-[0_12px_24px_rgba(83,78,222,0.22)]">
+                    <BellRing className="h-4 w-4" />
+                  </span>
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{actorName}</p>
+                      <p className="mt-0.5 text-xs font-medium text-secondary-foreground">sent a meeting request</p>
+                    </div>
+                    <StatusChip label={getStatusLabel(notification.status)} tone={getStatusTone(notification.status)} />
+                  </div>
 
-              <p className="mt-2 text-xs text-secondary-foreground">
-                {formatDateLabel(notification.taskDate)} at {formatClockTime(notification.startTime)} to{" "}
-                {formatClockTime(notification.endTime)}
-              </p>
+                  <p className="mt-2 line-clamp-2 text-[15px] font-semibold leading-5 text-foreground">
+                    {notification.taskTitle}
+                  </p>
+
+                  <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-secondary-foreground">
+                    <Clock3 className="h-3.5 w-3.5" />
+                    <span>
+                      {formatDateLabel(notification.taskDate)} at {formatClockTime(notification.startTime)} to{" "}
+                      {formatClockTime(notification.endTime)}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
               <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap sm:items-center">
                 {notification.status === "pending" ? (
                   <>
                     <Button
                       size="sm"
-                      className={compact ? "w-full justify-center sm:w-auto" : undefined}
+                      className={compact ? "h-11 w-full justify-center rounded-full text-sm sm:w-auto" : undefined}
                       onClick={() => handleAccept(notification.id)}
                       disabled={isPendingAction}
                     >
                       {isPendingAction ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                      Accept & add
+                      Accept
                     </Button>
                     <Button
                       size="sm"
                       variant="secondary"
-                      className={compact ? "w-full justify-center sm:w-auto" : undefined}
+                      className={compact ? "h-11 w-full justify-center rounded-full text-sm sm:w-auto" : undefined}
                       onClick={() => handleReject(notification.id)}
                       disabled={isPendingAction}
                     >
@@ -303,7 +347,7 @@ export function NotificationCenter({
                       className={buttonVariants({
                         variant: "secondary",
                         size: "sm",
-                        className: compact ? "w-full justify-center sm:w-auto" : undefined,
+                        className: compact ? "h-11 w-full justify-center rounded-full text-sm sm:w-auto" : undefined,
                       })}
                       onClick={() => {
                         if (mode === "button") {
@@ -322,7 +366,7 @@ export function NotificationCenter({
                       className={buttonVariants({
                         variant: "secondary",
                         size: "sm",
-                        className: compact ? "w-full justify-center sm:w-auto" : undefined,
+                        className: compact ? "h-11 w-full justify-center rounded-full text-sm sm:w-auto" : undefined,
                       })}
                     >
                       <CheckCheck className="h-4 w-4" />
@@ -339,7 +383,7 @@ export function NotificationCenter({
                     className={buttonVariants({
                       variant: "ghost",
                       size: "sm",
-                      className: cn("h-10 px-4", compact && "w-full justify-center sm:w-auto"),
+                      className: cn("h-10 px-4", compact && "h-11 w-full justify-center rounded-full text-sm sm:w-auto"),
                     })}
                   >
                     <ExternalLink className="h-4 w-4" />
@@ -358,14 +402,38 @@ export function NotificationCenter({
     if (compact) {
       return (
         <section className="space-y-3">
-          <div className="flex flex-col gap-2 px-1 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="section-label">Notifications</p>
-              <p className="mt-1 text-sm text-secondary-foreground">
-              Accept to add the block to your timeline, or reject to dismiss it.
-              </p>
+          <div className="relative overflow-hidden rounded-[26px] border border-white/80 bg-white/88 p-0 shadow-[0_18px_44px_rgba(83,78,222,0.13)] backdrop-blur-xl">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(ellipse_90%_80%_at_20%_0%,rgba(24,190,239,0.22),transparent_62%),radial-gradient(ellipse_90%_80%_at_92%_4%,rgba(109,40,240,0.16),transparent_58%)]" />
+            <div className="relative px-4 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="mobile-eyebrow">Inbox</p>
+                  <h1 className="mt-1 font-display text-xl font-semibold tracking-tight text-foreground">
+                    Meeting requests
+                  </h1>
+                  <p className="mt-1 text-xs leading-5 text-secondary-foreground">
+                    Accept adds the block. Reject dismisses it.
+                  </p>
+                </div>
+                <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-gradient text-white shadow-[0_14px_28px_rgba(83,78,222,0.2)]">
+                  <Inbox className="h-5 w-5" />
+                </span>
+              </div>
             </div>
-            {unreadCount > 0 ? <StatusChip label={`${unreadCount} unread`} tone="brand" /> : null}
+            <div className="relative mx-3 mb-3 grid grid-cols-3 overflow-hidden rounded-[20px] border border-white/80 bg-white/84 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+              <div className="px-3 py-3 text-center">
+                <p className="gradient-text text-base font-semibold">{notifications.length}</p>
+                <p className="text-[11px] font-medium text-secondary-foreground">Total</p>
+              </div>
+              <div className="border-x border-border/60 px-3 py-3 text-center">
+                <p className="gradient-text text-base font-semibold">{pendingCount}</p>
+                <p className="text-[11px] font-medium text-secondary-foreground">Pending</p>
+              </div>
+              <div className="px-3 py-3 text-center">
+                <p className="gradient-text text-base font-semibold">{unreadCount}</p>
+                <p className="text-[11px] font-medium text-secondary-foreground">Unread</p>
+              </div>
+            </div>
           </div>
 
           {renderNotificationList("")}

@@ -3,18 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUp,
-  Bot,
   Calendar,
   CheckCircle2,
-  Clock,
   ExternalLink,
   ListTodo,
   Loader2,
-  RefreshCw,
   Search,
   Sparkles,
   Star,
-  Trash2,
   X,
   Zap,
 } from "lucide-react";
@@ -50,10 +46,10 @@ interface ChatMessage {
 }
 
 const STARTER_PROMPTS = [
-  { icon: Calendar, text: "Plan my day around a 90-min deep work block", color: "from-blue-500 to-cyan-500" },
+  { icon: Calendar, text: "Plan my day around one deep work block", color: "from-blue-500 to-cyan-500" },
   { icon: Zap, text: "What should I focus on first today?", color: "from-violet-500 to-purple-600" },
-  { icon: ListTodo, text: "Move all my pending tasks to tomorrow", color: "from-emerald-500 to-teal-500" },
-  { icon: Star, text: "What changed in AI this week?", color: "from-amber-500 to-orange-500" },
+  { icon: ListTodo, text: "Move all pending tasks to tomorrow", color: "from-emerald-500 to-teal-500" },
+  { icon: Star, text: "Mark all pending tasks complete", color: "from-amber-500 to-orange-500" },
 ] as const;
 
 const CAPABILITY_CHIPS = [
@@ -160,8 +156,8 @@ function SourceList({ sources }: { sources: AssistantAnswerSource[] }) {
   if (sources.length === 0) return null;
 
   return (
-    <div className="mt-3 border-t border-white/20 pt-3">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-white/50 mb-2">Sources</p>
+    <div className="mt-3 border-t border-border/70 pt-3">
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-secondary-foreground/60">Sources</p>
       <div className="flex flex-wrap gap-2">
         {sources.map((source) => {
           const host = (() => {
@@ -178,7 +174,7 @@ function SourceList({ sources }: { sources: AssistantAnswerSource[] }) {
               href={source.url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white/80 hover:bg-white/20 hover:text-white transition-all"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/70 px-3 py-1 text-xs font-medium text-secondary-foreground transition-all hover:bg-muted hover:text-foreground"
             >
               <span className="truncate max-w-[140px]">{source.title ?? host}</span>
               <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
@@ -204,7 +200,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[min(85%,36rem)] rounded-[20px] rounded-br-[6px] bg-gradient-to-br from-blue-600 to-violet-600 px-4 py-3 text-sm leading-6 text-white shadow-[0_8px_24px_rgba(99,102,241,0.3)]">
+        <div className="max-w-[min(84%,36rem)] rounded-[22px] rounded-br-md bg-brand-gradient px-4 py-3 text-[15px] leading-6 text-white shadow-[0_14px_28px_rgba(83,78,222,0.22)]">
           <p className="whitespace-pre-wrap">{message.content}</p>
         </div>
       </div>
@@ -212,20 +208,20 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   }
 
   return (
-    <div className="flex items-start gap-3 group">
-      <span className="mt-0.5 shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-[0_4px_12px_rgba(99,102,241,0.35)]">
+    <div className="group flex items-start gap-2.5 sm:gap-3">
+      <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gradient shadow-[0_12px_24px_rgba(83,78,222,0.2)] sm:rounded-xl">
         <LogoMark className="h-5 w-5 rounded-lg" />
       </span>
       <div className="min-w-0 flex-1">
         <div className="mb-2 flex items-center gap-2">
           <p className="text-[10px] font-bold uppercase tracking-widest text-secondary-foreground/60">
-            DayStack AI
+            Assistant
           </p>
           <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold", getModeColor(message))}>
             {getModeLabel(message)}
           </span>
         </div>
-        <div className="max-w-[min(100%,44rem)] rounded-[20px] rounded-tl-[6px] border border-border/60 bg-white px-4 py-3.5 text-sm leading-7 text-foreground shadow-[0_4px_16px_rgba(15,23,42,0.06)]">
+        <div className="max-w-[min(100%,44rem)] rounded-[22px] rounded-tl-md border border-white/80 bg-white/94 px-4 py-3.5 text-[15px] leading-7 text-foreground shadow-[0_12px_30px_rgba(83,78,222,0.08)] backdrop-blur-xl">
           <p className="whitespace-pre-wrap">{message.content}</p>
           <SourceList sources={message.sources} />
         </div>
@@ -251,14 +247,14 @@ function ActionCard({
   const isDestructive = action.kind === "delete_task" || action.kind === "delete_recurring_series";
 
   return (
-    <div className="ml-11">
-      <div className="max-w-[min(100%,44rem)] overflow-hidden rounded-[20px] rounded-tl-[6px] border border-border/60 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.06)]">
+    <div className="ml-10 sm:ml-11">
+      <div className="max-w-[min(100%,44rem)] overflow-hidden rounded-[22px] rounded-tl-md border border-white/80 bg-white/94 shadow-[0_16px_36px_rgba(83,78,222,0.1)] backdrop-blur-xl">
         {/* Header stripe */}
         <div className={cn(
           "px-4 py-3 flex items-center justify-between",
           isDestructive
             ? "bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-100"
-            : "bg-gradient-to-r from-blue-50 to-violet-50 border-b border-indigo-100"
+            : "bg-[linear-gradient(135deg,rgba(24,190,239,0.12),rgba(109,40,240,0.08))] border-b border-cyan-100"
         )}>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-secondary-foreground/60">
@@ -287,26 +283,26 @@ function ActionCard({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2 border-t border-border/50 px-4 py-3">
+        <div className="grid grid-cols-2 gap-2 border-t border-border/50 px-4 py-3">
           <button
             type="button"
             onClick={onConfirm}
             disabled={isPending}
             className={cn(
-              "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white transition-all disabled:opacity-60",
+              "inline-flex min-h-10 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white transition-all disabled:opacity-60",
               isDestructive
                 ? "bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-[0_4px_12px_rgba(239,68,68,0.3)]"
                 : "bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 shadow-[0_4px_12px_rgba(99,102,241,0.3)]"
             )}
           >
             {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {isPending ? "Applying…" : isDestructive ? "Confirm delete" : "Confirm change"}
+            {isPending ? "Applying..." : isDestructive ? "Confirm delete" : "Confirm change"}
           </button>
           <button
             type="button"
             onClick={onCancel}
             disabled={isPending}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-white px-4 py-2 text-sm font-semibold text-secondary-foreground hover:bg-muted/60 transition-all disabled:opacity-60"
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-border/80 bg-white px-4 py-2 text-sm font-semibold text-secondary-foreground transition-all hover:bg-muted/60 disabled:opacity-60"
           >
             <X className="h-3.5 w-3.5" />
             Cancel
@@ -332,9 +328,9 @@ function StarterPromptCard({
       type="button"
       disabled={disabled}
       onClick={() => onSelect(prompt.text)}
-      className="group flex items-start gap-3 rounded-[18px] border border-border/60 bg-white px-4 py-3.5 text-left transition-all hover:border-violet-200 hover:shadow-[0_4px_16px_rgba(99,102,241,0.12)] hover:-translate-y-0.5 disabled:opacity-60 disabled:translate-y-0 disabled:hover:border-border/60 disabled:hover:shadow-none"
+      className="group flex items-start gap-3 rounded-[20px] border border-white/80 bg-white/88 px-4 py-3.5 text-left shadow-[0_10px_24px_rgba(83,78,222,0.07)] backdrop-blur-xl transition-all hover:border-cyan-200 hover:shadow-[0_14px_30px_rgba(83,78,222,0.12)] hover:-translate-y-0.5 disabled:opacity-60 disabled:translate-y-0 disabled:hover:border-white/80 disabled:hover:shadow-[0_10px_24px_rgba(83,78,222,0.07)]"
     >
-      <span className={cn("mt-0.5 shrink-0 flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br text-white", prompt.color)}>
+      <span className={cn("mt-0.5 shrink-0 flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-[0_10px_20px_rgba(83,78,222,0.16)]", prompt.color)}>
         <Icon className="h-3.5 w-3.5" />
       </span>
       <p className="text-sm leading-5 text-foreground">{prompt.text}</p>
@@ -349,7 +345,7 @@ export function AssistantShell({
 }: AssistantShellProps) {
   const introMessage = useMemo(
     () =>
-      `I'm your DayStack AI — I can see your full schedule for ${formatDateLabel(snapshot.taskDate)} and I'm ready to help. I can create, move, edit, complete, or delete any task, plan your whole day from a brain dump, or answer any question. Just tell me what you need.`,
+      `I'm your DayStack AI. I can see your schedule for ${formatDateLabel(snapshot.taskDate)} and help you create, move, edit, complete, delete, or bulk-update visible tasks. Tell me what you want changed and I will draft it for confirmation.`,
     [snapshot.taskDate],
   );
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
@@ -494,18 +490,29 @@ export function AssistantShell({
   const isBusy = isSending || isConfirming;
 
   return (
-    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+    <section className="mobile-app-shell flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:bg-transparent">
       {/* Main chat area */}
       <div className="flex h-full min-h-0 flex-1 flex-col">
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-white/70 bg-white/86 px-4 py-3 shadow-[0_10px_28px_rgba(83,78,222,0.06)] backdrop-blur-xl lg:hidden">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-gradient text-white shadow-[0_10px_20px_rgba(83,78,222,0.18)]">
+            <Sparkles className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">DayStack AI</p>
+            <p className="truncate text-xs text-secondary-foreground">
+              {snapshot.tasks.length} visible block{snapshot.tasks.length === 1 ? "" : "s"} in context
+            </p>
+          </div>
+        </div>
         {/* Scrollable messages */}
         <div ref={chatScrollRef} className="soft-scrollbar flex-1 overflow-y-auto">
           {!hasConversation ? (
             /* ── Welcome / empty state ── */
-            <div className="flex min-h-full flex-col px-4 pb-6 pt-6 sm:px-6 lg:px-8">
-              <div className="mx-auto w-full max-w-2xl flex flex-col flex-1 justify-center">
+            <div className="flex min-h-full flex-col px-4 pb-6 pt-5 sm:px-6 lg:px-8">
+              <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center">
                 {/* Header */}
-                <div className="flex items-center gap-3 mb-6">
-                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-[0_8px_24px_rgba(99,102,241,0.35)]">
+                <div className="mb-5 flex items-center gap-3">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-[0_14px_28px_rgba(83,78,222,0.2)] sm:rounded-2xl">
                     <Sparkles className="h-5 w-5 text-white" />
                   </span>
                   <div>
@@ -516,18 +523,21 @@ export function AssistantShell({
                   </div>
                 </div>
 
-                <p className="text-[15px] leading-7 text-secondary-foreground mb-6">
+                <p className="hidden">
                   I can see your full schedule and act on anything — just talk to me naturally.
                 </p>
 
+                <p className="mb-5 text-[15px] leading-7 text-secondary-foreground">
+                  Ask naturally. I can draft changes, plan your day, and run bulk actions after you confirm.
+                </p>
+
                 {/* Capability chips */}
-                <div className="flex flex-wrap gap-2 mb-8">
+                <div className="mb-8 flex flex-wrap gap-2">
                   {CAPABILITY_CHIPS.map((chip) => (
                     <span
                       key={chip.label}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-violet-200/80 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/86 px-3 py-1 text-xs font-semibold text-primary shadow-[0_8px_18px_rgba(83,78,222,0.06)]"
                     >
-                      <span className="text-[9px] text-violet-400">{chip.icon}</span>
                       {chip.label}
                     </span>
                   ))}
@@ -548,7 +558,7 @@ export function AssistantShell({
             </div>
           ) : (
             /* ── Conversation ── */
-            <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-3xl space-y-5 px-3 py-4 sm:px-6 lg:px-8">
               {visibleMessages.map((message) => (
                 <div key={message.id} className="space-y-3 fade-in-up">
                   <MessageBubble message={message} />
@@ -585,7 +595,7 @@ export function AssistantShell({
                   <div className="rounded-[20px] rounded-tl-[6px] border border-border/60 bg-white px-4 py-3 text-sm text-secondary-foreground shadow-[0_4px_16px_rgba(15,23,42,0.06)]">
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
-                      Applying change to your schedule…
+                      Applying change to your schedule...
                     </div>
                   </div>
                 </div>
@@ -598,7 +608,7 @@ export function AssistantShell({
         </div>
 
         {/* ── Composer ── */}
-        <div className="border-t border-border/50 bg-white/90 backdrop-blur-sm px-4 py-3 sm:px-6 lg:px-8">
+        <div className="border-t border-white/70 bg-white/82 px-3 py-3 shadow-[0_-10px_28px_rgba(83,78,222,0.06)] backdrop-blur-xl sm:bg-white/90 sm:px-6 lg:px-8">
           <div className="mx-auto w-full max-w-3xl">
             {/* Follow-up hint banner */}
             {pendingFollowUp && (
@@ -610,7 +620,7 @@ export function AssistantShell({
 
             {/* Input box */}
             <div className={cn(
-              "flex items-end gap-2.5 rounded-[20px] border bg-white px-3.5 py-2.5 shadow-[0_2px_16px_rgba(15,23,42,0.07)] transition-all",
+              "flex items-end gap-2.5 rounded-[24px] border bg-white/94 px-3.5 py-2.5 shadow-[0_12px_28px_rgba(83,78,222,0.09)] backdrop-blur-xl transition-all",
               isBusy
                 ? "border-border/50 opacity-80"
                 : "border-border/70 focus-within:border-violet-300 focus-within:shadow-[0_4px_20px_rgba(99,102,241,0.12)]"
@@ -621,9 +631,9 @@ export function AssistantShell({
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={handleComposerKeyDown}
                 rows={1}
-                placeholder="Ask anything or describe a change…"
+                placeholder="Message DayStack AI"
                 disabled={isBusy}
-                className="max-h-40 min-h-0 flex-1 resize-none border-0 bg-transparent py-1 text-[15px] leading-6 text-foreground outline-none placeholder:text-secondary-foreground/50 disabled:opacity-60"
+                className="max-h-40 min-h-0 flex-1 resize-none border-0 bg-transparent py-1.5 text-[16px] leading-6 text-foreground outline-none placeholder:text-secondary-foreground/50 disabled:opacity-60"
               />
               <button
                 type="button"
@@ -633,7 +643,7 @@ export function AssistantShell({
                 className={cn(
                   "shrink-0 mb-0.5 flex h-9 w-9 items-center justify-center rounded-full transition-all",
                   draft.trim() && !isBusy
-                    ? "bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-[0_4px_12px_rgba(99,102,241,0.35)] hover:shadow-[0_6px_16px_rgba(99,102,241,0.45)] hover:scale-105 active:scale-95"
+                    ? "bg-brand-gradient text-white shadow-[0_12px_24px_rgba(83,78,222,0.22)] hover:scale-105 active:scale-95"
                     : "bg-muted text-secondary-foreground/40 cursor-not-allowed"
                 )}
               >
@@ -645,8 +655,11 @@ export function AssistantShell({
               </button>
             </div>
 
-            <p className="mt-2 text-center text-[11px] text-secondary-foreground/50">
+            <p className="hidden">
               Enter to send · Shift+Enter for new line · Changes are always confirmed before applying
+            </p>
+            <p className="mt-2 text-center text-[11px] text-secondary-foreground/50">
+              Changes are always confirmed before applying
             </p>
           </div>
         </div>
