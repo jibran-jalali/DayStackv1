@@ -1,10 +1,10 @@
 import "server-only";
 
-import { and, asc, eq, gte, inArray, lte, or } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, lt, lte, or } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { task_reminders, tasks, user_notification_preferences, users } from "@/db/schema";
-import { formatClockTime, formatDateKey } from "@/lib/daystack";
+import { formatClockTime } from "@/lib/daystack";
 import { getAppTimeZone } from "@/lib/env";
 import type {
   DueTaskReminder,
@@ -25,7 +25,7 @@ const DEFAULT_REMINDER_PREFERENCES = {
   meeting_mention_email_enabled: false,
   email_reminder_lead_minutes: DEFAULT_EMAIL_REMINDER_LEAD_MINUTES,
   remind_5_min_before: true,
-  remind_at_start: true,
+  remind_at_start: false,
   remind_overdue: false,
 } as const;
 
@@ -117,10 +117,23 @@ function buildReminderTimestamp(taskDate: string, time: string, offsetMinutes = 
   return localDate.toISOString();
 }
 
+function formatDateKeyInAppTimeZone(date: Date) {
+  const parts = getTimeZoneDateParts(date, getAppTimeZone());
+  const month = `${parts.month}`.padStart(2, "0");
+  const day = `${parts.day}`.padStart(2, "0");
+
+  return `${parts.year}-${month}-${day}`;
+}
+
+function isFutureReminder(remindAt: string, now: Date) {
+  return new Date(remindAt).getTime() > now.getTime();
+}
+
 function getReminderRowsForTask(
   userId: string,
   task: Pick<TaskRecord, "end_time" | "id" | "start_time" | "status" | "task_date">,
   preferences: UserNotificationPreferencesRecord,
+  now: Date,
 ) {
   if (task.status !== "pending") {
     return [];
@@ -129,38 +142,36 @@ function getReminderRowsForTask(
   const rows: Array<Pick<TaskReminderRecord, "remind_at" | "reminder_type" | "status" | "task_id" | "user_id">> = [];
 
   if (preferences.email_enabled) {
-    rows.push({
-      user_id: userId,
-      task_id: task.id,
-      reminder_type: "email_before_start",
-      remind_at: buildReminderTimestamp(
-        task.task_date,
-        task.start_time,
-        clampEmailReminderLeadMinutes(preferences.email_reminder_lead_minutes) * -1,
-      ),
-      status: "pending",
-    });
+    const remindAt = buildReminderTimestamp(
+      task.task_date,
+      task.start_time,
+      clampEmailReminderLeadMinutes(preferences.email_reminder_lead_minutes) * -1,
+    );
+
+    if (isFutureReminder(remindAt, now)) {
+      rows.push({
+        user_id: userId,
+        task_id: task.id,
+        reminder_type: "email_before_start",
+        remind_at: remindAt,
+        status: "pending",
+      });
+    }
   }
 
   if (preferences.push_enabled) {
     if (preferences.remind_5_min_before) {
-      rows.push({
-        user_id: userId,
-        task_id: task.id,
-        reminder_type: "5_minutes_before",
-        remind_at: buildReminderTimestamp(task.task_date, task.start_time, -5),
-        status: "pending",
-      });
-    }
+      const remindAt = buildReminderTimestamp(task.task_date, task.start_time, -5);
 
-    if (preferences.remind_at_start) {
-      rows.push({
-        user_id: userId,
-        task_id: task.id,
-        reminder_type: "at_start",
-        remind_at: buildReminderTimestamp(task.task_date, task.start_time, 0),
-        status: "pending",
-      });
+      if (isFutureReminder(remindAt, now)) {
+        rows.push({
+          user_id: userId,
+          task_id: task.id,
+          reminder_type: "5_minutes_before",
+          remind_at: remindAt,
+          status: "pending",
+        });
+      }
     }
   }
 
@@ -202,9 +213,11 @@ export async function syncTaskRemindersForTask(
   userId: string,
   task: Pick<TaskRecord, "end_time" | "id" | "start_time" | "status" | "task_date">,
   preferences?: UserNotificationPreferencesRecord,
+  now = new Date(),
 ) {
   const db = getRequiredDb();
   const activePreferences = preferences ?? (await fetchNotificationPreferences(userId));
+  const nowIso = now.toISOString();
 
   await db
     .delete(task_reminders)
@@ -212,10 +225,11 @@ export async function syncTaskRemindersForTask(
       and(
         eq(task_reminders.task_id, task.id),
         inArray(task_reminders.status, MUTABLE_REMINDER_STATUSES),
+        gt(task_reminders.remind_at, nowIso),
       ),
     );
 
-  const reminderRows = getReminderRowsForTask(userId, task, activePreferences);
+  const reminderRows = getReminderRowsForTask(userId, task, activePreferences, now);
 
   if (reminderRows.length === 0) {
     return;
@@ -239,13 +253,13 @@ export async function syncTaskRemindersForUser(
 ) {
   const db = getRequiredDb();
   const activePreferences = preferences ?? (await fetchNotificationPreferences(userId));
-  const pendingTasks = await fetchPendingTasksForReminderSync(db, userId, formatDateKey(now));
+  const pendingTasks = await fetchPendingTasksForReminderSync(db, userId, formatDateKeyInAppTimeZone(now));
 
   if (pendingTasks.length === 0) {
     return activePreferences;
   }
 
-  await Promise.all(pendingTasks.map((task) => syncTaskRemindersForTask(userId, task, activePreferences)));
+  await Promise.all(pendingTasks.map((task) => syncTaskRemindersForTask(userId, task, activePreferences, now)));
 
   return activePreferences;
 }
@@ -265,6 +279,20 @@ export async function syncTaskRemindersForActiveUsers(now = new Date()) {
   await Promise.all(preferenceRows.map((preferences) => syncTaskRemindersForUser(preferences.user_id, preferences, now)));
 
   return preferenceRows.length;
+}
+
+export async function deleteStaleMutableReminders(now = new Date(), graceMinutes = 2) {
+  const db = getRequiredDb();
+  const cutoff = new Date(now.getTime() - graceMinutes * 60 * 1000).toISOString();
+
+  await db
+    .delete(task_reminders)
+    .where(
+      and(
+        inArray(task_reminders.status, MUTABLE_REMINDER_STATUSES),
+        lt(task_reminders.remind_at, cutoff),
+      ),
+    );
 }
 
 export async function updateNotificationPreferences(
@@ -432,7 +460,7 @@ export function isEmailReminderType(reminderType: ReminderType) {
 }
 
 export function isPushReminderType(reminderType: ReminderType) {
-  return reminderType === "5_minutes_before" || reminderType === "at_start";
+  return reminderType === "5_minutes_before";
 }
 
 export function buildReminderCopy(
@@ -461,13 +489,6 @@ export function buildReminderCopy(
   if (reminderType === "5_minutes_before") {
     return {
       title: "Block starting in 5 minutes",
-      body: `${task.title} begins at ${formatClockTime(task.start_time)}.`,
-    };
-  }
-
-  if (reminderType === "at_start") {
-    return {
-      title: "Block starting now",
       body: `${task.title} begins at ${formatClockTime(task.start_time)}.`,
     };
   }

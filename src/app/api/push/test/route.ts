@@ -35,9 +35,11 @@ export async function POST() {
   if (result.sent === 0) {
     return NextResponse.json(
       {
-        message: "No active push subscription was found for this account.",
+        message: result.skipped
+          ? "No active push subscription was found for this account."
+          : "Your saved push subscription could not receive notifications. Re-enable push notifications on this device.",
       },
-      { status: 404 },
+      { status: result.skipped ? 404 : 502 },
     );
   }
 

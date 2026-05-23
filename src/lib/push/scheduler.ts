@@ -1,6 +1,7 @@
 import { getAppBaseUrl, isWebPushConfigured } from "@/lib/env";
 import { isEmailServerConfigured, sendTaskReminderEmail } from "@/lib/email/server";
 import {
+  deleteStaleMutableReminders,
   fetchDueTaskReminders,
   isEmailReminderType,
   isPushReminderType,
@@ -33,12 +34,14 @@ export function startBackgroundScheduler() {
       }
 
       const appBaseUrl = getAppBaseUrl();
+      const now = new Date();
 
-      // 1. Sync reminders for active users
-      await syncTaskRemindersForActiveUsers();
+      // 1. Clean stale mutable rows, then sync future reminders for active users
+      await deleteStaleMutableReminders(now);
+      await syncTaskRemindersForActiveUsers(now);
 
       // 2. Fetch pending due reminders (limit to 50 per run)
-      const reminders = await fetchDueTaskReminders({ limit: 50 });
+      const reminders = await fetchDueTaskReminders({ limit: 50, nowIso: now.toISOString() });
 
       if (reminders.length > 0) {
         console.log(`[DayStack Scheduler] Found ${reminders.length} due reminders to dispatch.`);

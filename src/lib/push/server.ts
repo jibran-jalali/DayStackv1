@@ -42,10 +42,25 @@ function toWebPushSubscription(subscription: PushSubscriptionRecord) {
   };
 }
 
-function isGoneError(error: unknown) {
-  const statusCode = typeof error === "object" && error && "statusCode" in error ? error.statusCode : null;
+function isInvalidSubscriptionError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
 
-  return statusCode === 404 || statusCode === 410;
+  const candidate = error as {
+    body?: string;
+    message?: string;
+    statusCode?: number;
+  };
+
+  const statusCode = candidate.statusCode ?? null;
+  const details = `${candidate.message ?? ""} ${candidate.body ?? ""}`.toLowerCase();
+
+  return (
+    statusCode === 404 ||
+    statusCode === 410 ||
+    (statusCode === 403 && details.includes("vapid credentials"))
+  );
 }
 
 async function sendPushToSubscription(subscription: PushSubscriptionRecord, payload: PushPayload) {
@@ -61,7 +76,7 @@ async function sendPushToSubscription(subscription: PushSubscriptionRecord, payl
 
     return "sent" as const;
   } catch (error) {
-    if (isGoneError(error)) {
+    if (isInvalidSubscriptionError(error)) {
       await deletePushSubscriptionByEndpoint(subscription.endpoint);
     }
 

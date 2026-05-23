@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  deleteStaleMutableReminders,
   fetchDueTaskReminders,
   isEmailReminderType,
   isPushReminderType,
@@ -115,12 +116,17 @@ async function dispatchDueReminders({
   pushConfigured: boolean;
   userId?: string;
 }) {
+  const now = new Date();
+
+  await deleteStaleMutableReminders(now);
+
   const syncedUsers = userId
-    ? await syncTaskRemindersForUser(userId).then(() => 1)
-    : await syncTaskRemindersForActiveUsers();
+    ? await syncTaskRemindersForUser(userId, undefined, now).then(() => 1)
+    : await syncTaskRemindersForActiveUsers(now);
 
   const reminders = await fetchDueTaskReminders({
     limit,
+    nowIso: now.toISOString(),
     userId,
   });
   let sent = 0;
