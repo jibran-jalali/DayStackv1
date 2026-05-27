@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://daystack.qzz.io/sitemap.xml

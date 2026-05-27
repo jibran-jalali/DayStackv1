@@ -21,6 +21,7 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://daystack.qzz.io"),
   applicationName: "DayStack",
   title: {
     default: "DayStack",
@@ -28,7 +29,24 @@ export const metadata: Metadata = {
   },
   description:
     "DayStack is a timeline-based daily execution planner for building structure, momentum, and streaks around your day.",
+  alternates: {
+    canonical: "/",
+  },
   manifest: "/manifest.webmanifest",
+  openGraph: {
+    title: "DayStack",
+    description:
+      "A timeline-based daily execution planner for building structure, momentum, and streaks around your day.",
+    url: "https://daystack.qzz.io/",
+    siteName: "DayStack",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "DayStack",
+    description:
+      "A timeline-based daily execution planner for building structure, momentum, and streaks around your day.",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
