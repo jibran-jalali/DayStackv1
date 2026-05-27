@@ -1,11 +1,11 @@
 "use client";
 
 import { memo } from "react";
-import { LayoutDashboard, LayoutGrid, List, Repeat, Trophy } from "lucide-react";
+import { LayoutGrid, List, Repeat, Trophy } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-export type PlannerViewMode = "dashboard" | "grid" | "list" | "leaderboard" | "recurring";
+export type PlannerViewMode = "grid" | "list" | "leaderboard" | "recurring";
 
 interface ViewToggleProps {
   value: PlannerViewMode;
@@ -17,7 +17,6 @@ const options: Array<{
   label: string;
   icon: typeof LayoutGrid;
 }> = [
-  { value: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { value: "grid", label: "Grid", icon: LayoutGrid },
   { value: "list", label: "List", icon: List },
   { value: "recurring", label: "Recurring", icon: Repeat },

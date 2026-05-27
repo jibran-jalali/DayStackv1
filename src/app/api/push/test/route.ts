@@ -26,9 +26,9 @@ export async function POST() {
   }
 
   const result = await sendUserPushNotification(user.id, {
-    body: "Push reminders are ready on this device.",
+    body: "",
     tag: `test-push-${user.id}`,
-    title: "DayStack test push",
+    title: "Sample block starts in 5 minutes",
     url: "/app?tab=settings",
   });
 

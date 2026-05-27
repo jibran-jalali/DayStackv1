@@ -173,22 +173,22 @@ export function buildSummary(tasks: Array<Pick<TaskRecord, "status" | "task_type
 
 export function getSummaryLine(completionRate: number, completedTasks: number, totalTasks: number) {
   if (totalTasks === 0) {
-    return "No tasks planned yet. Start with one focused block and build the day from there.";
+    return "No tasks planned.";
   }
 
   if (completionRate >= 90) {
-    return `You closed ${completedTasks} of ${totalTasks} tasks with near-perfect follow-through.`;
+    return `Excellent: ${completedTasks}/${totalTasks} complete.`;
   }
 
   if (completionRate >= 70) {
-    return `Strong day. You completed ${completedTasks} of ${totalTasks} tasks and kept the streak alive.`;
+    return `Strong: ${completedTasks}/${totalTasks} complete.`;
   }
 
   if (completionRate >= 40) {
-    return `Momentum is building. ${completedTasks} of ${totalTasks} tasks are done, with room to finish stronger.`;
+    return `On track: ${completedTasks}/${totalTasks} complete.`;
   }
 
-  return `Only ${completedTasks} of ${totalTasks} tasks are complete so far. Tighten the plan and finish the essentials.`;
+  return `In progress: ${completedTasks}/${totalTasks} complete.`;
 }
 
 export function getTaskVisualState(

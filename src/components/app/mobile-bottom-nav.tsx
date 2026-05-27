@@ -24,7 +24,7 @@ interface MobileBottomNavProps {
 }
 
 const navItems = [
-  { icon: CalendarDays, key: "plan", label: "Plan" },
+  { icon: CalendarDays, key: "plan", label: "Summary" },
   { icon: MessageSquareText, key: "assistant", label: "AI" },
   { icon: Bell, key: "notifications", label: "Inbox" },
   { icon: UserRoundPlus, key: "friends", label: "Friends" },
@@ -80,7 +80,9 @@ export function MobileBottomNav({
 
     const content = (
       <>
-        <Icon className={cn("h-[1.15rem] w-[1.15rem]", isActive && "drop-shadow-sm")} strokeWidth={isActive ? 2.25 : 2} />
+        <span className="mobile-nav-icon-shell">
+          <Icon className={cn("h-[1.05rem] w-[1.05rem]", isActive && "drop-shadow-sm")} strokeWidth={isActive ? 2.4 : 2} />
+        </span>
         <span>{item.label}</span>
       </>
     );
@@ -161,10 +163,10 @@ export function MobileBottomNav({
   };
 
   return (
-    <div className="mobile-safe-x shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 lg:hidden">
+    <div className="mobile-dock-wrap lg:hidden">
       <nav
         ref={trackRef}
-        className="mobile-shell-width mobile-nav-shell relative mx-auto flex gap-0.5 px-1 py-1"
+        className="mobile-shell-width mobile-nav-shell relative mx-auto flex gap-1 px-1.5 py-1.5"
         aria-label="Main navigation"
       >
         {activeTab ? (

@@ -6,7 +6,6 @@ import { Bell, Mail, Plus, Sparkles, UserRoundPlus } from "lucide-react";
 
 import { AssistantShell } from "@/components/app/assistant-shell";
 import { DateSwitcher } from "@/components/app/date-switcher";
-import { DashboardView } from "@/components/app/dashboard-view";
 import { LeaderboardView } from "@/components/app/leaderboard-view";
 import { MobileBottomNav } from "@/components/app/mobile-bottom-nav";
 import { MobileDayStrip } from "@/components/app/mobile-day-strip";
@@ -23,6 +22,7 @@ import { TaskModal } from "@/components/app/task-modal";
 import { TimelineGrid } from "@/components/app/timeline-grid";
 import { TimelineList } from "@/components/app/timeline-list";
 import { useActionFeedback } from "@/components/app/use-action-feedback";
+import { PushReminderSetupBanner } from "@/components/app/push-reminder-setup-banner";
 import { useNotificationSettings } from "@/components/app/use-notification-settings";
 import { useReminderDispatch } from "@/components/app/use-reminder-dispatch";
 import { WorkspaceFriendsContent } from "@/components/app/workspace-friends-content";
@@ -50,6 +50,7 @@ import {
   getPlannerDateMode,
   getRelativeDateLabel,
   getTaskVisualState,
+  getTaskWindow,
   isBlockedTask,
   isValidDateKey,
   minutesToTime,
@@ -249,6 +250,7 @@ export function PlannerShell({
   const [composerDefaults, setComposerDefaults] = useState<TaskFormValues | null>(null);
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
   const [followToday, setFollowToday] = useState(() => initialSnapshot.taskDate === formatDateKey(initialNow));
+  const [pushSetupUrgent, setPushSetupUrgent] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [recurringScopeRequest, setRecurringScopeRequest] = useState<RecurringScopeRequest>(null);
@@ -271,6 +273,12 @@ export function PlannerShell({
     onNotice: setNotice,
   });
   useReminderDispatch(notificationPreferences);
+
+  useEffect(() => {
+    if (notificationPreferences.push_enabled) {
+      setPushSetupUrgent(false);
+    }
+  }, [notificationPreferences.push_enabled]);
 
   const applyTasksToCurrentSnapshot = useCallback(
     function applyTasksToCurrentSnapshot(
@@ -540,6 +548,10 @@ export function PlannerShell({
         type: "success",
         message: editorTask ? "Block updated." : "Block added.",
       });
+
+      if (!editorTask && !notificationPreferences.push_enabled) {
+        setPushSetupUrgent(true);
+      }
     } catch (error) {
       setNotice({
         type: "error",
@@ -714,7 +726,7 @@ export function PlannerShell({
     })();
   }
 
-  function handleToggleTask(task: PlannerTask) {
+  function handleToggleTask(task: PlannerTask, options?: { playCompletionFeedback?: boolean }) {
     const previousSnapshot = snapshot;
     const nextStatus = task.status === "completed" ? "pending" : "completed";
 
@@ -733,7 +745,7 @@ export function PlannerShell({
     void (async () => {
       try {
         await toggleTaskStatus(task.id, nextStatus);
-        if (nextStatus === "completed") {
+        if (nextStatus === "completed" && options?.playCompletionFeedback !== false) {
           playActionFeedback("complete");
         }
         setFollowToday(task.task_date === formatDateKey(new Date()));
@@ -926,6 +938,10 @@ export function PlannerShell({
   }
 
   const dateMode = useMemo(() => getPlannerDateMode(snapshot.taskDate, now), [now, snapshot.taskDate]);
+  const { nextTask } = useMemo(
+    () => getTaskWindow(snapshot.tasks, now, snapshot.taskDate),
+    [snapshot.tasks, now, snapshot.taskDate]
+  );
   const dateLabel = useMemo(() => formatDateLabel(snapshot.taskDate), [snapshot.taskDate]);
   const plannerHref = useMemo(
     () => getWorkspaceHref(snapshot.taskDate, now, "plan"),
@@ -977,19 +993,6 @@ export function PlannerShell({
         description: "See the strongest current streaks across DayStack without leaving the planner surface.",
         eyebrow: "Competition",
         title: "Leaderboard",
-      };
-    }
-
-    if (viewMode === "dashboard") {
-      return {
-        description:
-          dateMode === "future"
-            ? "See progress, streak, and the first move for this plan."
-            : dateMode === "past"
-              ? "See progress, streak, and the next move for this day."
-              : "See progress, streak, and the next move in one place.",
-        eyebrow: "Command center",
-        title: "Dashboard",
       };
     }
 
@@ -1178,7 +1181,7 @@ export function PlannerShell({
         : composerDefaults ?? createDefaultTask(snapshot.taskDate, now),
     [composerDefaults, editorTask, now, recurringSeriesEditor, snapshot.taskDate],
   );
-  const mobilePlanView: "dashboard" | "grid" | "leaderboard" | "list" | "recurring" = viewMode;
+  const mobilePlanView: PlannerViewMode = viewMode;
   const friendCountLabel = `${friendsSnapshot.friends.length} friend${friendsSnapshot.friends.length === 1 ? "" : "s"}`;
   const mobileHeaderTitle =
     workspaceTab === "plan"
@@ -1228,11 +1231,12 @@ export function PlannerShell({
               "soft-scrollbar flex-1 overscroll-y-contain",
               workspaceTab === "assistant"
                 ? "flex min-h-0 flex-col overflow-hidden"
-                : "overflow-y-auto mobile-content-pad",
+                : "overflow-x-hidden overflow-y-auto mobile-content-pad",
             )}
           >
             {workspaceTab !== "assistant" ? (
               <MobileWorkspaceHeader
+                compact
                 title={mobileHeaderTitle}
                 subtitle={mobileHeaderSubtitle}
                 metricLabel={activeMetricLabel}
@@ -1241,15 +1245,15 @@ export function PlannerShell({
                 secondaryMetricTone={mobileSecondaryMetricLabel ? "success" : "default"}
                 action={
                   workspaceTab === "plan" ? (
-                    <Button
-                      size="sm"
-                      className="h-9 min-w-[6.35rem] px-3 text-xs"
+                    <button
+                      type="button"
+                      className="mobile-fab"
                       onClick={() => handleCreateTask()}
                       disabled={isPending}
                     >
                       <Plus className="h-4 w-4" />
-                      Add block
-                    </Button>
+                      Add
+                    </button>
                   ) : undefined
                 }
               />
@@ -1267,33 +1271,48 @@ export function PlannerShell({
               className={cn(
                 workspaceTab === "assistant"
                   ? "flex min-h-0 flex-1 flex-col px-0 pb-2 pt-[max(0.85rem,env(safe-area-inset-top))]"
-                  : "mobile-safe-x mobile-shell-width mobile-stack mx-auto pb-3 pt-2.5",
+                  : "mobile-safe-x mobile-shell-width mx-auto max-w-full overflow-x-hidden pb-3 pt-2",
               )}
             >
           {workspaceTab === "plan" ? (
             <MobileTabPanel panelKey={`plan-${snapshot.taskDate}`}>
-              <MobileProgressCard
-                completionRate={snapshot.summary.completionRate}
-                dateMode={dateMode}
-                isPending={isPending}
-                onSelectMode={
-                  mobilePlanView === "list" && snapshot.tasks.length > 0 && !selectionMode
-                    ? () => setSelectionMode(true)
-                    : undefined
-                }
-                relativeDateLabel={relativeDateLabel}
-                showSelectButton={mobilePlanView === "list" && snapshot.tasks.length > 0 && !selectionMode}
-                streak={snapshot.streak}
-                summary={snapshot.summary}
-                taskCount={snapshot.tasks.length}
-              />
-
+              <div className="mobile-plan-stack">
               <MobileDayStrip
                 isPending={isSurfaceRefreshing}
                 onSelectDate={handleSelectDate}
                 selectedDate={snapshot.taskDate}
                 todayDate={todayDate}
               />
+
+              <PushReminderSetupBanner
+                isBusy={isNotificationPending}
+                onEnablePush={() => togglePushReminders(true)}
+                pushEnabled={notificationPreferences.push_enabled}
+                urgent={pushSetupUrgent}
+              />
+
+              <div className="mobile-section">
+                <div className="mobile-section__head">
+                  <p className="mobile-section__title">Performance</p>
+                </div>
+                <MobileProgressCard
+                  completionRate={snapshot.summary.completionRate}
+                  dateMode={dateMode}
+                  isPending={isPending}
+                  onSelectMode={
+                    mobilePlanView === "list" && snapshot.tasks.length > 0 && !selectionMode
+                      ? () => setSelectionMode(true)
+                      : undefined
+                  }
+                  showSelectButton={mobilePlanView === "list" && snapshot.tasks.length > 0 && !selectionMode}
+                  streak={snapshot.streak}
+                  summary={snapshot.summary}
+                  taskCount={snapshot.tasks.length}
+                  nextTask={nextTask}
+                  onCompleteTask={(task) => handleToggleTask(task, { playCompletionFeedback: false })}
+                  onAddTask={handleCreateTask}
+                />
+              </div>
 
               <MobileViewSwitcher
                 activeView={mobilePlanView}
@@ -1308,7 +1327,7 @@ export function PlannerShell({
               />
 
               {mobilePlanView === "list" && selectionMode ? (
-                <section className="mobile-card p-3">
+                <section className="mobile-content-surface p-3.5">
                   <div className="flex flex-col gap-3">
                     <div>
                       <p className="text-sm font-semibold text-foreground">{selectedTaskIds.length} selected</p>
@@ -1338,23 +1357,28 @@ export function PlannerShell({
 
               <section
                 aria-busy={isSurfaceRefreshing}
-                className={cn("mobile-stagger-4", isSurfaceRefreshing && "opacity-90")}
+                className={cn(
+                  "mobile-section mobile-stagger-4",
+                  isSurfaceRefreshing && "opacity-90",
+                )}
               >
-                {mobilePlanView === "dashboard" ? (
-                  <DashboardView
-                    dateLabel={dateLabel}
-                    dateMode={dateMode}
-                    isPending={isPending}
-                    now={now}
-                    onAddTask={handleCreateTaskFromDashboard}
-                    onEditTask={handleEditTask}
-                    onStartFocusTask={handleStartFocusTask}
-                    streak={snapshot.streak}
-                    summary={snapshot.summary}
-                    taskDate={snapshot.taskDate}
-                    tasks={snapshot.tasks}
-                  />
-                ) : mobilePlanView === "recurring" ? (
+                <div className="mobile-section__head">
+                  <p className="mobile-section__title">
+                    {mobilePlanView === "list"
+                      ? "Blocks"
+                      : mobilePlanView === "grid"
+                        ? "Timeline"
+                        : mobilePlanView === "recurring"
+                          ? "Recurring"
+                          : "Leaderboard"}
+                  </p>
+                  <p className="mobile-section__hint">
+                    {snapshot.tasks.length} block{snapshot.tasks.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+
+                <div className="mobile-content-surface min-w-0 overflow-hidden p-1 sm:p-1.5">
+                {mobilePlanView === "recurring" ? (
                   <RecurringBlocksView
                     blocks={snapshot.recurringBlocks}
                     isPending={isPending}
@@ -1393,7 +1417,9 @@ export function PlannerShell({
                     selectionMode={selectionMode}
                   />
                 )}
+                </div>
               </section>
+              </div>
             </MobileTabPanel>
           ) : workspaceTab === "assistant" ? (
             <MobileTabPanel panelKey="assistant" className="min-h-0 flex flex-1 flex-col">
@@ -1412,6 +1438,11 @@ export function PlannerShell({
             </MobileTabPanel>
           ) : workspaceTab === "settings" ? (
             <MobileTabPanel panelKey="settings">
+            <div className="mobile-plan-stack">
+            <div className="mobile-section__head">
+              <p className="mobile-section__title">Workspace</p>
+              <p className="mobile-section__hint">Reminders & preferences</p>
+            </div>
             <WorkspaceSettingsContent
               compact
               actionSoundsEnabled={soundsEnabled}
@@ -1430,18 +1461,30 @@ export function PlannerShell({
               onTogglePush={togglePushReminders}
               selectedDate={auxiliarySelectedDate}
             />
+            </div>
             </MobileTabPanel>
           ) : workspaceTab === "friends" ? (
             <MobileTabPanel panelKey="friends">
+            <div className="mobile-plan-stack">
+            <div className="mobile-section__head">
+              <p className="mobile-section__title">Connections</p>
+              <p className="mobile-section__hint">{friendCountLabel}</p>
+            </div>
               <WorkspaceFriendsContent
                 compact
                 initialSnapshot={friendsSnapshot}
                 onNotice={setNotice}
                 onSnapshotChange={setFriendsSnapshot}
               />
+            </div>
             </MobileTabPanel>
           ) : (
             <MobileTabPanel panelKey="notifications">
+            <div className="mobile-plan-stack">
+            <div className="mobile-section__head">
+              <p className="mobile-section__title">Inbox</p>
+              <p className="mobile-section__hint">Mentions & updates</p>
+            </div>
             <WorkspaceNotificationsContent
               compact
               displayName={displayName}
@@ -1454,6 +1497,7 @@ export function PlannerShell({
               onTaskAccepted={handleNotificationAccepted}
               selectedDate={auxiliarySelectedDate}
             />
+            </div>
             </MobileTabPanel>
           )}
             </div>
@@ -1561,7 +1605,6 @@ export function PlannerShell({
                       <p className="mt-1.5 text-sm text-secondary-foreground">{viewCopy.description}</p>
                     </div>
                     <div className="hidden flex-wrap items-center gap-2 sm:flex">
-                      <span className="data-chip">{relativeDateLabel}</span>
                       <span className="data-chip">
                         {viewMode === "recurring"
                           ? `${snapshot.recurringBlocks.length} recurring`
@@ -1588,6 +1631,13 @@ export function PlannerShell({
                     onSelectDate={handleSelectDate}
                     selectedDate={snapshot.taskDate}
                     todayDate={todayDate}
+                  />
+
+                  <PushReminderSetupBanner
+                    isBusy={isNotificationPending}
+                    onEnablePush={() => togglePushReminders(true)}
+                    pushEnabled={notificationPreferences.push_enabled}
+                    urgent={pushSetupUrgent}
                   />
 
                   {viewMode === "list" && snapshot.tasks.length > 0 && !selectionMode ? (
@@ -1639,21 +1689,7 @@ export function PlannerShell({
                 </div>
 
                 <div className="mt-4">
-                  {viewMode === "dashboard" ? (
-                    <DashboardView
-                      dateLabel={dateLabel}
-                      dateMode={dateMode}
-                      isPending={isPending}
-                      now={now}
-                      onAddTask={handleCreateTaskFromDashboard}
-                      onEditTask={handleEditTask}
-                      onStartFocusTask={handleStartFocusTask}
-                      streak={snapshot.streak}
-                      summary={snapshot.summary}
-                      taskDate={snapshot.taskDate}
-                      tasks={snapshot.tasks}
-                    />
-                  ) : viewMode === "recurring" ? (
+                  {viewMode === "recurring" ? (
                     <RecurringBlocksView
                       blocks={snapshot.recurringBlocks}
                       isPending={isPending}

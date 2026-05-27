@@ -164,7 +164,7 @@ async function dispatchDueReminders({
   };
 }
 
-export async function POST(request: Request) {
+async function handleReminderDispatchRequest(request: Request, options: { allowSession: boolean }) {
   const emailConfigured = isEmailServerConfigured();
   const pushConfigured = isWebPushConfigured();
 
@@ -187,10 +187,14 @@ export async function POST(request: Request) {
       await dispatchDueReminders({
         appBaseUrl,
         emailConfigured,
-        limit: 50,
+        limit: 100,
         pushConfigured,
       }),
     );
+  }
+
+  if (!options.allowSession) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   const user = await getSessionUser();
@@ -213,4 +217,13 @@ export async function POST(request: Request) {
       userId: user.id,
     }),
   );
+}
+
+/** Vercel Cron invokes scheduled routes with GET + `Authorization: Bearer CRON_SECRET`. */
+export async function GET(request: Request) {
+  return handleReminderDispatchRequest(request, { allowSession: false });
+}
+
+export async function POST(request: Request) {
+  return handleReminderDispatchRequest(request, { allowSession: true });
 }

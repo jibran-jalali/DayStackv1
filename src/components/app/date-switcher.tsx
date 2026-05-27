@@ -37,8 +37,6 @@ export function DateSwitcher({
               tone={dateMode === "today" ? "brand" : "default"}
             />
           </div>
-          <p className="mt-1 truncate text-sm font-semibold text-foreground sm:text-base">{dateLabel}</p>
-          <p className="mt-0.5 text-xs text-secondary-foreground">{relativeLabel}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

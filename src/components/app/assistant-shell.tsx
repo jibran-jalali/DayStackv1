@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUp,
-  Calendar,
   CheckCircle2,
+  Clock3,
   ExternalLink,
   ListTodo,
   Loader2,
@@ -12,7 +12,6 @@ import {
   Sparkles,
   Star,
   X,
-  Zap,
 } from "lucide-react";
 
 import { LogoMark } from "@/components/shared/logo";
@@ -46,10 +45,9 @@ interface ChatMessage {
 }
 
 const STARTER_PROMPTS = [
-  { icon: Calendar, text: "Plan my day around one deep work block", color: "from-blue-500 to-cyan-500" },
-  { icon: Zap, text: "What should I focus on first today?", color: "from-violet-500 to-purple-600" },
   { icon: ListTodo, text: "Move all pending tasks to tomorrow", color: "from-emerald-500 to-teal-500" },
   { icon: Star, text: "Mark all pending tasks complete", color: "from-amber-500 to-orange-500" },
+  { icon: Clock3, text: "Extend pending blocks by 30 minutes", color: "from-blue-500 to-cyan-500" },
 ] as const;
 
 const CAPABILITY_CHIPS = [
@@ -328,12 +326,12 @@ function StarterPromptCard({
       type="button"
       disabled={disabled}
       onClick={() => onSelect(prompt.text)}
-      className="group flex items-start gap-3 rounded-[20px] border border-white/80 bg-white/88 px-4 py-3.5 text-left shadow-[0_10px_24px_rgba(83,78,222,0.07)] backdrop-blur-xl transition-all hover:border-cyan-200 hover:shadow-[0_14px_30px_rgba(83,78,222,0.12)] hover:-translate-y-0.5 disabled:opacity-60 disabled:translate-y-0 disabled:hover:border-white/80 disabled:hover:shadow-[0_10px_24px_rgba(83,78,222,0.07)]"
+      className="group flex items-center gap-3 rounded-[18px] border border-border/70 bg-white/94 px-4 py-3.5 text-left shadow-[0_8px_22px_rgba(15,23,42,0.055)] backdrop-blur-xl transition-all hover:border-primary/25 hover:bg-white hover:shadow-[0_12px_28px_rgba(83,78,222,0.1)] hover:-translate-y-0.5 disabled:opacity-60 disabled:translate-y-0 disabled:hover:border-border/70 disabled:hover:shadow-[0_8px_22px_rgba(15,23,42,0.055)]"
     >
       <span className={cn("mt-0.5 shrink-0 flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-[0_10px_20px_rgba(83,78,222,0.16)]", prompt.color)}>
         <Icon className="h-3.5 w-3.5" />
       </span>
-      <p className="text-sm leading-5 text-foreground">{prompt.text}</p>
+      <p className="text-[15px] leading-5 text-foreground">{prompt.text}</p>
     </button>
   );
 }
@@ -493,25 +491,14 @@ export function AssistantShell({
     <section className="mobile-app-shell flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:bg-transparent">
       {/* Main chat area */}
       <div className="flex h-full min-h-0 flex-1 flex-col">
-        <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-white/70 bg-white/86 px-4 py-3 shadow-[0_10px_28px_rgba(83,78,222,0.06)] backdrop-blur-xl lg:hidden">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-gradient text-white shadow-[0_10px_20px_rgba(83,78,222,0.18)]">
-            <Sparkles className="h-4 w-4" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">DayStack AI</p>
-            <p className="truncate text-xs text-secondary-foreground">
-              {snapshot.tasks.length} visible block{snapshot.tasks.length === 1 ? "" : "s"} in context
-            </p>
-          </div>
-        </div>
         {/* Scrollable messages */}
         <div ref={chatScrollRef} className="soft-scrollbar flex-1 overflow-y-auto">
           {!hasConversation ? (
             /* ── Welcome / empty state ── */
-            <div className="flex min-h-full flex-col px-4 pb-6 pt-5 sm:px-6 lg:px-8">
+            <div className="flex min-h-full flex-col px-4 pb-6 pt-6 sm:px-6 lg:px-8">
               <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center">
                 {/* Header */}
-                <div className="mb-5 flex items-center gap-3">
+                <div className="hidden">
                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-[0_14px_28px_rgba(83,78,222,0.2)] sm:rounded-2xl">
                     <Sparkles className="h-5 w-5 text-white" />
                   </span>
@@ -527,12 +514,12 @@ export function AssistantShell({
                   I can see your full schedule and act on anything — just talk to me naturally.
                 </p>
 
-                <p className="mb-5 text-[15px] leading-7 text-secondary-foreground">
+                <p className="hidden">
                   Ask naturally. I can draft changes, plan your day, and run bulk actions after you confirm.
                 </p>
 
                 {/* Capability chips */}
-                <div className="mb-8 flex flex-wrap gap-2">
+                <div className="hidden">
                   {CAPABILITY_CHIPS.map((chip) => (
                     <span
                       key={chip.label}
@@ -543,8 +530,19 @@ export function AssistantShell({
                   ))}
                 </div>
 
-                {/* Starter prompts */}
-                <div className="grid gap-2.5 sm:grid-cols-2">
+                <div className="mb-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-secondary-foreground/60">
+                    Assistant shortcuts
+                  </p>
+                  <h2 className="mt-1 font-display text-2xl font-semibold tracking-tight text-foreground">
+                    What should DayStack do?
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-secondary-foreground">
+                    Choose a quick action or type a custom request. You will confirm before anything changes.
+                  </p>
+                </div>
+
+                <div className="grid gap-2.5">
                   {STARTER_PROMPTS.map((prompt) => (
                     <StarterPromptCard
                       key={prompt.text}
@@ -601,14 +599,14 @@ export function AssistantShell({
                 </div>
               )}
 
-              {/* Spacer so last message clears the composer */}
-              <div className="h-4" />
+              {/* Spacer so last message clears the composer and floating mobile dock. */}
+              <div className="h-[calc(var(--mobile-bottom-nav-height)+1.25rem)] lg:h-4" />
             </div>
           )}
         </div>
 
         {/* ── Composer ── */}
-        <div className="border-t border-white/70 bg-white/82 px-3 py-3 shadow-[0_-10px_28px_rgba(83,78,222,0.06)] backdrop-blur-xl sm:bg-white/90 sm:px-6 lg:px-8">
+        <div className="border-t border-white/70 bg-white/82 px-3 pb-[calc(var(--mobile-bottom-nav-height)+env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-10px_28px_rgba(83,78,222,0.06)] backdrop-blur-xl sm:bg-white/90 sm:px-6 lg:px-8 lg:pb-3">
           <div className="mx-auto w-full max-w-3xl">
             {/* Follow-up hint banner */}
             {pendingFollowUp && (

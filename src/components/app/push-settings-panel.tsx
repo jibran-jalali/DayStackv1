@@ -29,7 +29,7 @@ function getSupportMessage(supportState: PushSupportState) {
     return "This browser does not support web push.";
   }
 
-  return "Works on iPhone Home Screen app and desktop browsers.";
+  return "One alert 5 minutes before each task, even when the app is closed.";
 }
 
 export function PushSettingsPanel({
@@ -92,7 +92,7 @@ export function PushSettingsPanel({
             Push reminders
           </p>
           <p className={cn("mt-1.5 text-secondary-foreground", compact ? "text-xs" : "text-sm")}>
-            Alerts before each block using your reminder timing on this device.
+            Each task gets its own push 5 minutes before start. On iPhone, add DayStack to your Home Screen first.
           </p>
         </div>
         <StatusChip

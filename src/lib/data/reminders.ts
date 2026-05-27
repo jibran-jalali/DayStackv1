@@ -19,6 +19,9 @@ type DayStackDb = NonNullable<ReturnType<typeof getDb>>;
 
 const DEFAULT_EMAIL_REMINDER_LEAD_MINUTES = 15;
 
+/** iOS / Web Push truncate long titles; keep the time phrase intact. */
+const MAX_PUSH_REMINDER_TITLE_LENGTH = 64;
+
 const DEFAULT_REMINDER_PREFERENCES = {
   push_enabled: false,
   email_enabled: false,
@@ -39,6 +42,15 @@ function getRequiredDb(): DayStackDb {
   }
 
   return db;
+}
+
+function truncateTaskTitleForPushReminderTitle(taskTitle: string, suffix: string) {
+  const maxTaskChars = Math.max(8, MAX_PUSH_REMINDER_TITLE_LENGTH - suffix.length);
+  if (taskTitle.length <= maxTaskChars) {
+    return `${taskTitle}${suffix}`;
+  }
+
+  return `${taskTitle.slice(0, maxTaskChars - 1)}…${suffix}`;
 }
 
 function clampEmailReminderLeadMinutes(value: number | null | undefined) {
@@ -281,7 +293,7 @@ export async function syncTaskRemindersForActiveUsers(now = new Date()) {
   return preferenceRows.length;
 }
 
-export async function deleteStaleMutableReminders(now = new Date(), graceMinutes = 2) {
+export async function deleteStaleMutableReminders(now = new Date(), graceMinutes = 30) {
   const db = getRequiredDb();
   const cutoff = new Date(now.getTime() - graceMinutes * 60 * 1000).toISOString();
 
@@ -487,9 +499,11 @@ export function buildReminderCopy(
   }
 
   if (reminderType === "5_minutes_before") {
+    const suffix = " starts in 5 minutes";
+
     return {
-      title: "Block starting in 5 minutes",
-      body: `${task.title} begins at ${formatClockTime(task.start_time)}.`,
+      title: truncateTaskTitleForPushReminderTitle(task.title, suffix),
+      body: "",
     };
   }
 

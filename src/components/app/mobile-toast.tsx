@@ -14,14 +14,14 @@ export function MobileToast({ message, offset = "header", type }: MobileToastPro
       className={cn(
         "pointer-events-none fixed inset-x-0 z-50 flex justify-center mobile-safe-x lg:hidden",
         offset === "top"
-          ? "top-[calc(env(safe-area-inset-top)+0.75rem)]"
-          : "top-[calc(env(safe-area-inset-top)+5.5rem)]",
+          ? "top-[calc(env(safe-area-inset-top)+0.85rem)]"
+          : "top-[calc(env(safe-area-inset-top)+var(--mobile-header-height))]",
       )}
     >
       <div
         aria-live="polite"
         className={cn(
-          "mobile-toast pointer-events-auto",
+          "mobile-toast pointer-events-auto max-w-[min(100%,24rem)]",
           type === "success" ? "mobile-toast--success" : "mobile-toast--error",
         )}
       >

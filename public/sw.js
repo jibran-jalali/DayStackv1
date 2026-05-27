@@ -23,17 +23,20 @@ self.addEventListener("push", (event) => {
     }
   }
 
-  event.waitUntil(
-    self.registration.showNotification(payload.title, {
-      badge: payload.badge || "/apple-icon.png",
-      body: payload.body,
-      data: {
-        url: payload.url || "/app",
-      },
-      icon: payload.icon || "/icon.png",
-      tag: payload.tag,
-    }),
-  );
+  const options = {
+    badge: payload.badge || "/apple-icon.png",
+    data: {
+      url: payload.url || "/app",
+    },
+    icon: payload.icon || "/icon.png",
+    tag: payload.tag,
+  };
+
+  if (payload.body && payload.body.trim()) {
+    options.body = payload.body;
+  }
+
+  event.waitUntil(self.registration.showNotification(payload.title, options));
 });
 
 self.addEventListener("notificationclick", (event) => {

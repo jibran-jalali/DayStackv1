@@ -52,7 +52,19 @@ GMAIL_SMTP_USER=
 GMAIL_SMTP_APP_PASSWORD=
 EMAIL_FROM_NAME=DayStack
 CRON_SECRET=
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:you@example.com
 ADMIN_SESSION_SECRET=
+```
+
+Generate Web Push keys (required for iPhone/desktop reminders while the app is closed):
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Put the public key in `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and the private key in `VAPID_PRIVATE_KEY`.
 ```
 
 ## Local setup
@@ -104,7 +116,13 @@ Recommended setup:
 4. Run the generated Drizzle migration against the production database.
 5. Deploy.
 
-For scheduled reminders, configure Vercel Cron to `POST /api/reminders/dispatch` with `Authorization: Bearer <CRON_SECRET>`.
+For scheduled reminders (required for push while the app is closed):
+
+1. Set `CRON_SECRET`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` in the Vercel project.
+2. Vercel Cron sends `GET /api/reminders/dispatch` every minute with `Authorization: Bearer <CRON_SECRET>` (see [vercel.json](./vercel.json)).
+3. On iPhone, users must **Add to Home Screen** and enable **Push reminders** in Settings — Safari tabs alone cannot receive background push.
+
+Each pending task gets its own push **5 minutes before start** (overlapping or back-to-back tasks each fire separately). Notification title format: `{Task name} starts in 5 minutes` with the DayStack icon only.
 
 ## DayStack Assistant
 
