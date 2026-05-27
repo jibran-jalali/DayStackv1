@@ -63,6 +63,7 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -91,6 +92,13 @@ input,
 textarea {
   font: inherit;
   transition-timing-function: var(--ease-premium);
+}
+
+button,
+a,
+[role="button"],
+summary {
+  touch-action: manipulation;
 }
 
 button {
@@ -358,6 +366,21 @@ button:disabled {
   }
 }
 
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  .mobile-app-shell {
+    min-height: 100dvh;
+    height: 100dvh;
+  }
+
+  .mobile-header-bar {
+    background: rgba(252, 253, 255, 0.9);
+  }
+}
+
 @utility mobile-viewport-shell {
   min-height: 100svh;
   height: 100svh;
@@ -499,7 +522,7 @@ button:disabled {
   position: absolute;
   inset: auto 1.25rem 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(24, 190, 239, 0.35), rgba(109, 40, 240, 0.28), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.98), transparent);
   content: "";
 }
 

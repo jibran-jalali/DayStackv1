@@ -6,10 +6,12 @@ import {
   ArrowRight,
   CalendarClock,
   CheckCircle2,
+  Download,
   Flame,
   Focus,
   Layers3,
   Menu,
+  Smartphone,
   Sparkles,
   Target,
   X,
@@ -66,9 +68,15 @@ const quickStatements = [
   "Less chaos. More follow-through.",
 ];
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
 const navItems = [
   { href: "#problem", label: "Why it breaks" },
   { href: "#why-daystack", label: "Why DayStack" },
+  { href: "#mobile-app", label: "App" },
   { href: "#start", label: "Start" },
 ];
 
@@ -231,6 +239,121 @@ function HeroPlannerPreview() {
         </div>
       </div>
     </div>
+  );
+}
+
+function MobileAppDownloadSection() {
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    function handleBeforeInstallPrompt(event: Event) {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    }
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+  }, []);
+
+  async function handleInstallWebApp() {
+    if (!installPrompt) {
+      return;
+    }
+
+    await installPrompt.prompt();
+    await installPrompt.userChoice.catch(() => null);
+    setInstallPrompt(null);
+  }
+
+  return (
+    <section id="mobile-app" className="container-shell content-auto pb-20 sm:pb-24 lg:pb-28">
+      <div className="mx-auto grid max-w-[1180px] gap-5 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
+        <Reveal>
+          <div className="flex h-full flex-col justify-between overflow-hidden rounded-[32px] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,248,252,0.94))] p-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)] sm:p-8">
+            <div>
+              <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(24,190,239,0.14),rgba(109,40,240,0.12))] text-primary">
+                <Smartphone className="h-5 w-5" />
+              </span>
+              <p className="section-label mt-6">Mobile app</p>
+              <h2 className="mt-4 font-display text-[2.35rem] font-semibold leading-[1.02] tracking-[-0.055em] text-foreground sm:text-[3.1rem]">
+                DayStack on your phone.
+              </h2>
+              <p className="mt-4 text-base leading-7 text-secondary-foreground sm:text-lg sm:leading-8">
+                Install DayStack from the browser today. Native APK and signed IPA downloads can be added here once
+                the production builds are generated and signed.
+              </p>
+            </div>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                disabled={!installPrompt}
+                className={buttonVariants({
+                  variant: "secondary",
+                  className: "w-full justify-center disabled:cursor-not-allowed disabled:opacity-60",
+                })}
+                onClick={handleInstallWebApp}
+              >
+                {installPrompt ? "Install web app" : "Use browser install"}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <a
+                href="/signup"
+                className={buttonVariants({ className: "w-full justify-center" })}
+              >
+                Open DayStack
+                <ArrowRight className="h-4 w-4" />
+              </a>
+            </div>
+          </div>
+        </Reveal>
+
+        <Reveal delay={100}>
+          <div className="grid h-full gap-4 sm:grid-cols-2">
+            {[
+              {
+                title: "Android APK",
+                status: "Build required",
+                copy: "Ready for a signed APK link after wrapping the web app with Android tooling and uploading the generated file.",
+              },
+              {
+                title: "iPhone IPA",
+                status: "Apple signing required",
+                copy: "iOS needs a signed IPA from Xcode with an Apple Developer certificate before it can be installed on devices.",
+              },
+            ].map((item) => (
+              <article
+                key={item.title}
+                className="flex min-h-[17rem] flex-col justify-between rounded-[30px] border border-white/82 bg-white/92 p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[rgba(24,190,239,0.08)] text-primary">
+                      <Download className="h-4 w-4" />
+                    </span>
+                    <span className="rounded-full border border-slate-200/90 bg-slate-50 px-3 py-1 text-xs font-semibold text-secondary-foreground">
+                      {item.status}
+                    </span>
+                  </div>
+                  <h3 className="mt-5 font-display text-[1.85rem] font-semibold tracking-[-0.045em] text-foreground">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-secondary-foreground">{item.copy}</p>
+                </div>
+
+                <button
+                  type="button"
+                  disabled
+                  className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-full border border-border/80 bg-muted/70 px-4 text-sm font-semibold text-secondary-foreground/70"
+                >
+                  Download coming after build
+                </button>
+              </article>
+            ))}
+          </div>
+        </Reveal>
+      </div>
+    </section>
   );
 }
 
@@ -500,6 +623,8 @@ export function LandingPage({ leaderboard }: LandingPageProps) {
           </div>
         </div>
       </section>
+
+      <MobileAppDownloadSection />
 
       <section className="container-shell content-auto pb-20 sm:pb-24 lg:pb-28">
         <div className="mx-auto grid max-w-[1180px] gap-5 lg:grid-cols-[1.04fr_0.96fr]">

@@ -102,11 +102,11 @@ export async function playUiActionSound(kind: UiActionSoundKind) {
   gainNode.connect(audioContext.destination);
 
   if (kind === "complete") {
-    queueNote(audioContext, gainNode, 196, 0, 0.055, 0.025, "triangle");
-    queueNote(audioContext, gainNode, 523.25, 0.025, 0.09, 0.045);
-    queueNote(audioContext, gainNode, 659.25, 0.1, 0.1, 0.052);
-    queueNote(audioContext, gainNode, 783.99, 0.19, 0.12, 0.058);
-    queueNote(audioContext, gainNode, 1046.5, 0.31, 0.18, 0.042);
+    queueNote(audioContext, gainNode, 392, 0, 0.08, 0.024, "triangle");
+    queueNote(audioContext, gainNode, 523.25, 0.035, 0.12, 0.04);
+    queueNote(audioContext, gainNode, 659.25, 0.12, 0.13, 0.048);
+    queueNote(audioContext, gainNode, 783.99, 0.205, 0.16, 0.05);
+    queueNote(audioContext, gainNode, 1318.51, 0.34, 0.2, 0.028, "sine");
     return;
   }
 
