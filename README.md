@@ -119,8 +119,9 @@ Recommended setup:
 For scheduled reminders (required for push while the app is closed):
 
 1. Set `CRON_SECRET`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` in the Vercel project.
-2. Vercel Cron sends `GET /api/reminders/dispatch` every minute with `Authorization: Bearer <CRON_SECRET>` (see [vercel.json](./vercel.json)).
-3. On iPhone, users must **Add to Home Screen** and enable **Push reminders** in Settings — Safari tabs alone cannot receive background push.
+2. On Vercel Pro, add a Cron Job that sends `GET /api/reminders/dispatch` every minute with `Authorization: Bearer <CRON_SECRET>`.
+3. On Vercel Hobby, use an external cron service such as cron-job.org, GitHub Actions, or Upstash QStash to call the same URL every minute. Hobby projects only support daily Vercel Cron schedules, so the repository does not include a minute-level `crons` entry in [vercel.json](./vercel.json).
+4. On iPhone, users must **Add to Home Screen** and enable **Push reminders** in Settings — Safari tabs alone cannot receive background push.
 
 Each pending task gets its own push **5 minutes before start** (overlapping or back-to-back tasks each fire separately). Notification title format: `{Task name} starts in 5 minutes` with the DayStack icon only.
 
