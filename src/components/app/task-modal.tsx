@@ -146,7 +146,7 @@ export function TaskModal({
           maxHeight: `${mobileViewportHeight}px`,
         }
       : undefined;
-  const mobileContentPadding = mobileViewportHeight !== null ? Math.max(24, mobileKeyboardInset + 24) : undefined;
+  const mobileContentPadding = mobileViewportHeight !== null ? Math.max(92, mobileKeyboardInset + 24) : undefined;
 
   return (
     <div
@@ -167,7 +167,6 @@ export function TaskModal({
       <div className="absolute inset-0 overflow-y-auto overscroll-contain">
         <div
           className="flex min-h-full items-end justify-center p-0 sm:items-center sm:p-5"
-          style={mobileViewportHeight !== null ? { paddingBottom: `${mobileKeyboardInset}px` } : undefined}
         >
           <div
             ref={surfaceRef}
@@ -182,12 +181,12 @@ export function TaskModal({
             )}
             style={mobileDialogStyle}
           >
-            <div className="border-b border-border/80 px-5 py-4 sm:px-6 sm:py-[1.125rem]">
+            <div className="mobile-task-modal__header border-b border-border/80 px-5 py-4 sm:px-6 sm:py-[1.125rem]">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="section-label">{eyebrow}</p>
                   <h2 className="mt-1 font-display text-[1.65rem] font-semibold tracking-tight text-foreground">{title}</h2>
-                  <p className="mt-1 text-sm leading-6 text-secondary-foreground">{description}</p>
+                  <p className="mobile-task-modal__description mt-1 text-sm leading-6 text-secondary-foreground">{description}</p>
                 </div>
                 <Button
                   size="sm"
@@ -202,7 +201,7 @@ export function TaskModal({
             </div>
 
             <div
-              className="min-h-0 flex-1 overflow-y-auto px-5 py-4 overscroll-contain soft-scrollbar sm:px-6 sm:py-5"
+              className="mobile-task-modal__content min-h-0 flex-1 overflow-y-auto px-5 py-4 overscroll-contain soft-scrollbar sm:px-6 sm:py-5"
               style={
                 mobileContentPadding
                   ? {

@@ -59,7 +59,7 @@ function FieldError({ message }: { message?: string }) {
 }
 
 const fieldClassName =
-  "h-11 rounded-[16px] border-border/80 bg-white/96 px-3.5 py-2.5 text-[15px] shadow-none";
+  "h-12 rounded-[16px] border-border/80 bg-white/96 px-3.5 py-2.5 text-[16px] shadow-none sm:h-11 sm:text-[15px]";
 
 function sortWeekdays(weekdays: number[]) {
   return [...weekdays].sort((left, right) => left - right);
@@ -197,14 +197,14 @@ export function TaskForm({
   }
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
-      <section className="rounded-[22px] border border-border/75 bg-muted/28 p-4 sm:p-5">
+    <form className="mobile-task-form space-y-4" onSubmit={handleSubmit}>
+      <section className="mobile-task-form__section mobile-task-form__section--type rounded-[22px] border border-border/75 bg-muted/28 p-4 sm:p-5">
         <SectionHeader
           eyebrow="Block type"
           title="Choose a block type"
         />
 
-        <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
+        <div className="mobile-task-form__choice-grid mt-3 grid gap-2.5 sm:grid-cols-3">
           {[
             {
               value: "generic",
@@ -231,7 +231,7 @@ export function TaskForm({
                 suppressHydrationWarning
                 type="button"
                 className={cn(
-                  "relative flex min-h-[5rem] items-start gap-3 rounded-[18px] border px-3.5 py-3 text-left transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                  "mobile-task-form__choice relative flex min-h-[5rem] items-start gap-3 rounded-[18px] border px-3.5 py-3 text-left transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
                   isActive
                     ? "border-primary/20 bg-[linear-gradient(135deg,rgba(24,190,239,0.14),rgba(109,40,240,0.08))] shadow-[var(--shadow-brand-sm)]"
                     : "border-border/80 bg-white/94 hover:border-primary/20 hover:bg-white",
@@ -263,13 +263,13 @@ export function TaskForm({
         <FieldError message={errors.taskType} />
       </section>
 
-      <section className="rounded-[22px] border border-border/75 bg-white/78 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.03)] sm:p-5">
+      <section className="mobile-task-form__section mobile-task-form__section--mode rounded-[22px] border border-border/75 bg-white/78 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.03)] sm:p-5">
         <SectionHeader
           eyebrow="Scheduling mode"
           title="One-time or recurring"
         />
 
-        <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+        <div className="mobile-task-form__choice-grid mt-3 grid gap-2.5 sm:grid-cols-2">
           {[
             {
               value: "one_time",
@@ -291,7 +291,7 @@ export function TaskForm({
                 suppressHydrationWarning
                 type="button"
                 className={cn(
-                  "relative flex min-h-[5rem] items-start gap-3 rounded-[18px] border px-3.5 py-3 text-left transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                  "mobile-task-form__choice relative flex min-h-[5rem] items-start gap-3 rounded-[18px] border px-3.5 py-3 text-left transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
                   isActive
                     ? "border-primary/20 bg-[linear-gradient(135deg,rgba(24,190,239,0.14),rgba(109,40,240,0.08))] shadow-[var(--shadow-brand-sm)]"
                     : "border-border/80 bg-white/94 hover:border-primary/20 hover:bg-white",
@@ -365,7 +365,7 @@ export function TaskForm({
         ) : null}
       </section>
 
-      <section className="rounded-[22px] border border-border/75 bg-white/78 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.03)] sm:p-5">
+      <section className="mobile-task-form__section mobile-task-form__section--details rounded-[22px] border border-border/75 bg-white/78 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.03)] sm:p-5">
         <SectionHeader
           eyebrow="Block details"
           title="Details"
@@ -376,7 +376,9 @@ export function TaskForm({
             <span className="text-sm font-semibold tracking-tight text-foreground">Task title</span>
             <Input
               autoFocus
+              autoComplete="off"
               className={fieldClassName}
+              enterKeyHint="next"
               placeholder="Write the block exactly how you want to execute it"
               value={values.title}
               error={errors.title}
@@ -404,6 +406,7 @@ export function TaskForm({
               <span className="text-sm font-semibold tracking-tight text-foreground">Start time</span>
               <Input
                 className={fieldClassName}
+                inputMode="numeric"
                 type="time"
                 value={values.startTime}
                 step={900}
@@ -417,6 +420,7 @@ export function TaskForm({
               <span className="text-sm font-semibold tracking-tight text-foreground">End time</span>
               <Input
                 className={fieldClassName}
+                inputMode="numeric"
                 type="time"
                 value={values.endTime}
                 step={900}
@@ -430,7 +434,7 @@ export function TaskForm({
         </div>
 
         {values.taskType === "meeting" ? (
-          <div className="mt-4 rounded-[22px] border border-cyan-200/65 bg-cyan-50/42 p-4 shadow-[0_12px_26px_rgba(24,190,239,0.05)] sm:p-5">
+          <div className="mobile-task-form__meeting mt-4 rounded-[22px] border border-cyan-200/65 bg-cyan-50/42 p-4 shadow-[0_12px_26px_rgba(24,190,239,0.05)] sm:p-5">
             <SectionHeader
               eyebrow="Meeting details"
               title="Link and mentions"
@@ -444,6 +448,7 @@ export function TaskForm({
                 </span>
                 <Input
                   className={fieldClassName}
+                  inputMode="url"
                   type="url"
                   placeholder="https://meet.google.com/..."
                   value={values.meetingLink ?? ""}
@@ -480,7 +485,7 @@ export function TaskForm({
         ) : null}
       </section>
 
-      <div className="flex flex-col gap-3 border-t border-border/80 pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mobile-task-form__actions flex flex-col gap-3 border-t border-border/80 pt-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           {mode === "edit" && onDelete ? (
             <Button type="button" variant="danger" onClick={onDelete} disabled={isPending} className="min-w-[8.5rem]">

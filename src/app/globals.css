@@ -1028,6 +1028,123 @@ button:disabled {
   opacity: 0.85;
 }
 
+@media (max-width: 639px) {
+  .mobile-task-modal__header {
+    padding: 0.9rem 1rem 0.75rem;
+  }
+
+  .mobile-task-modal__header h2 {
+    font-size: 1.35rem;
+    line-height: 1.1;
+  }
+
+  .mobile-task-modal__description {
+    display: none;
+  }
+
+  .mobile-task-modal__content {
+    padding: 0.75rem 0.8rem 0;
+    scroll-padding-bottom: 7rem;
+  }
+
+  .mobile-task-form {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .mobile-task-form__section {
+    border-radius: 18px;
+    padding: 0.85rem;
+  }
+
+  .mobile-task-form__section--details {
+    order: 1;
+  }
+
+  .mobile-task-form__section--type {
+    order: 2;
+  }
+
+  .mobile-task-form__section--mode {
+    order: 3;
+  }
+
+  .mobile-task-form__actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    order: 5;
+    margin-inline: -0.8rem;
+    margin-top: auto;
+    border-top: 1px solid rgba(213, 222, 234, 0.92);
+    background: rgba(255, 255, 255, 0.94);
+    padding: 0.75rem 0.8rem max(0.85rem, env(safe-area-inset-bottom));
+    box-shadow: 0 -16px 32px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(16px);
+  }
+
+  .mobile-task-form__actions > div:first-child:empty {
+    display: none;
+  }
+
+  .mobile-task-form__actions > div:last-child {
+    display: grid;
+    grid-template-columns: 0.72fr 1fr;
+    gap: 0.65rem;
+  }
+
+  .mobile-task-form__actions button {
+    min-height: 2.85rem;
+    width: 100%;
+  }
+
+  .mobile-task-form__choice-grid {
+    display: flex;
+    gap: 0.55rem;
+    overflow-x: auto;
+    padding-bottom: 0.1rem;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .mobile-task-form__choice-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-task-form__choice {
+    min-height: 3.35rem;
+    min-width: max-content;
+    flex: 1 0 auto;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.55rem 2.1rem 0.55rem 0.7rem;
+    scroll-snap-align: start;
+  }
+
+  .mobile-task-form__choice > span:first-child {
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .mobile-task-form__choice > span:nth-child(2) {
+    height: 2.15rem;
+    width: 2.15rem;
+  }
+
+  .mobile-task-form__choice > span:last-child {
+    padding-top: 0;
+  }
+
+  .mobile-task-form__meeting {
+    border-radius: 18px;
+    padding: 0.85rem;
+  }
+}
+
 .mobile-tab-enter {
   animation: mobile-tab-enter 0.38s var(--ease-ios-spring) both;
 }
