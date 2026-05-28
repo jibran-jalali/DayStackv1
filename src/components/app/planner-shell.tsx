@@ -1872,22 +1872,24 @@ export function PlannerShell({
         eyebrow={recurringSeriesEditor ? "Recurring series" : undefined}
         onClose={handleCancelEditor}
       >
-        <TaskForm
-          key={`${editorTask?.id ?? recurringSeriesEditor?.block.seriesId ?? formValues.startTime}-${snapshot.taskDate}-${isComposerOpen ? "open" : "closed"}`}
-          currentUserId={userId}
-          mode={editorTask || recurringSeriesEditor ? "edit" : "create"}
-          initialValues={formValues}
-          isPending={isPending}
-          onCancel={handleCancelEditor}
-          onDelete={
-            recurringSeriesEditor
-              ? () => handleDeleteRecurringBlock(recurringSeriesEditor.block)
-              : editorTask
-                ? () => handleDeleteTask(editorTask)
-                : undefined
-          }
-          onSubmit={recurringSeriesEditor ? handleSaveRecurringBlock : handleSaveTask}
-        />
+        {isComposerOpen ? (
+          <TaskForm
+            key={`${editorTask?.id ?? recurringSeriesEditor?.block.seriesId ?? formValues.startTime}-${snapshot.taskDate}-open`}
+            currentUserId={userId}
+            mode={editorTask || recurringSeriesEditor ? "edit" : "create"}
+            initialValues={formValues}
+            isPending={isPending}
+            onCancel={handleCancelEditor}
+            onDelete={
+              recurringSeriesEditor
+                ? () => handleDeleteRecurringBlock(recurringSeriesEditor.block)
+                : editorTask
+                  ? () => handleDeleteTask(editorTask)
+                  : undefined
+            }
+            onSubmit={recurringSeriesEditor ? handleSaveRecurringBlock : handleSaveTask}
+          />
+        ) : null}
       </TaskModal>
 
       <RecurringScopeModal

@@ -936,6 +936,17 @@ button:disabled {
   transform: scale(0.96);
 }
 
+.mobile-day-date-input {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .mobile-day-pill {
   display: flex;
   width: 5.7rem;

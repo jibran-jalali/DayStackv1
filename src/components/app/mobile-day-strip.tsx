@@ -30,9 +30,11 @@ export function MobileDayStrip({
   todayDate,
 }: MobileDayStripProps) {
   const [visibleSelectedDate, setVisibleSelectedDate] = useState(selectedDate);
+  const [slotVisualDate, setSlotVisualDate] = useState(selectedDate);
   const [dayWindowCenter, setDayWindowCenter] = useState(selectedDate);
   const days = Array.from({ length: 61 }, (_, index) => shiftDate(dayWindowCenter, index - 30));
   const stripRef = useRef<HTMLDivElement | null>(null);
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
   const autoScrollTimerRef = useRef<number | null>(null);
   const frameRef = useRef<number | null>(null);
   const scrollSettleTimerRef = useRef<number | null>(null);
@@ -43,12 +45,13 @@ export function MobileDayStrip({
   useEffect(() => {
     selectedDateRef.current = selectedDate;
     setVisibleSelectedDate(selectedDate);
+    setSlotVisualDate(selectedDate);
     setDayWindowCenter(selectedDate);
   }, [selectedDate]);
 
   useLayoutEffect(() => {
     const strip = stripRef.current;
-    const selectedButton = stripRef.current?.querySelector<HTMLButtonElement>("[data-active='true']");
+    const selectedButton = stripRef.current?.querySelector<HTMLButtonElement>("[data-selected='true']");
 
     if (!strip || !selectedButton) {
       return;
@@ -127,11 +130,25 @@ export function MobileDayStrip({
         bounds,
         button,
         center: bounds.left + bounds.width / 2,
+        overlap: Math.max(0, Math.min(bounds.right, slotRight) - Math.max(bounds.left, slotLeft)),
       };
     });
+    const buttonsTouchingSlot = buttonPositions.filter(({ overlap }) => overlap > 1);
     const buttonsFullyInsideSlot = buttonPositions.filter(
       ({ bounds }) => bounds.left >= slotLeft - 1 && bounds.right <= slotRight + 1,
     );
+    const visualButton =
+      buttonsTouchingSlot.length > 0
+        ? buttonsTouchingSlot.reduce((candidate, current) =>
+            isMovingForward
+              ? current.center > candidate.center
+                ? current
+                : candidate
+              : current.center < candidate.center
+                ? current
+                : candidate,
+          ).button
+        : null;
     const directionalButton =
       buttonsFullyInsideSlot.length > 0
         ? buttonsFullyInsideSlot.reduce((candidate, current) =>
@@ -145,8 +162,13 @@ export function MobileDayStrip({
           ).button
         : null;
     const nextDate = directionalButton?.dataset.date;
+    const nextVisualDate = visualButton?.dataset.date;
 
     lastScrollLeftRef.current = strip.scrollLeft;
+
+    if (nextVisualDate) {
+      setSlotVisualDate(nextVisualDate);
+    }
 
     if (nextDate && nextDate !== selectedDateRef.current) {
       selectDate(nextDate);
@@ -182,39 +204,76 @@ export function MobileDayStrip({
       return;
     }
 
+    dismissKeyboardForDayGesture();
     selectedDateRef.current = nextDate;
     setVisibleSelectedDate(nextDate);
+    setSlotVisualDate(nextDate);
     onSelectDate(nextDate);
+  }
+
+  function dismissKeyboardForDayGesture() {
+    const activeElement = document.activeElement as HTMLElement | null;
+
+    if (
+      activeElement &&
+      typeof activeElement.blur === "function" &&
+      (activeElement.tagName === "INPUT" ||
+        activeElement.tagName === "TEXTAREA" ||
+        activeElement.isContentEditable) &&
+      !activeElement.classList.contains("mobile-day-date-input")
+    ) {
+      activeElement.blur();
+    }
+  }
+
+  function openDatePicker() {
+    const input = dateInputRef.current;
+
+    if (!input || isPending) {
+      return;
+    }
+
+    if (typeof input.showPicker === "function") {
+      input.showPicker();
+      return;
+    }
+
+    input.click();
   }
 
   return (
     <section className="mobile-section mobile-day-section-prominent mobile-stagger-2" aria-label="Choose day">
       <div className="mobile-section__head">
         <p className="mobile-section__title">Schedule</p>
-        <label className="mobile-day-pick-btn">
+        <button type="button" className="mobile-day-pick-btn" onClick={openDatePicker} disabled={isPending}>
           <CalendarDays className="h-3.5 w-3.5" strokeWidth={2} />
           <span>Pick date</span>
-          <input
-            type="date"
-            value={visibleSelectedDate}
-            disabled={isPending}
-            onChange={(event) => selectDate(event.target.value)}
-            className="sr-only"
-            aria-label="Choose a different day"
-          />
-        </label>
+        </button>
+        <input
+          ref={dateInputRef}
+          type="date"
+          value={visibleSelectedDate}
+          disabled={isPending}
+          tabIndex={-1}
+          onFocus={(event) => event.currentTarget.blur()}
+          onChange={(event) => selectDate(event.target.value)}
+          className="mobile-day-date-input"
+          aria-hidden="true"
+        />
       </div>
 
       <div className="mobile-day-carousel">
         <div
           ref={stripRef}
           className="mobile-day-row"
+          onPointerDown={dismissKeyboardForDayGesture}
           onScroll={handleStripScroll}
           onTouchMove={handleStripScroll}
           onWheel={handleStripScroll}
         >
           {days.map((dateKey) => {
-            const isActive = dateKey === visibleSelectedDate;
+            const isSelected = dateKey === visibleSelectedDate;
+            const isSlotVisual = dateKey === slotVisualDate;
             const isToday = dateKey === todayDate;
             const { dayNumber, monthLabel, weekdayLabel } = formatDayLabel(dateKey);
 
@@ -223,18 +282,19 @@ export function MobileDayStrip({
                 key={dateKey}
                 type="button"
                 disabled={isPending}
-                data-active={isActive ? "true" : undefined}
                 data-date={dateKey}
+                data-selected={isSelected ? "true" : undefined}
+                data-slot-visual={isSlotVisual ? "true" : undefined}
                 className={cn(
                   "mobile-day-pill",
-                  isActive
+                  isSlotVisual
                     ? "mobile-day-pill--active"
                     : isToday
                       ? "mobile-day-pill--today mobile-day-pill--idle"
                       : "mobile-day-pill--idle",
                 )}
                 onClick={() => selectDate(dateKey)}
-                aria-pressed={isActive}
+                aria-pressed={isSelected}
                 aria-label={`${weekdayLabel} ${dayNumber}${isToday ? ", today" : ""}`}
               >
                 <span className="mobile-day-pill__weekday">{weekdayLabel.slice(0, 3)}</span>
