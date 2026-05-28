@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { Bell, Mail, Plus, Sparkles, UserRoundPlus } from "lucide-react";
 
@@ -214,6 +214,45 @@ function syncSnapshotWithTasks(
   };
 }
 
+function createInstantDateSnapshot(
+  current: DashboardSnapshot,
+  userId: string,
+  taskDate: string,
+): DashboardSnapshot {
+  const summary = buildSummary([]);
+  const existingSummary = current.recentSummaries.find((item) => item.summary_date === taskDate);
+  const timestamp = new Date().toISOString();
+  const liveSummary = (existingSummary ?? {
+    id: `live-${taskDate}`,
+    user_id: userId,
+    summary_date: taskDate,
+    created_at: timestamp,
+    updated_at: timestamp,
+  }) as DailySummaryRecord;
+  const nextLiveSummary = {
+    ...liveSummary,
+    completed_tasks: summary.completedTasks,
+    execution_score: summary.executionScore,
+    successful_day: summary.successfulDay,
+    total_tasks: summary.totalTasks,
+    updated_at: timestamp,
+  } satisfies DailySummaryRecord;
+  const recentSummaries = [
+    nextLiveSummary,
+    ...current.recentSummaries.filter((item) => item.summary_date !== taskDate),
+  ] as DailySummaryRecord[];
+
+  return {
+    ...current,
+    recurringBlocks: [],
+    recentSummaries,
+    streak: calculateActiveStreak(recentSummaries, taskDate),
+    summary,
+    taskDate,
+    tasks: [],
+  };
+}
+
 function resolvePropagationMode(task: PlannerTask, actionLabel: string): TaskPropagationMode {
   if (task.task_type !== "meeting" || task.acceptedCopiesCount === 0) {
     return "owner_only";
@@ -238,6 +277,8 @@ export function PlannerShell({
   initialSnapshot,
 }: PlannerShellProps) {
   const initialNow = useMemo(() => new Date(initialNowIso), [initialNowIso]);
+  const snapshotCacheRef = useRef<Map<string, DashboardSnapshot>>(new Map([[initialSnapshot.taskDate, initialSnapshot]]));
+  const dateRequestIdRef = useRef(0);
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [friendsSnapshot, setFriendsSnapshot] = useState(initialFriendsSnapshot);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>(initialTab);
@@ -273,6 +314,10 @@ export function PlannerShell({
     onNotice: setNotice,
   });
   useReminderDispatch(notificationPreferences);
+
+  useEffect(() => {
+    snapshotCacheRef.current.set(snapshot.taskDate, snapshot);
+  }, [snapshot]);
 
   useEffect(() => {
     if (notificationPreferences.push_enabled) {
@@ -375,23 +420,41 @@ export function PlannerShell({
       setFocusedTaskId(null);
       setNotice(null);
       setWorkspaceTab(targetTab);
-      setBusyMode("navigation");
+      const requestId = dateRequestIdRef.current + 1;
+      dateRequestIdRef.current = requestId;
+      const cachedSnapshot = snapshotCacheRef.current.get(nextDate);
+
+      setSnapshot((current) => cachedSnapshot ?? createInstantDateSnapshot(current, userId, nextDate));
+      setFollowToday(nextDate === formatDateKey(new Date()));
+      syncWorkspaceLocation(nextDate, targetTab);
 
       try {
         const nextSnapshot = await fetchDashboardSnapshot(nextDate);
+        snapshotCacheRef.current.set(nextDate, nextSnapshot);
+
+        if (dateRequestIdRef.current !== requestId) {
+          return;
+        }
+
         setSnapshot(nextSnapshot);
         setFollowToday(nextDate === formatDateKey(new Date()));
         syncWorkspaceLocation(nextDate, targetTab);
       } catch (error) {
+        if (dateRequestIdRef.current !== requestId) {
+          return;
+        }
+
         setNotice({
           type: "error",
           message: getErrorMessage(error),
         });
       } finally {
-        setBusyMode(null);
+        if (dateRequestIdRef.current === requestId) {
+          setBusyMode(null);
+        }
       }
     },
-    [clearSelection, handleOpenWorkspaceTab, playActionFeedback, snapshot.taskDate, syncWorkspaceLocation],
+    [clearSelection, handleOpenWorkspaceTab, playActionFeedback, snapshot.taskDate, syncWorkspaceLocation, userId],
   );
 
   function toggleTaskSelection(taskId: string) {
