@@ -670,7 +670,7 @@ export function AssistantShell({
   }
 
   function queueVoiceFollowUpListening() {
-    if (!speechRecognitionSupported) {
+    if (!speechRecognitionSupported || isListening || isSending || isConfirming) {
       return;
     }
 
@@ -678,7 +678,7 @@ export function AssistantShell({
     setVoiceStatus("Answer the next step when you're ready...");
     autoListenTimerRef.current = window.setTimeout(() => {
       autoListenTimerRef.current = null;
-      startListening();
+      void startListening();
     }, 800);
   }
 
@@ -748,7 +748,7 @@ export function AssistantShell({
     });
   }
 
-  function startListening() {
+  async function startListening() {
     const Recognition = getSpeechRecognitionConstructor();
 
     if (!Recognition) {
@@ -808,7 +808,14 @@ export function AssistantShell({
     recognitionRef.current = recognition;
     setVoiceStatus("Listening...");
     setIsListening(true);
-    recognition.start();
+
+    try {
+      recognition.start();
+    } catch {
+      recognitionRef.current = null;
+      setIsListening(false);
+      setVoiceStatus("Mic could not start. Tap the mic again, or use your keyboard dictation.");
+    }
   }
 
   async function submitPrompt(prompt: string) {
@@ -1122,7 +1129,7 @@ export function AssistantShell({
                 type="button"
                 aria-label={isListening ? "Stop listening" : "Start voice input"}
                 disabled={isBusy || !speechRecognitionSupported}
-                onClick={startListening}
+                onClick={() => void startListening()}
                 className={cn(
                   "mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-45",
                   isListening
