@@ -29,6 +29,7 @@ export function ActionFeedbackPanel({ compact = false, enabled, onToggle }: Acti
             Sound feedback for taps and tab changes.
           </p>
           <button
+            suppressHydrationWarning
             type="button"
             className={cn(
               "inline-flex items-center justify-center rounded-full font-semibold transition-[transform,box-shadow,background-color,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98]",

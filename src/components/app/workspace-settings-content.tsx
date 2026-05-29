@@ -87,6 +87,7 @@ export function WorkspaceSettingsContent({
             ) : null}
             <div className="grid gap-1.5">
               <button
+                suppressHydrationWarning
                 type="button"
                 className={buttonVariants({ variant: "secondary", size: "sm", className: "h-9 w-full text-xs" })}
                 onClick={onOpenPlanner}
@@ -96,6 +97,7 @@ export function WorkspaceSettingsContent({
               </button>
               {onSignOut ? (
                 <button
+                  suppressHydrationWarning
                   type="button"
                   className={buttonVariants({ variant: "ghost", size: "sm", className: "h-9 w-full text-xs" })}
                   onClick={onSignOut}
@@ -162,6 +164,7 @@ export function WorkspaceSettingsContent({
               </div>
             ) : null}
             <button
+              suppressHydrationWarning
               type="button"
               className={buttonVariants({ variant: "secondary", size: "sm", className: "w-full" })}
               onClick={onOpenPlanner}
@@ -171,6 +174,7 @@ export function WorkspaceSettingsContent({
             </button>
             {onSignOut ? (
               <button
+                suppressHydrationWarning
                 type="button"
                 className={buttonVariants({ variant: "ghost", size: "sm", className: "w-full" })}
                 onClick={onSignOut}
