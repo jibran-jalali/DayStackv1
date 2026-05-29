@@ -766,6 +766,12 @@ export function LandingPage({ leaderboard }: LandingPageProps) {
             <Link href="/signup" className="transition-colors duration-200 hover:text-foreground">
               Create account
             </Link>
+            <Link href="/privacy" className="transition-colors duration-200 hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/terms" className="transition-colors duration-200 hover:text-foreground">
+              Terms
+            </Link>
             <span className="inline-flex items-center gap-2">
               <Layers3 className="h-4 w-4" />
               DayStack v1

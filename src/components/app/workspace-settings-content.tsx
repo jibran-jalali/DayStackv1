@@ -4,6 +4,7 @@ import { CalendarDays, LogOut, Mail } from "lucide-react";
 
 import { ActionFeedbackPanel } from "@/components/app/action-feedback-panel";
 import { EmailSettingsPanel } from "@/components/app/email-settings-panel";
+import { GoogleCalendarSettingsPanel } from "@/components/app/google-calendar-settings-panel";
 import { PushSettingsPanel } from "@/components/app/push-settings-panel";
 import { buttonVariants } from "@/components/shared/button";
 import { formatDateLabel } from "@/lib/daystack";
@@ -69,6 +70,8 @@ export function WorkspaceSettingsContent({
         />
 
         <ActionFeedbackPanel compact enabled={actionSoundsEnabled} onToggle={onToggleActionSounds} />
+
+        <GoogleCalendarSettingsPanel compact />
 
         <section className="mobile-card p-3">
           <p className="section-label">Account</p>
@@ -140,6 +143,8 @@ export function WorkspaceSettingsContent({
           />
 
           <ActionFeedbackPanel enabled={actionSoundsEnabled} onToggle={onToggleActionSounds} />
+
+          <GoogleCalendarSettingsPanel />
         </div>
       </section>
 

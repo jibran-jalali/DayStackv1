@@ -11,6 +11,7 @@ import {
   user_notification_preferences,
   users,
 } from "@/db/schema";
+import { safeSyncTaskToGoogleCalendar } from "@/lib/data/google-calendar";
 import { syncTaskRemindersForTask } from "@/lib/data/reminders";
 import { fetchAcceptedFriendIds } from "@/lib/data/friends";
 import { buildSummary, deriveDisplayName } from "@/lib/daystack";
@@ -636,6 +637,7 @@ export async function acceptTaskNotification(
 
   if (result.acceptedTask) {
     await Promise.all([
+      safeSyncTaskToGoogleCalendar(userId, result.acceptedTask),
       syncTaskRemindersForTask(userId, result.acceptedTask),
       syncAcceptedTaskSummary(userId, result.acceptedTask.task_date),
     ]);

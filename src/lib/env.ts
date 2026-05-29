@@ -10,6 +10,11 @@ export interface WebPushEnv {
   subject: string;
 }
 
+export interface GoogleCalendarEnv {
+  clientId: string;
+  clientSecret: string;
+}
+
 function normalizeEnvValue(value: string | undefined) {
   const trimmed = value?.trim();
 
@@ -105,4 +110,22 @@ export function getWebPushEnv(): WebPushEnv | null {
 
 export function isWebPushConfigured() {
   return Boolean(getWebPushEnv());
+}
+
+export function getGoogleCalendarEnv(): GoogleCalendarEnv | null {
+  const clientId = normalizeEnvValue(process.env.GOOGLE_CLIENT_ID);
+  const clientSecret = normalizeEnvValue(process.env.GOOGLE_CLIENT_SECRET);
+
+  if (!clientId || !clientSecret) {
+    return null;
+  }
+
+  return {
+    clientId,
+    clientSecret,
+  };
+}
+
+export function isGoogleCalendarConfigured() {
+  return Boolean(getGoogleCalendarEnv());
 }

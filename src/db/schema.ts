@@ -344,6 +344,56 @@ export const push_subscriptions = pgTable(
   ],
 );
 
+export const google_calendar_connections = pgTable(
+  "google_calendar_connections",
+  {
+    user_id: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    google_email: text("google_email"),
+    calendar_id: text("calendar_id").notNull().default("primary"),
+    access_token_encrypted: text("access_token_encrypted").notNull(),
+    refresh_token_encrypted: text("refresh_token_encrypted").notNull(),
+    access_token_expires_at: timestamp("access_token_expires_at", {
+      withTimezone: true,
+      mode: "string",
+    }).notNull(),
+    scope: text("scope").notNull(),
+    connected_at: timestampColumn("connected_at"),
+    created_at: timestampColumn("created_at"),
+    updated_at: timestampColumn("updated_at"),
+  },
+  (table) => [
+    index("google_calendar_connections_updated_idx").on(table.updated_at),
+  ],
+);
+
+export const task_calendar_events = pgTable(
+  "task_calendar_events",
+  {
+    id: uuid("id").primaryKey(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    task_id: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    google_calendar_id: text("google_calendar_id").notNull().default("primary"),
+    google_event_id: text("google_event_id").notNull(),
+    created_at: timestampColumn("created_at"),
+    updated_at: timestampColumn("updated_at"),
+  },
+  (table) => [
+    uniqueIndex("task_calendar_events_task_uidx").on(table.task_id),
+    uniqueIndex("task_calendar_events_google_event_uidx").on(
+      table.user_id,
+      table.google_calendar_id,
+      table.google_event_id,
+    ),
+    index("task_calendar_events_user_idx").on(table.user_id, table.updated_at),
+  ],
+);
+
 export const task_reminders = pgTable(
   "task_reminders",
   {

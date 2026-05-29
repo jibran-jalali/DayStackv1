@@ -15,6 +15,10 @@ import {
 } from "@/db/schema";
 import { fetchLeaderboard } from "@/lib/data/leaderboard";
 import { assertAcceptedFriendParticipants } from "@/lib/data/friends";
+import {
+  safeDeleteGoogleCalendarEventForTask,
+  safeSyncTaskToGoogleCalendar,
+} from "@/lib/data/google-calendar";
 import { expireTaskMentionNotifications, syncTaskMentionNotificationsForTask } from "@/lib/data/notifications";
 import { syncTaskRemindersForTask } from "@/lib/data/reminders";
 import { buildSummary, calculateActiveStreak, deriveDisplayName } from "@/lib/daystack";
@@ -490,6 +494,7 @@ async function createRecurringOccurrenceTask(
   );
   await Promise.all([
     syncTaskMentionNotificationsForTask(userId, createdTask.id),
+    safeSyncTaskToGoogleCalendar(userId, createdTask),
     syncTaskRemindersForTask(userId, createdTask),
   ]);
 
@@ -636,7 +641,10 @@ async function syncAcceptedCopyDependencies(updatedAcceptedCopies: AcceptedCopyU
 
   await Promise.all(
     updatedAcceptedCopies.map(async ({ previousDate, task }) => {
-      await syncTaskRemindersForTask(task.user_id, task);
+      await Promise.all([
+        safeSyncTaskToGoogleCalendar(task.user_id, task),
+        syncTaskRemindersForTask(task.user_id, task),
+      ]);
       addSummaryTarget(task.user_id, previousDate);
       addSummaryTarget(task.user_id, task.task_date);
     }),
@@ -1004,6 +1012,8 @@ async function deleteRecurringTasksFromDate(
     return [] as string[];
   }
 
+  await Promise.all(taskIds.map((taskId) => safeDeleteGoogleCalendarEventForTask(userId, taskId)));
+
   await db.delete(tasks).where(inArray(tasks.id, taskIds));
 
   return [...new Set(
@@ -1166,6 +1176,7 @@ export async function createTask(
   await replaceTaskParticipants(db, createdTask.id, participantIds);
   await Promise.all([
     syncTaskMentionNotificationsForTask(userId, createdTask.id),
+    safeSyncTaskToGoogleCalendar(userId, createdTask),
     syncTaskRemindersForTask(userId, createdTask),
     syncDailySummaryForDate(userId, values.taskDate),
   ]);
@@ -1284,6 +1295,7 @@ export async function updateTask(
   await replaceTaskParticipants(db, taskId, participantIds);
   await Promise.all([
     syncTaskMentionNotificationsForTask(userId, updatedTask.id),
+    safeSyncTaskToGoogleCalendar(userId, updatedTask),
     syncTaskRemindersForTask(userId, updatedTask),
   ]);
   await syncAcceptedCopyDependencies(updatedAcceptedCopies);
@@ -1385,6 +1397,7 @@ export async function deleteTask(
       await upsertRecurringSkipException(db, task.recurring_rule_id, getOccurrenceDateForTask(task));
     }
 
+    await safeDeleteGoogleCalendarEventForTask(userId, taskId);
     await db.delete(tasks).where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)));
   } else {
     const sourceRule = await fetchRecurringRule(db, userId, task.recurring_rule_id);
@@ -1402,6 +1415,7 @@ export async function deleteTask(
       summaryDates = [...new Set([task.task_date, ...deletedTaskDates])];
     }
 
+    await safeDeleteGoogleCalendarEventForTask(userId, taskId);
     await db.delete(tasks).where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)));
   }
 
@@ -1491,8 +1505,11 @@ export async function toggleTaskStatus(
     throw new Error("Task not found.");
   }
 
-  await syncTaskRemindersForTask(userId, nextTask);
-  await syncDailySummaryForDate(userId, nextTask.task_date);
+  await Promise.all([
+    safeSyncTaskToGoogleCalendar(userId, nextTask),
+    syncTaskRemindersForTask(userId, nextTask),
+    syncDailySummaryForDate(userId, nextTask.task_date),
+  ]);
 
   return nextTask;
 }

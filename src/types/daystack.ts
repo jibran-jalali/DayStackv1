@@ -5,10 +5,12 @@ import type {
   daily_summaries,
   api_keys,
   friend_connections,
+  google_calendar_connections,
   push_subscriptions,
   recurring_rule_exceptions,
   recurring_rule_participants,
   recurring_rules,
+  task_calendar_events,
   task_notifications,
   task_participants,
   task_reminders,
@@ -22,11 +24,13 @@ export type TaskRecord = InferSelectModel<typeof tasks>;
 export type DailySummaryRecord = InferSelectModel<typeof daily_summaries>;
 export type ApiKeyRecord = InferSelectModel<typeof api_keys>;
 export type FriendConnectionRecord = InferSelectModel<typeof friend_connections>;
+export type GoogleCalendarConnectionRecord = InferSelectModel<typeof google_calendar_connections>;
 export type PushSubscriptionRecord = InferSelectModel<typeof push_subscriptions>;
 export type ProfileRecord = UserRecord;
 export type TaskParticipantRecord = InferSelectModel<typeof task_participants>;
 export type UserNotificationPreferencesRecord = InferSelectModel<typeof user_notification_preferences>;
 export type TaskReminderRecord = InferSelectModel<typeof task_reminders>;
+export type TaskCalendarEventRecord = InferSelectModel<typeof task_calendar_events>;
 export type TaskNotificationRecord = InferSelectModel<typeof task_notifications>;
 export type RecurringRuleRecord = InferSelectModel<typeof recurring_rules>;
 export type RecurringRuleParticipantRecord = InferSelectModel<typeof recurring_rule_participants>;

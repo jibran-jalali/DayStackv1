@@ -57,6 +57,13 @@
       "when": 1778313695290,
       "tag": "0007_young_agent_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780050107466,
+      "tag": "0008_jazzy_spitfire",
+      "breakpoints": true
     }
   ]
 }
