@@ -211,8 +211,9 @@ export async function saveGoogleCalendarConnectionFromCode(userId: string, code:
     method: "POST",
   });
   const tokens = await readJson<GoogleTokenResponse>(tokenResponse, "Google Calendar connection failed.");
+  const existingConnection = await fetchGoogleCalendarConnection(userId);
 
-  if (!tokens.refresh_token) {
+  if (!tokens.refresh_token && !existingConnection) {
     throw new Error("Google did not return a refresh token. Remove DayStack from your Google account access and connect again.");
   }
 
@@ -233,7 +234,7 @@ export async function saveGoogleCalendarConnectionFromCode(userId: string, code:
       google_email: userInfo.email ?? null,
       calendar_id: "primary",
       access_token_encrypted: encryptToken(tokens.access_token),
-      refresh_token_encrypted: encryptToken(tokens.refresh_token),
+      refresh_token_encrypted: encryptToken(tokens.refresh_token ?? decryptToken(existingConnection!.refresh_token_encrypted)),
       access_token_expires_at: expiresAt,
       scope: tokens.scope,
       connected_at: now,
@@ -246,7 +247,7 @@ export async function saveGoogleCalendarConnectionFromCode(userId: string, code:
         google_email: userInfo.email ?? null,
         calendar_id: "primary",
         access_token_encrypted: encryptToken(tokens.access_token),
-        refresh_token_encrypted: encryptToken(tokens.refresh_token),
+        refresh_token_encrypted: encryptToken(tokens.refresh_token ?? decryptToken(existingConnection!.refresh_token_encrypted)),
         access_token_expires_at: expiresAt,
         scope: tokens.scope,
         connected_at: now,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { CalendarCheck, ExternalLink, Loader2 } from "lucide-react";
 
 import { buttonVariants } from "@/components/shared/button";
@@ -18,6 +19,7 @@ interface GoogleCalendarSettingsPanelProps {
 }
 
 export function GoogleCalendarSettingsPanel({ compact = false }: GoogleCalendarSettingsPanelProps) {
+  const searchParams = useSearchParams();
   const [status, setStatus] = useState<GoogleCalendarStatus | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -49,6 +51,20 @@ export function GoogleCalendarSettingsPanel({ compact = false }: GoogleCalendarS
       ignore = true;
     };
   }, []);
+
+  useEffect(() => {
+    const calendarResult = searchParams.get("calendar");
+    const callbackMessage = searchParams.get("message");
+
+    if (calendarResult === "connected") {
+      setMessage("Google Calendar connected. Future DayStack blocks will sync automatically.");
+      return;
+    }
+
+    if (calendarResult === "error") {
+      setMessage(callbackMessage ?? "Google Calendar connection failed.");
+    }
+  }, [searchParams]);
 
   async function handleDisconnect() {
     setIsBusy(true);

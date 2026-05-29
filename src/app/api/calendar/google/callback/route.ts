@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 import { getSessionUser } from "@/lib/auth";
 import { saveGoogleCalendarConnectionFromCode } from "@/lib/data/google-calendar";
@@ -28,12 +29,7 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
-  const savedState = request.headers
-    .get("cookie")
-    ?.split(";")
-    .map((cookie) => cookie.trim())
-    .find((cookie) => cookie.startsWith(`${GOOGLE_OAUTH_STATE_COOKIE}=`))
-    ?.split("=")[1];
+  const savedState = (await cookies()).get(GOOGLE_OAUTH_STATE_COOKIE)?.value;
 
   if (error) {
     return NextResponse.redirect(buildSettingsRedirect(request, "error", "Google Calendar connection was cancelled."));
