@@ -199,6 +199,32 @@ function canSpeakReplies() {
   return typeof window !== "undefined" && "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
 }
 
+const VOICE_AUTO_SUBMIT_DELAY_MS = 2000;
+
+function selectAssistantVoice(voices: SpeechSynthesisVoice[]) {
+  const englishVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith("en"));
+
+  if (englishVoices.length === 0) {
+    return null;
+  }
+
+  return englishVoices
+    .map((voice) => {
+      const name = voice.name.toLowerCase();
+      let score = 0;
+
+      if (voice.lang.toLowerCase() === "en-us") score += 12;
+      if (/samantha|jenny|aria|serena|karen|moira|tessa|ava|susan/.test(name)) score += 18;
+      if (/natural|neural|enhanced|premium/.test(name)) score += 16;
+      if (/google|microsoft|apple/.test(name)) score += 8;
+      if (/female/.test(name)) score += 5;
+      if (/compact|basic|default/.test(name)) score -= 10;
+
+      return { score, voice };
+    })
+    .sort((left, right) => right.score - left.score)[0]?.voice ?? null;
+}
+
 function SourceList({ sources }: { sources: AssistantAnswerSource[] }) {
   if (sources.length === 0) return null;
 
@@ -410,15 +436,23 @@ export function AssistantShell({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
+  const [isVoiceSubmitPending, setIsVoiceSubmitPending] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const finalTranscriptRef = useRef("");
+  const latestTranscriptRef = useRef("");
+  const voiceEnabledRef = useRef(false);
+  const voiceSubmitTimerRef = useRef<number | null>(null);
   const context = useMemo(() => buildAssistantContext(snapshot), [snapshot]);
   const hasConversation = messages.some((message) => message.role === "user");
   const visibleMessages = hasConversation ? messages.slice(1) : [];
   const speechRecognitionSupported = useMemo(() => getSpeechRecognitionConstructor() !== null, []);
   const speechSynthesisSupported = useMemo(() => canSpeakReplies(), []);
+
+  useEffect(() => {
+    voiceEnabledRef.current = voiceEnabled;
+  }, [voiceEnabled]);
 
   useEffect(() => {
     const container = chatScrollRef.current;
@@ -451,12 +485,53 @@ export function AssistantShell({
   useEffect(() => {
     return () => {
       recognitionRef.current?.stop();
+      if (voiceSubmitTimerRef.current !== null) {
+        window.clearTimeout(voiceSubmitTimerRef.current);
+      }
       window.speechSynthesis?.cancel();
     };
   }, []);
 
+  useEffect(() => {
+    if (!speechSynthesisSupported) return;
+
+    const warmVoices = () => {
+      window.speechSynthesis.getVoices();
+    };
+
+    warmVoices();
+    window.speechSynthesis.addEventListener?.("voiceschanged", warmVoices);
+
+    return () => {
+      window.speechSynthesis.removeEventListener?.("voiceschanged", warmVoices);
+    };
+  }, [speechSynthesisSupported]);
+
+  function clearVoiceSubmitTimer() {
+    if (voiceSubmitTimerRef.current !== null) {
+      window.clearTimeout(voiceSubmitTimerRef.current);
+      voiceSubmitTimerRef.current = null;
+    }
+    setIsVoiceSubmitPending(false);
+  }
+
+  function scheduleVoiceSubmit(transcript: string) {
+    clearVoiceSubmitTimer();
+    setDraft(transcript);
+    setIsVoiceSubmitPending(true);
+    setVoiceStatus("Got it. Sending in 2 seconds...");
+
+    voiceSubmitTimerRef.current = window.setTimeout(() => {
+      voiceSubmitTimerRef.current = null;
+      setIsVoiceSubmitPending(false);
+      voiceEnabledRef.current = true;
+      setVoiceEnabled(true);
+      void submitPrompt(transcript);
+    }, VOICE_AUTO_SUBMIT_DELAY_MS);
+  }
+
   function speakAssistantReply(text: string) {
-    if (!voiceEnabled || !speechSynthesisSupported) {
+    if (!voiceEnabledRef.current || !speechSynthesisSupported) {
       return;
     }
 
@@ -471,18 +546,15 @@ export function AssistantShell({
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice =
-      voices.find((voice) => voice.lang.toLowerCase().startsWith("en") && /female|samantha|google|natural/i.test(voice.name)) ??
-      voices.find((voice) => voice.lang.toLowerCase().startsWith("en")) ??
-      null;
+    const preferredVoice = selectAssistantVoice(window.speechSynthesis.getVoices());
 
     if (preferredVoice) {
       utterance.voice = preferredVoice;
     }
 
-    utterance.rate = 0.96;
-    utterance.pitch = 1.03;
+    utterance.rate = 0.92;
+    utterance.pitch = 1;
+    utterance.volume = 1;
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
@@ -497,6 +569,7 @@ export function AssistantShell({
 
     setVoiceEnabled((current) => {
       const next = !current;
+      voiceEnabledRef.current = next;
 
       if (!next) {
         window.speechSynthesis.cancel();
@@ -524,8 +597,10 @@ export function AssistantShell({
       return;
     }
 
+    clearVoiceSubmitTimer();
     window.speechSynthesis?.cancel();
     finalTranscriptRef.current = "";
+    latestTranscriptRef.current = "";
 
     const recognition = new Recognition();
     recognition.continuous = false;
@@ -545,19 +620,21 @@ export function AssistantShell({
         }
       }
 
-      setDraft((finalTranscriptRef.current || interimTranscript).trim());
+      const latestTranscript = (finalTranscriptRef.current || interimTranscript).trim();
+      latestTranscriptRef.current = latestTranscript;
+      setDraft(latestTranscript);
     };
     recognition.onerror = () => {
       setIsListening(false);
+      clearVoiceSubmitTimer();
       setVoiceStatus("I could not hear that clearly. Try again.");
     };
     recognition.onend = () => {
       setIsListening(false);
-      const finalTranscript = finalTranscriptRef.current.trim();
+      const finalTranscript = (finalTranscriptRef.current || latestTranscriptRef.current).trim();
 
       if (finalTranscript) {
-        setVoiceEnabled(true);
-        void submitPrompt(finalTranscript);
+        scheduleVoiceSubmit(finalTranscript);
       }
     };
 
@@ -571,6 +648,7 @@ export function AssistantShell({
     const nextPrompt = prompt.trim();
     if (!nextPrompt || isSending || isConfirming) return;
 
+    clearVoiceSubmitTimer();
     setIsSending(true);
     setPendingAction(null);
 
@@ -802,16 +880,24 @@ export function AssistantShell({
                 <span
                   className={cn(
                     "inline-flex h-2 w-2 rounded-full",
-                    isListening ? "animate-pulse bg-red-500" : isSpeaking ? "animate-pulse bg-emerald-500" : "bg-border",
+                    isListening
+                      ? "animate-pulse bg-red-500"
+                      : isVoiceSubmitPending
+                        ? "animate-pulse bg-amber-500"
+                        : isSpeaking
+                          ? "animate-pulse bg-emerald-500"
+                          : "bg-border",
                   )}
                   aria-hidden
                 />
                 <p className="text-[11px] font-medium text-secondary-foreground/70">
                   {isListening
                     ? "Listening..."
-                    : isSpeaking
-                      ? "Speaking..."
-                      : voiceStatus ?? "Voice input and spoken replies are free browser features."}
+                    : isVoiceSubmitPending
+                      ? "Sending in a moment..."
+                      : isSpeaking
+                        ? "Speaking..."
+                        : voiceStatus ?? "Voice input and spoken replies are free browser features."}
                 </p>
               </div>
               <button
@@ -840,7 +926,10 @@ export function AssistantShell({
               <textarea
                 ref={composerRef}
                 value={draft}
-                onChange={(event) => setDraft(event.target.value)}
+                onChange={(event) => {
+                  clearVoiceSubmitTimer();
+                  setDraft(event.target.value);
+                }}
                 onKeyDown={handleComposerKeyDown}
                 rows={1}
                 placeholder="Message DayStack AI"
@@ -867,7 +956,10 @@ export function AssistantShell({
                 type="button"
                 aria-label="Send message"
                 disabled={!draft.trim() || isBusy}
-                onClick={() => void submitPrompt(draft)}
+                onClick={() => {
+                  clearVoiceSubmitTimer();
+                  void submitPrompt(draft);
+                }}
                 className={cn(
                   "shrink-0 mb-0.5 flex h-9 w-9 items-center justify-center rounded-full transition-all",
                   draft.trim() && !isBusy
