@@ -582,7 +582,7 @@ function buildCreateFollowUpQuestion(field: ReturnType<typeof getNextMissingCrea
   }
 
   if (field === "endTime") {
-    return "What time should it end?";
+    return "How long should it last?";
   }
 
   return "Which weekdays should it repeat on?";

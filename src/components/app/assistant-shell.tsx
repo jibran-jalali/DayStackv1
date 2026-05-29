@@ -420,7 +420,7 @@ function getFollowUpSuggestions(followUp: AssistantFollowUpContext | null) {
     return [
       { label: "30 min", value: "for 30 min" },
       { label: "1 hour", value: "for 1 hour" },
-      { label: "90 min", value: "for 90 min" },
+      { label: "2 hours", value: "for 2 hours" },
     ];
   }
 
@@ -435,6 +435,17 @@ function getFollowUpSuggestions(followUp: AssistantFollowUpContext | null) {
   return [];
 }
 
+function getCreateGuideStep(followUp: AssistantFollowUpContext) {
+  if (followUp.kind !== "create_task") {
+    return null;
+  }
+
+  if (followUp.missingField === "title") return 0;
+  if (followUp.missingField === "startTime") return 1;
+  if (followUp.missingField === "endTime") return 2;
+  return 3;
+}
+
 function FollowUpGuide({
   disabled,
   followUp,
@@ -445,17 +456,41 @@ function FollowUpGuide({
   onSelect: (value: string) => void;
 }) {
   const suggestions = getFollowUpSuggestions(followUp);
+  const createStep = followUp ? getCreateGuideStep(followUp) : null;
 
   if (suggestions.length === 0) {
     return null;
   }
 
   return (
-    <div className="mb-3 rounded-[18px] border border-primary/10 bg-[linear-gradient(135deg,rgba(24,190,239,0.1),rgba(109,40,240,0.06),rgba(255,255,255,0.94))] p-3 shadow-[0_12px_26px_rgba(83,78,222,0.07)]">
+    <div className="mb-3 rounded-[20px] border border-primary/10 bg-[linear-gradient(135deg,rgba(24,190,239,0.1),rgba(109,40,240,0.06),rgba(255,255,255,0.94))] p-3 shadow-[0_12px_26px_rgba(83,78,222,0.07)]">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-secondary-foreground/65">Quick reply</p>
-        <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-primary">Guided</span>
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-secondary-foreground/65">
+          {createStep === null ? "Quick reply" : "Add block"}
+        </p>
+        <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-primary">
+          {createStep === null ? "Guided" : "Speak or tap"}
+        </span>
       </div>
+      {createStep !== null ? (
+        <div className="mb-3 grid grid-cols-3 gap-1.5">
+          {["Title", "Start", "Duration"].map((label, index) => (
+            <div
+              key={label}
+              className={cn(
+                "rounded-full px-2.5 py-1.5 text-center text-[11px] font-bold",
+                index < createStep
+                  ? "bg-emerald-50 text-emerald-700"
+                  : index === createStep
+                    ? "bg-brand-gradient text-white shadow-[0_8px_18px_rgba(83,78,222,0.14)]"
+                    : "bg-white/75 text-secondary-foreground",
+              )}
+            >
+              {label}
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div className="flex gap-2 overflow-x-auto pb-1 soft-scrollbar">
         {suggestions.map((suggestion) => (
           <button
@@ -533,6 +568,8 @@ export function AssistantShell({
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const finalTranscriptRef = useRef("");
   const latestTranscriptRef = useRef("");
+  const autoListenTimerRef = useRef<number | null>(null);
+  const lastPromptWasVoiceRef = useRef(false);
   const voiceEnabledRef = useRef(false);
   const voiceSubmitTimerRef = useRef<number | null>(null);
   const context = useMemo(() => buildAssistantContext(snapshot), [snapshot]);
@@ -579,6 +616,9 @@ export function AssistantShell({
       if (voiceSubmitTimerRef.current !== null) {
         window.clearTimeout(voiceSubmitTimerRef.current);
       }
+      if (autoListenTimerRef.current !== null) {
+        window.clearTimeout(autoListenTimerRef.current);
+      }
       window.speechSynthesis?.cancel();
     };
   }, []);
@@ -606,6 +646,13 @@ export function AssistantShell({
     setIsVoiceSubmitPending(false);
   }
 
+  function clearAutoListenTimer() {
+    if (autoListenTimerRef.current !== null) {
+      window.clearTimeout(autoListenTimerRef.current);
+      autoListenTimerRef.current = null;
+    }
+  }
+
   function scheduleVoiceSubmit(transcript: string) {
     clearVoiceSubmitTimer();
     setDraft(transcript);
@@ -617,12 +664,27 @@ export function AssistantShell({
       setIsVoiceSubmitPending(false);
       voiceEnabledRef.current = true;
       setVoiceEnabled(true);
+      lastPromptWasVoiceRef.current = true;
       void submitPrompt(transcript);
     }, VOICE_AUTO_SUBMIT_DELAY_MS);
   }
 
-  function speakAssistantReply(text: string) {
+  function queueVoiceFollowUpListening() {
+    if (!speechRecognitionSupported) {
+      return;
+    }
+
+    clearAutoListenTimer();
+    setVoiceStatus("Answer the next step when you're ready...");
+    autoListenTimerRef.current = window.setTimeout(() => {
+      autoListenTimerRef.current = null;
+      startListening();
+    }, 800);
+  }
+
+  function speakAssistantReply(text: string, onDone?: () => void) {
     if (!voiceEnabledRef.current || !speechSynthesisSupported) {
+      onDone?.();
       return;
     }
 
@@ -632,6 +694,7 @@ export function AssistantShell({
       .trim();
 
     if (!cleanText) {
+      onDone?.();
       return;
     }
 
@@ -646,9 +709,20 @@ export function AssistantShell({
     utterance.rate = 0.92;
     utterance.pitch = 1;
     utterance.volume = 1;
+    let finished = false;
+    const finish = () => {
+      if (finished) {
+        return;
+      }
+
+      finished = true;
+      setIsSpeaking(false);
+      onDone?.();
+    };
+
     utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+    utterance.onend = finish;
+    utterance.onerror = finish;
     window.speechSynthesis.speak(utterance);
   }
 
@@ -683,11 +757,13 @@ export function AssistantShell({
     }
 
     if (isListening) {
+      clearAutoListenTimer();
       recognitionRef.current?.stop();
       setIsListening(false);
       return;
     }
 
+    clearAutoListenTimer();
     clearVoiceSubmitTimer();
     window.speechSynthesis?.cancel();
     finalTranscriptRef.current = "";
@@ -738,7 +814,10 @@ export function AssistantShell({
   async function submitPrompt(prompt: string) {
     const nextPrompt = prompt.trim();
     if (!nextPrompt || isSending || isConfirming) return;
+    const shouldContinueVoice = lastPromptWasVoiceRef.current;
+    lastPromptWasVoiceRef.current = false;
 
+    clearAutoListenTimer();
     clearVoiceSubmitTimer();
     setIsSending(true);
     setPendingAction(null);
@@ -766,7 +845,11 @@ export function AssistantShell({
       });
 
       setMessages((current) => [...current, assistantMessage]);
-      speakAssistantReply(response.reply);
+      const shouldListenForFollowUp =
+        shouldContinueVoice &&
+        response.action.kind === "ask_followup" &&
+        response.action.followUp?.kind === "create_task";
+      speakAssistantReply(response.reply, shouldListenForFollowUp ? queueVoiceFollowUpListening : undefined);
 
       if (action) {
         setPendingFollowUp(null);
@@ -1023,6 +1106,8 @@ export function AssistantShell({
                 ref={composerRef}
                 value={draft}
                 onChange={(event) => {
+                  lastPromptWasVoiceRef.current = false;
+                  clearAutoListenTimer();
                   clearVoiceSubmitTimer();
                   setDraft(event.target.value);
                 }}
@@ -1053,6 +1138,8 @@ export function AssistantShell({
                 aria-label="Send message"
                 disabled={!draft.trim() || isBusy}
                 onClick={() => {
+                  lastPromptWasVoiceRef.current = false;
+                  clearAutoListenTimer();
                   clearVoiceSubmitTimer();
                   void submitPrompt(draft);
                 }}
