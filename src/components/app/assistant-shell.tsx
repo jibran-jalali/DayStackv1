@@ -10,7 +10,6 @@ import {
   Loader2,
   Mic,
   MicOff,
-  Search,
   Sparkles,
   Star,
   Volume2,
@@ -401,11 +400,7 @@ function getFollowUpSuggestions(followUp: AssistantFollowUpContext | null) {
   }
 
   if (followUp.missingField === "title") {
-    return [
-      { label: "Study", value: "Study session" },
-      { label: "Workout", value: "Workout" },
-      { label: "Review", value: "Review notes" },
-    ];
+    return [];
   }
 
   if (followUp.missingField === "startTime") {
@@ -446,6 +441,42 @@ function getCreateGuideStep(followUp: AssistantFollowUpContext) {
   return 3;
 }
 
+function getCreateGuideCopy(followUp: AssistantFollowUpContext) {
+  if (followUp.kind !== "create_task") {
+    return null;
+  }
+
+  if (followUp.missingField === "title") {
+    return {
+      body: "Type or say the block title.",
+      example: "Example: study calculus",
+      title: "Add the title",
+    };
+  }
+
+  if (followUp.missingField === "startTime") {
+    return {
+      body: "Type or say when it should start.",
+      example: "Example: 6 PM",
+      title: "Set the start time",
+    };
+  }
+
+  if (followUp.missingField === "endTime") {
+    return {
+      body: "Type or say the total duration.",
+      example: "Example: for 1 hour",
+      title: "Set the duration",
+    };
+  }
+
+  return {
+    body: "Choose the repeat days.",
+    example: "Example: weekdays",
+    title: "Set repeat days",
+  };
+}
+
 function FollowUpGuide({
   disabled,
   followUp,
@@ -457,57 +488,69 @@ function FollowUpGuide({
 }) {
   const suggestions = getFollowUpSuggestions(followUp);
   const createStep = followUp ? getCreateGuideStep(followUp) : null;
+  const createCopy = followUp ? getCreateGuideCopy(followUp) : null;
 
-  if (suggestions.length === 0) {
+  if (!followUp || (suggestions.length === 0 && createStep === null)) {
     return null;
   }
 
   return (
-    <div className="mb-3 rounded-[20px] border border-primary/10 bg-[linear-gradient(135deg,rgba(24,190,239,0.1),rgba(109,40,240,0.06),rgba(255,255,255,0.94))] p-3 shadow-[0_12px_26px_rgba(83,78,222,0.07)]">
+    <div className="mb-3 rounded-[20px] border border-primary/10 bg-white/94 p-3 shadow-[0_12px_26px_rgba(83,78,222,0.07)]">
       <div className="mb-2 flex items-center justify-between gap-3">
         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-secondary-foreground/65">
-          {createStep === null ? "Quick reply" : "Add block"}
+          {createStep === null ? "Choose target" : "Guided add"}
         </p>
-        <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-primary">
-          {createStep === null ? "Guided" : "Speak or tap"}
+        <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-primary">
+          {createStep === null ? "Tap one" : `Step ${Math.min(createStep + 1, 3)} of 3`}
         </span>
       </div>
       {createStep !== null ? (
-        <div className="mb-3 grid grid-cols-3 gap-1.5">
-          {["Title", "Start", "Duration"].map((label, index) => (
-            <div
-              key={label}
-              className={cn(
-                "rounded-full px-2.5 py-1.5 text-center text-[11px] font-bold",
-                index < createStep
-                  ? "bg-emerald-50 text-emerald-700"
-                  : index === createStep
-                    ? "bg-brand-gradient text-white shadow-[0_8px_18px_rgba(83,78,222,0.14)]"
-                    : "bg-white/75 text-secondary-foreground",
-              )}
-            >
-              {label}
+        <>
+          <div className="mb-3 grid grid-cols-3 gap-1.5">
+            {["Title", "Start", "Duration"].map((label, index) => (
+              <div
+                key={label}
+                className={cn(
+                  "rounded-full px-2.5 py-1.5 text-center text-[11px] font-bold",
+                  index < createStep
+                    ? "bg-emerald-50 text-emerald-700"
+                    : index === createStep
+                      ? "bg-brand-gradient text-white shadow-[0_8px_18px_rgba(83,78,222,0.14)]"
+                      : "bg-muted text-secondary-foreground",
+                )}
+              >
+                {label}
+              </div>
+            ))}
+          </div>
+          {createCopy ? (
+            <div className="mb-3 rounded-[16px] border border-border/70 bg-muted/35 px-3 py-2.5">
+              <p className="text-sm font-semibold text-foreground">{createCopy.title}</p>
+              <p className="mt-0.5 text-xs leading-5 text-secondary-foreground">{createCopy.body}</p>
+              <p className="mt-1 text-xs font-medium text-primary">{createCopy.example}</p>
             </div>
+          ) : null}
+        </>
+      ) : null}
+      {suggestions.length > 0 ? (
+        <div className="flex gap-2 overflow-x-auto pb-1 soft-scrollbar">
+          {suggestions.map((suggestion) => (
+            <button
+              key={`${suggestion.label}-${suggestion.value}`}
+              suppressHydrationWarning
+              type="button"
+              disabled={disabled}
+              onClick={() => onSelect(suggestion.value)}
+              className="shrink-0 rounded-full border border-border/70 bg-white px-3.5 py-2 text-left text-sm font-semibold text-foreground shadow-[0_8px_18px_rgba(15,23,42,0.06)] transition-all active:scale-[0.97] disabled:opacity-60"
+            >
+              <span>{suggestion.label}</span>
+              {"detail" in suggestion && suggestion.detail ? (
+                <span className="ml-1 text-xs font-medium text-secondary-foreground"> {suggestion.detail}</span>
+              ) : null}
+            </button>
           ))}
         </div>
       ) : null}
-      <div className="flex gap-2 overflow-x-auto pb-1 soft-scrollbar">
-        {suggestions.map((suggestion) => (
-          <button
-            key={`${suggestion.label}-${suggestion.value}`}
-            suppressHydrationWarning
-            type="button"
-            disabled={disabled}
-            onClick={() => onSelect(suggestion.value)}
-            className="shrink-0 rounded-full border border-white/80 bg-white/92 px-3.5 py-2 text-left text-sm font-semibold text-foreground shadow-[0_8px_18px_rgba(15,23,42,0.06)] transition-all active:scale-[0.97] disabled:opacity-60"
-          >
-            <span>{suggestion.label}</span>
-            {"detail" in suggestion && suggestion.detail ? (
-              <span className="ml-1 text-xs font-medium text-secondary-foreground"> {suggestion.detail}</span>
-            ) : null}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
@@ -561,6 +604,7 @@ export function AssistantShell({
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [handsFreeEnabled, setHandsFreeEnabled] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [isVoiceSubmitPending, setIsVoiceSubmitPending] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
@@ -670,7 +714,7 @@ export function AssistantShell({
   }
 
   function queueVoiceFollowUpListening() {
-    if (!speechRecognitionSupported || isListening || isSending || isConfirming) {
+    if (!handsFreeEnabled || !speechRecognitionSupported || isListening || isSending || isConfirming) {
       return;
     }
 
@@ -739,9 +783,32 @@ export function AssistantShell({
       if (!next) {
         window.speechSynthesis.cancel();
         setIsSpeaking(false);
-        setVoiceStatus("Voice replies muted.");
+        setHandsFreeEnabled(false);
+        setVoiceStatus("Read replies off.");
       } else {
-        setVoiceStatus("Voice replies on.");
+        setVoiceStatus("Read replies on. Browser voice quality depends on this device.");
+      }
+
+      return next;
+    });
+  }
+
+  function toggleHandsFree() {
+    if (!speechRecognitionSupported) {
+      setVoiceStatus("Hands-free voice is not supported in this browser.");
+      return;
+    }
+
+    setHandsFreeEnabled((current) => {
+      const next = !current;
+
+      if (next) {
+        voiceEnabledRef.current = true;
+        setVoiceEnabled(true);
+        setVoiceStatus("Hands-free on. Start with the mic, then answer each step by voice.");
+      } else {
+        clearAutoListenTimer();
+        setVoiceStatus("Hands-free off.");
       }
 
       return next;
@@ -1049,12 +1116,6 @@ export function AssistantShell({
         <div className="border-t border-white/70 bg-white/82 px-3 pb-[calc(var(--mobile-bottom-nav-height)+env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-10px_28px_rgba(83,78,222,0.06)] backdrop-blur-xl sm:bg-white/90 sm:px-6 lg:px-8 lg:pb-3">
           <div className="mx-auto w-full max-w-3xl">
             {/* Follow-up hint banner */}
-            {pendingFollowUp && (
-              <div className="mb-3 flex items-start gap-2.5 rounded-[14px] border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
-                <Search className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                <p>I need one more detail to draft the right change.</p>
-              </div>
-            )}
             <FollowUpGuide
               disabled={isBusy}
               followUp={pendingFollowUp}
@@ -1098,7 +1159,22 @@ export function AssistantShell({
                 onClick={toggleVoiceReplies}
               >
                 {voiceEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
-                {voiceEnabled ? "Voice on" : "Voice off"}
+                {voiceEnabled ? "Read on" : "Read off"}
+              </button>
+              <button
+                suppressHydrationWarning
+                type="button"
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-[transform,background-color,color] active:scale-[0.97]",
+                  handsFreeEnabled
+                    ? "border-primary/20 bg-primary/10 text-primary"
+                    : "border-border/80 bg-white/86 text-secondary-foreground",
+                )}
+                onClick={toggleHandsFree}
+                disabled={!speechRecognitionSupported}
+              >
+                <Mic className="h-3.5 w-3.5" />
+                Hands-free
               </button>
             </div>
 
