@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarRange, Link2, MoonStar, Repeat, Trash2, Users, Video } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarRange, Check, Link2, MoonStar, Repeat, Trash2, Users, Video } from "lucide-react";
 
 import { ParticipantPicker } from "@/components/app/participant-picker";
 import { Button } from "@/components/shared/button";
@@ -28,6 +28,12 @@ const WEEKDAY_OPTIONS = [
   { label: "Thu", value: 4 },
   { label: "Fri", value: 5 },
   { label: "Sat", value: 6 },
+];
+
+const GUIDED_STEPS = [
+  { label: "Type", title: "Pick the block" },
+  { label: "Repeat", title: "Set the rhythm" },
+  { label: "Finish", title: "Add details" },
 ];
 
 function SectionHeader({
@@ -82,7 +88,17 @@ export function TaskForm({
   const [values, setValues] = useState<TaskFormValues>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isEndTimeDirty, setIsEndTimeDirty] = useState(mode === "edit");
+  const [activeStep, setActiveStep] = useState(0);
   const canChangeMode = mode === "create";
+  const isGuidedCreate = mode === "create";
+
+  function showStep(step: number) {
+    return !isGuidedCreate || activeStep === step;
+  }
+
+  function goToStep(step: number) {
+    setActiveStep(Math.min(Math.max(step, 0), GUIDED_STEPS.length - 1));
+  }
 
   function setField<Name extends keyof TaskFormValues>(name: Name, value: TaskFormValues[Name]) {
     setValues((current) => {
@@ -198,6 +214,53 @@ export function TaskForm({
 
   return (
     <form className="mobile-task-form space-y-4" onSubmit={handleSubmit}>
+      {isGuidedCreate ? (
+        <div className="rounded-[24px] border border-primary/10 bg-[linear-gradient(135deg,rgba(24,190,239,0.12),rgba(109,40,240,0.06),rgba(255,255,255,0.92))] p-3 shadow-[0_14px_32px_rgba(83,78,222,0.08)]">
+          <div className="grid grid-cols-3 gap-2">
+            {GUIDED_STEPS.map((step, index) => {
+              const isActive = activeStep === index;
+              const isDone = activeStep > index;
+
+              return (
+                <button
+                  key={step.label}
+                  suppressHydrationWarning
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => goToStep(index)}
+                  className={cn(
+                    "group flex min-w-0 items-center gap-2 rounded-[16px] border px-2.5 py-2 text-left transition-[transform,border-color,background-color,box-shadow] active:scale-[0.98]",
+                    isActive
+                      ? "border-primary/25 bg-white text-foreground shadow-[0_10px_24px_rgba(83,78,222,0.1)]"
+                      : isDone
+                        ? "border-emerald-200/80 bg-emerald-50/75 text-emerald-700"
+                        : "border-white/70 bg-white/55 text-secondary-foreground",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                      isDone
+                        ? "bg-emerald-500 text-white"
+                        : isActive
+                          ? "bg-brand-gradient text-white"
+                          : "bg-muted text-secondary-foreground",
+                    )}
+                  >
+                    {isDone ? <Check className="h-3.5 w-3.5" /> : index + 1}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-[11px] font-bold uppercase tracking-[0.08em]">{step.label}</span>
+                    <span className="hidden truncate text-xs font-medium sm:block">{step.title}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {showStep(0) ? (
       <section className="mobile-task-form__section mobile-task-form__section--type rounded-[22px] border border-border/75 bg-muted/28 p-4 sm:p-5">
         <SectionHeader
           eyebrow="Block type"
@@ -262,7 +325,9 @@ export function TaskForm({
         </div>
         <FieldError message={errors.taskType} />
       </section>
+      ) : null}
 
+      {showStep(1) ? (
       <section className="mobile-task-form__section mobile-task-form__section--mode rounded-[22px] border border-border/75 bg-white/78 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.03)] sm:p-5">
         <SectionHeader
           eyebrow="Scheduling mode"
@@ -364,7 +429,9 @@ export function TaskForm({
           </div>
         ) : null}
       </section>
+      ) : null}
 
+      {showStep(2) ? (
       <section className="mobile-task-form__section mobile-task-form__section--details rounded-[22px] border border-border/75 bg-white/78 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.03)] sm:p-5">
         <SectionHeader
           eyebrow="Block details"
@@ -484,6 +551,7 @@ export function TaskForm({
           </div>
         ) : null}
       </section>
+      ) : null}
 
       <div className="mobile-task-form__actions flex flex-col gap-3 border-t border-border/80 pt-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -499,9 +567,22 @@ export function TaskForm({
           <Button type="button" variant="secondary" onClick={onCancel} disabled={isPending} className="min-w-[7.5rem]">
             Cancel
           </Button>
-          <Button type="submit" disabled={isPending} className="min-w-[8.5rem]">
-            {mode === "create" ? "Save block" : "Update block"}
-          </Button>
+          {isGuidedCreate && activeStep > 0 ? (
+            <Button type="button" variant="secondary" onClick={() => goToStep(activeStep - 1)} disabled={isPending} className="min-w-[7.5rem]">
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+          ) : null}
+          {isGuidedCreate && activeStep < GUIDED_STEPS.length - 1 ? (
+            <Button type="button" onClick={() => goToStep(activeStep + 1)} disabled={isPending} className="min-w-[8.5rem]">
+              Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button type="submit" disabled={isPending} className="min-w-[8.5rem]">
+              {mode === "create" ? "Save block" : "Update block"}
+            </Button>
+          )}
         </div>
       </div>
     </form>
