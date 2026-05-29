@@ -12,8 +12,6 @@ import {
   MicOff,
   Sparkles,
   Star,
-  Volume2,
-  VolumeX,
   X,
 } from "lucide-react";
 
@@ -603,8 +601,7 @@ export function AssistantShell({
   const [isConfirming, setIsConfirming] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const [handsFreeEnabled, setHandsFreeEnabled] = useState(false);
+  const [voiceSessionEnabled, setVoiceSessionEnabled] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [isVoiceSubmitPending, setIsVoiceSubmitPending] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
@@ -614,7 +611,7 @@ export function AssistantShell({
   const latestTranscriptRef = useRef("");
   const autoListenTimerRef = useRef<number | null>(null);
   const lastPromptWasVoiceRef = useRef(false);
-  const voiceEnabledRef = useRef(false);
+  const voiceSessionEnabledRef = useRef(false);
   const voiceSubmitTimerRef = useRef<number | null>(null);
   const context = useMemo(() => buildAssistantContext(snapshot), [snapshot]);
   const hasConversation = messages.some((message) => message.role === "user");
@@ -623,8 +620,8 @@ export function AssistantShell({
   const speechSynthesisSupported = useMemo(() => canSpeakReplies(), []);
 
   useEffect(() => {
-    voiceEnabledRef.current = voiceEnabled;
-  }, [voiceEnabled]);
+    voiceSessionEnabledRef.current = voiceSessionEnabled;
+  }, [voiceSessionEnabled]);
 
   useEffect(() => {
     const container = chatScrollRef.current;
@@ -706,15 +703,15 @@ export function AssistantShell({
     voiceSubmitTimerRef.current = window.setTimeout(() => {
       voiceSubmitTimerRef.current = null;
       setIsVoiceSubmitPending(false);
-      voiceEnabledRef.current = true;
-      setVoiceEnabled(true);
+      voiceSessionEnabledRef.current = true;
+      setVoiceSessionEnabled(true);
       lastPromptWasVoiceRef.current = true;
       void submitPrompt(transcript);
     }, VOICE_AUTO_SUBMIT_DELAY_MS);
   }
 
   function queueVoiceFollowUpListening() {
-    if (!handsFreeEnabled || !speechRecognitionSupported || isListening || isSending || isConfirming) {
+    if (!voiceSessionEnabledRef.current || !speechRecognitionSupported || isListening || isSending || isConfirming) {
       return;
     }
 
@@ -727,7 +724,7 @@ export function AssistantShell({
   }
 
   function speakAssistantReply(text: string, onDone?: () => void) {
-    if (!voiceEnabledRef.current || !speechSynthesisSupported) {
+    if (!voiceSessionEnabledRef.current || !speechSynthesisSupported) {
       onDone?.();
       return;
     }
@@ -770,49 +767,42 @@ export function AssistantShell({
     window.speechSynthesis.speak(utterance);
   }
 
-  function toggleVoiceReplies() {
-    if (!speechSynthesisSupported) {
-      setVoiceStatus("Spoken replies are not supported in this browser.");
-      return;
-    }
-
-    setVoiceEnabled((current) => {
-      const next = !current;
-      voiceEnabledRef.current = next;
-
-      if (!next) {
-        window.speechSynthesis.cancel();
-        setIsSpeaking(false);
-        setHandsFreeEnabled(false);
-        setVoiceStatus("Read replies off.");
-      } else {
-        setVoiceStatus("Read replies on. Browser voice quality depends on this device.");
-      }
-
-      return next;
-    });
+  function stopVoiceSession() {
+    clearAutoListenTimer();
+    clearVoiceSubmitTimer();
+    recognitionRef.current?.stop();
+    window.speechSynthesis?.cancel();
+    voiceSessionEnabledRef.current = false;
+    lastPromptWasVoiceRef.current = false;
+    setVoiceSessionEnabled(false);
+    setIsListening(false);
+    setIsSpeaking(false);
+    setVoiceStatus("Voice session ended.");
   }
 
-  function toggleHandsFree() {
+  function startVoiceSession() {
     if (!speechRecognitionSupported) {
-      setVoiceStatus("Hands-free voice is not supported in this browser.");
+      setVoiceStatus("Voice input is not supported in this browser. Try Chrome on desktop or Android.");
       return;
     }
 
-    setHandsFreeEnabled((current) => {
-      const next = !current;
+    voiceSessionEnabledRef.current = true;
+    setVoiceSessionEnabled(true);
+    setVoiceStatus(
+      speechSynthesisSupported
+        ? "Voice session on. Speak naturally."
+        : "Voice session on. I can listen here, but spoken replies are not supported in this browser.",
+    );
+    void startListening();
+  }
 
-      if (next) {
-        voiceEnabledRef.current = true;
-        setVoiceEnabled(true);
-        setVoiceStatus("Hands-free on. Start with the mic, then answer each step by voice.");
-      } else {
-        clearAutoListenTimer();
-        setVoiceStatus("Hands-free off.");
-      }
+  function toggleVoiceSession() {
+    if (voiceSessionEnabled || isListening || isSpeaking || isVoiceSubmitPending) {
+      stopVoiceSession();
+      return;
+    }
 
-      return next;
-    });
+    startVoiceSession();
   }
 
   async function startListening() {
@@ -881,6 +871,8 @@ export function AssistantShell({
     } catch {
       recognitionRef.current = null;
       setIsListening(false);
+      voiceSessionEnabledRef.current = false;
+      setVoiceSessionEnabled(false);
       setVoiceStatus("Mic could not start. Tap the mic again, or use your keyboard dictation.");
     }
   }
@@ -934,6 +926,8 @@ export function AssistantShell({
       }
     } catch (error) {
       const message = getErrorMessage(error);
+      voiceSessionEnabledRef.current = false;
+      setVoiceSessionEnabled(false);
       setMessages((current) => [
         ...current,
         createMessage("assistant", `Something went wrong: ${message}`, { mode: "general" }),
@@ -1147,35 +1141,6 @@ export function AssistantShell({
                         : voiceStatus ?? "Voice input and spoken replies are free browser features."}
                 </p>
               </div>
-              <button
-                suppressHydrationWarning
-                type="button"
-                className={cn(
-                  "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-[transform,background-color,color] active:scale-[0.97]",
-                  voiceEnabled
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                    : "border-border/80 bg-white/86 text-secondary-foreground",
-                )}
-                onClick={toggleVoiceReplies}
-              >
-                {voiceEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
-                {voiceEnabled ? "Read on" : "Read off"}
-              </button>
-              <button
-                suppressHydrationWarning
-                type="button"
-                className={cn(
-                  "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-[transform,background-color,color] active:scale-[0.97]",
-                  handsFreeEnabled
-                    ? "border-primary/20 bg-primary/10 text-primary"
-                    : "border-border/80 bg-white/86 text-secondary-foreground",
-                )}
-                onClick={toggleHandsFree}
-                disabled={!speechRecognitionSupported}
-              >
-                <Mic className="h-3.5 w-3.5" />
-                Hands-free
-              </button>
             </div>
 
             {/* Input box */}
@@ -1203,17 +1168,32 @@ export function AssistantShell({
               <button
                 suppressHydrationWarning
                 type="button"
-                aria-label={isListening ? "Stop listening" : "Start voice input"}
+                aria-label={voiceSessionEnabled || isListening || isSpeaking ? "Stop voice session" : "Start voice session"}
                 disabled={isBusy || !speechRecognitionSupported}
-                onClick={() => void startListening()}
+                onClick={toggleVoiceSession}
                 className={cn(
-                  "mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-45",
+                  "mb-0.5 flex h-10 min-w-10 shrink-0 items-center justify-center gap-2 rounded-full px-3 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-45",
                   isListening
                     ? "bg-red-500 text-white shadow-[0_12px_24px_rgba(239,68,68,0.22)]"
-                    : "border border-border/80 bg-white text-secondary-foreground shadow-[0_8px_18px_rgba(15,23,42,0.06)] hover:text-foreground",
+                    : voiceSessionEnabled || isSpeaking || isVoiceSubmitPending
+                      ? "bg-brand-gradient text-white shadow-[0_12px_24px_rgba(83,78,222,0.22)]"
+                      : "border border-border/80 bg-white text-secondary-foreground shadow-[0_8px_18px_rgba(15,23,42,0.06)] hover:text-foreground",
                 )}
               >
-                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                {isListening || voiceSessionEnabled || isSpeaking || isVoiceSubmitPending ? (
+                  <MicOff className="h-4 w-4" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+                <span className="hidden text-xs font-semibold sm:inline">
+                  {isListening
+                    ? "Listening"
+                    : isSpeaking
+                      ? "Speaking"
+                      : voiceSessionEnabled || isVoiceSubmitPending
+                        ? "Voice"
+                        : "Talk"}
+                </span>
               </button>
               <button
                 suppressHydrationWarning
