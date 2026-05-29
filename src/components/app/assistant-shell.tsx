@@ -8,9 +8,13 @@ import {
   ExternalLink,
   ListTodo,
   Loader2,
+  Mic,
+  MicOff,
   Search,
   Sparkles,
   Star,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
 
@@ -43,6 +47,34 @@ interface ChatMessage {
   role: "assistant" | "user";
   sources: AssistantAnswerSource[];
 }
+
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  item(index: number): {
+    transcript: string;
+  };
+}
+
+interface SpeechRecognitionEventLike extends Event {
+  resultIndex: number;
+  results: {
+    length: number;
+    item(index: number): SpeechRecognitionResultLike;
+  };
+}
+
+interface SpeechRecognitionLike extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onend: (() => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 const STARTER_PROMPTS = [
   { icon: ListTodo, text: "Move all pending tasks to tomorrow", color: "from-emerald-500 to-teal-500" },
@@ -148,6 +180,23 @@ function getModeColor(message: ChatMessage) {
   if (message.mode === "web" || message.sources.length > 0) return "bg-sky-500/15 text-sky-600 border-sky-200";
   if (message.mode === "general") return "bg-violet-500/15 text-violet-600 border-violet-200";
   return "bg-blue-500/15 text-blue-600 border-blue-200";
+}
+
+function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const speechWindow = window as Window & {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  };
+
+  return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null;
+}
+
+function canSpeakReplies() {
+  return typeof window !== "undefined" && "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
 }
 
 function SourceList({ sources }: { sources: AssistantAnswerSource[] }) {
@@ -357,11 +406,19 @@ export function AssistantShell({
     messageId: string;
   } | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const finalTranscriptRef = useRef("");
   const context = useMemo(() => buildAssistantContext(snapshot), [snapshot]);
   const hasConversation = messages.some((message) => message.role === "user");
   const visibleMessages = hasConversation ? messages.slice(1) : [];
+  const speechRecognitionSupported = useMemo(() => getSpeechRecognitionConstructor() !== null, []);
+  const speechSynthesisSupported = useMemo(() => canSpeakReplies(), []);
 
   useEffect(() => {
     const container = chatScrollRef.current;
@@ -390,6 +447,125 @@ export function AssistantShell({
     composer.style.height = `${nextHeight}px`;
     composer.style.overflowY = composer.scrollHeight > maxHeight ? "auto" : "hidden";
   }, [draft]);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
+
+  function speakAssistantReply(text: string) {
+    if (!voiceEnabled || !speechSynthesisSupported) {
+      return;
+    }
+
+    const cleanText = text
+      .replace(/\s+/g, " ")
+      .replace(/https?:\/\/\S+/g, "link")
+      .trim();
+
+    if (!cleanText) {
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice =
+      voices.find((voice) => voice.lang.toLowerCase().startsWith("en") && /female|samantha|google|natural/i.test(voice.name)) ??
+      voices.find((voice) => voice.lang.toLowerCase().startsWith("en")) ??
+      null;
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.rate = 0.96;
+    utterance.pitch = 1.03;
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function toggleVoiceReplies() {
+    if (!speechSynthesisSupported) {
+      setVoiceStatus("Spoken replies are not supported in this browser.");
+      return;
+    }
+
+    setVoiceEnabled((current) => {
+      const next = !current;
+
+      if (!next) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+        setVoiceStatus("Voice replies muted.");
+      } else {
+        setVoiceStatus("Voice replies on.");
+      }
+
+      return next;
+    });
+  }
+
+  function startListening() {
+    const Recognition = getSpeechRecognitionConstructor();
+
+    if (!Recognition) {
+      setVoiceStatus("Voice input is not supported in this browser. Try Chrome on desktop or Android.");
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    window.speechSynthesis?.cancel();
+    finalTranscriptRef.current = "";
+
+    const recognition = new Recognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    recognition.onresult = (event) => {
+      let interimTranscript = "";
+
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results.item(index);
+        const transcript = result.item(0).transcript;
+
+        if (result.isFinal) {
+          finalTranscriptRef.current = `${finalTranscriptRef.current} ${transcript}`.trim();
+        } else {
+          interimTranscript = `${interimTranscript} ${transcript}`.trim();
+        }
+      }
+
+      setDraft((finalTranscriptRef.current || interimTranscript).trim());
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+      setVoiceStatus("I could not hear that clearly. Try again.");
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      const finalTranscript = finalTranscriptRef.current.trim();
+
+      if (finalTranscript) {
+        setVoiceEnabled(true);
+        void submitPrompt(finalTranscript);
+      }
+    };
+
+    recognitionRef.current = recognition;
+    setVoiceStatus("Listening...");
+    setIsListening(true);
+    recognition.start();
+  }
 
   async function submitPrompt(prompt: string) {
     const nextPrompt = prompt.trim();
@@ -421,6 +597,7 @@ export function AssistantShell({
       });
 
       setMessages((current) => [...current, assistantMessage]);
+      speakAssistantReply(response.reply);
 
       if (action) {
         setPendingFollowUp(null);
@@ -435,6 +612,7 @@ export function AssistantShell({
         ...current,
         createMessage("assistant", `Something went wrong: ${message}`, { mode: "general" }),
       ]);
+      speakAssistantReply(`Something went wrong: ${message}`);
       setPendingAction(null);
       onNotice({ message, type: "error" });
     } finally {
@@ -454,6 +632,7 @@ export function AssistantShell({
         ...current,
         createMessage("assistant", result.message, { mode: "planner" }),
       ]);
+      speakAssistantReply(result.message);
       await onRefreshContext(result.recommendedDate);
       onNotice({ message: result.message, type: "success" });
     } catch (error) {
@@ -462,6 +641,7 @@ export function AssistantShell({
         ...current,
         createMessage("assistant", `Couldn't apply that change: ${message}`, { mode: "planner" }),
       ]);
+      speakAssistantReply(`I couldn't apply that change. ${message}`);
       onNotice({ message, type: "error" });
     } finally {
       setIsConfirming(false);
@@ -475,6 +655,7 @@ export function AssistantShell({
       ...current,
       createMessage("assistant", "Got it, I won't apply that change.", { mode: "planner" }),
     ]);
+    speakAssistantReply("Got it, I won't apply that change.");
   }
 
   function handleComposerKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -616,6 +797,39 @@ export function AssistantShell({
               </div>
             )}
 
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "inline-flex h-2 w-2 rounded-full",
+                    isListening ? "animate-pulse bg-red-500" : isSpeaking ? "animate-pulse bg-emerald-500" : "bg-border",
+                  )}
+                  aria-hidden
+                />
+                <p className="text-[11px] font-medium text-secondary-foreground/70">
+                  {isListening
+                    ? "Listening..."
+                    : isSpeaking
+                      ? "Speaking..."
+                      : voiceStatus ?? "Voice input and spoken replies are free browser features."}
+                </p>
+              </div>
+              <button
+                suppressHydrationWarning
+                type="button"
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-[transform,background-color,color] active:scale-[0.97]",
+                  voiceEnabled
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-border/80 bg-white/86 text-secondary-foreground",
+                )}
+                onClick={toggleVoiceReplies}
+              >
+                {voiceEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+                {voiceEnabled ? "Voice on" : "Voice off"}
+              </button>
+            </div>
+
             {/* Input box */}
             <div className={cn(
               "flex items-end gap-2.5 rounded-[24px] border bg-white/94 px-3.5 py-2.5 shadow-[0_12px_28px_rgba(83,78,222,0.09)] backdrop-blur-xl transition-all",
@@ -634,6 +848,22 @@ export function AssistantShell({
                 className="max-h-40 min-h-0 flex-1 resize-none border-0 bg-transparent py-1.5 text-[16px] leading-6 text-foreground outline-none placeholder:text-secondary-foreground/50 disabled:opacity-60"
               />
               <button
+                suppressHydrationWarning
+                type="button"
+                aria-label={isListening ? "Stop listening" : "Start voice input"}
+                disabled={isBusy || !speechRecognitionSupported}
+                onClick={startListening}
+                className={cn(
+                  "mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-45",
+                  isListening
+                    ? "bg-red-500 text-white shadow-[0_12px_24px_rgba(239,68,68,0.22)]"
+                    : "border border-border/80 bg-white text-secondary-foreground shadow-[0_8px_18px_rgba(15,23,42,0.06)] hover:text-foreground",
+                )}
+              >
+                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
+              <button
+                suppressHydrationWarning
                 type="button"
                 aria-label="Send message"
                 disabled={!draft.trim() || isBusy}
