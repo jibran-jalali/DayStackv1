@@ -16,8 +16,8 @@ import {
 import { fetchLeaderboard } from "@/lib/data/leaderboard";
 import { assertAcceptedFriendParticipants } from "@/lib/data/friends";
 import {
+  queueSyncTaskToGoogleCalendar,
   safeDeleteGoogleCalendarEventForTask,
-  safeSyncTaskToGoogleCalendar,
 } from "@/lib/data/google-calendar";
 import { expireTaskMentionNotifications, syncTaskMentionNotificationsForTask } from "@/lib/data/notifications";
 import { syncTaskRemindersForTask } from "@/lib/data/reminders";
@@ -492,9 +492,9 @@ async function createRecurringOccurrenceTask(
     createdTask.id,
     recurringRule.task_type === "meeting" ? participantIds : [],
   );
+  queueSyncTaskToGoogleCalendar(userId, createdTask);
   await Promise.all([
     syncTaskMentionNotificationsForTask(userId, createdTask.id),
-    safeSyncTaskToGoogleCalendar(userId, createdTask),
     syncTaskRemindersForTask(userId, createdTask),
   ]);
 
@@ -641,10 +641,8 @@ async function syncAcceptedCopyDependencies(updatedAcceptedCopies: AcceptedCopyU
 
   await Promise.all(
     updatedAcceptedCopies.map(async ({ previousDate, task }) => {
-      await Promise.all([
-        safeSyncTaskToGoogleCalendar(task.user_id, task),
-        syncTaskRemindersForTask(task.user_id, task),
-      ]);
+      queueSyncTaskToGoogleCalendar(task.user_id, task);
+      await syncTaskRemindersForTask(task.user_id, task);
       addSummaryTarget(task.user_id, previousDate);
       addSummaryTarget(task.user_id, task.task_date);
     }),
@@ -1174,9 +1172,9 @@ export async function createTask(
     .returning();
 
   await replaceTaskParticipants(db, createdTask.id, participantIds);
+  queueSyncTaskToGoogleCalendar(userId, createdTask);
   await Promise.all([
     syncTaskMentionNotificationsForTask(userId, createdTask.id),
-    safeSyncTaskToGoogleCalendar(userId, createdTask),
     syncTaskRemindersForTask(userId, createdTask),
     syncDailySummaryForDate(userId, values.taskDate),
   ]);
@@ -1293,9 +1291,9 @@ export async function updateTask(
   }
 
   await replaceTaskParticipants(db, taskId, participantIds);
+  queueSyncTaskToGoogleCalendar(userId, updatedTask);
   await Promise.all([
     syncTaskMentionNotificationsForTask(userId, updatedTask.id),
-    safeSyncTaskToGoogleCalendar(userId, updatedTask),
     syncTaskRemindersForTask(userId, updatedTask),
   ]);
   await syncAcceptedCopyDependencies(updatedAcceptedCopies);
@@ -1505,8 +1503,8 @@ export async function toggleTaskStatus(
     throw new Error("Task not found.");
   }
 
+  queueSyncTaskToGoogleCalendar(userId, nextTask);
   await Promise.all([
-    safeSyncTaskToGoogleCalendar(userId, nextTask),
     syncTaskRemindersForTask(userId, nextTask),
     syncDailySummaryForDate(userId, nextTask.task_date),
   ]);

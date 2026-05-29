@@ -3,6 +3,7 @@ import "server-only";
 import crypto from "node:crypto";
 
 import { and, eq } from "drizzle-orm";
+import { after } from "next/server";
 
 import { getDb } from "@/db/client";
 import { google_calendar_connections, task_calendar_events } from "@/db/schema";
@@ -306,9 +307,16 @@ async function fetchTaskCalendarEvent(userId: string, taskId: string) {
 
 function buildGoogleCalendarEvent(task: TaskRecord) {
   const timeZone = getAppTimeZone();
+  const meetingLink =
+    task.task_type === "meeting" && task.meeting_link?.trim()
+      ? task.meeting_link.trim()
+      : null;
+  const description = meetingLink
+    ? `Synced from DayStack.\n\nMeeting link: ${meetingLink}`
+    : "Synced from DayStack.";
 
   return {
-    description: "Synced from DayStack.",
+    description,
     end: {
       dateTime: getTaskDateTime(task.task_date, task.end_time),
       timeZone,
@@ -318,7 +326,7 @@ function buildGoogleCalendarEvent(task: TaskRecord) {
         daystackTaskId: task.id,
       },
     },
-    location: task.task_type === "meeting" && task.meeting_link ? task.meeting_link : undefined,
+    location: meetingLink ?? undefined,
     source: {
       title: "DayStack",
       url: new URL(`/app?date=${task.task_date}`, getAppBaseUrl()).toString(),
@@ -329,6 +337,20 @@ function buildGoogleCalendarEvent(task: TaskRecord) {
     },
     summary: task.title,
   };
+}
+
+function runDeferredCalendarTask(task: () => Promise<void>) {
+  const runner = () => {
+    void task().catch((error) => {
+      console.warn("[DayStack] Google Calendar background sync failed:", error);
+    });
+  };
+
+  try {
+    after(runner);
+  } catch {
+    setTimeout(runner, 0);
+  }
 }
 
 async function googleCalendarFetch(
@@ -463,4 +485,12 @@ export async function safeDeleteGoogleCalendarEventForTask(userId: string, taskI
   } catch (error) {
     console.warn("[DayStack] Google Calendar event deletion failed:", error);
   }
+}
+
+export function queueSyncTaskToGoogleCalendar(userId: string, task: TaskRecord) {
+  if (!isGoogleCalendarConfigured()) {
+    return;
+  }
+
+  runDeferredCalendarTask(() => syncTaskToGoogleCalendar(userId, task));
 }
