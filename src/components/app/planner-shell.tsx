@@ -1338,7 +1338,7 @@ export function PlannerShell({
               )}
             >
           {workspaceTab === "plan" ? (
-            <MobileTabPanel panelKey={`plan-${snapshot.taskDate}`}>
+            <MobileTabPanel panelKey="plan">
               <div className="mobile-plan-stack">
               <MobileDayStrip
                 isPending={isSurfaceRefreshing}
