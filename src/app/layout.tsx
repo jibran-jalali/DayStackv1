@@ -78,6 +78,9 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  verification: {
+    google: "1eDaP_Mn3Rh-Ifk4JgD900ZlRaUjcReMtp3vj5qTAMM",
+  },
 };
 
 export default function RootLayout({
