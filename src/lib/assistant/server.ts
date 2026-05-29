@@ -453,7 +453,23 @@ function extractRenameTitle(message: string) {
     /\b(?:rename|call it|change (?:the )?title to|update (?:the )?title to)\s+["“']?(.+?)["”']?\s*$/i,
   );
 
-  return match?.[1] ? sanitizeTaskTitle(match[1]) : null;
+  if (match?.[1]) {
+    return sanitizeTaskTitle(match[1]);
+  }
+
+  const naturalMatch = message.match(/\b(?:rename|change|update|edit)\b.+?\b(?:to|as)\s+["']?(.+?)["']?\s*$/i);
+  const nextTitle = naturalMatch?.[1] ? trimTrailingPunctuation(naturalMatch[1]) : null;
+
+  if (
+    !nextTitle ||
+    extractTimeRange(nextTitle) ||
+    extractStandaloneTime(`at ${nextTitle}`) ||
+    /\b(today|tomorrow|tonight|day after tomorrow|next|this|meeting|blocked|generic|normal)\b/i.test(nextTitle)
+  ) {
+    return null;
+  }
+
+  return sanitizeTaskTitle(nextTitle);
 }
 
 function extractTaskTitle(message: string) {
@@ -987,11 +1003,16 @@ function looksLikeToggleRequest(message: string) {
 }
 
 function looksLikeRescheduleRequest(message: string) {
-  return /\b(move|reschedule|shift|push|retime)\b/i.test(message) || /\b(minutes?|hours?)\s*(later|earlier)\b/i.test(message);
+  return (
+    /\b(move|reschedule|shift|push|retime)\b/i.test(message) ||
+    /\b(minutes?|hours?)\s*(later|earlier)\b/i.test(message) ||
+    /\bchange\b.+\b(?:to|at)\s+\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?\b/i.test(message) ||
+    /\bchange\b.+\b(?:today|tomorrow|tonight|day after tomorrow|next|this)\b/i.test(message)
+  );
 }
 
 function looksLikeUpdateRequest(message: string) {
-  return /\b(rename|call it|change (?:the )?title|update (?:the )?title)\b/i.test(message);
+  return /\b(rename|call it|change|edit|modify|update)\b/i.test(message);
 }
 
 function looksLikeCreateRequest(message: string) {
@@ -2297,6 +2318,11 @@ export async function generateAssistantResponse(
   user: { email: string; full_name: string | null | undefined },
 ): Promise<AssistantModelResponse> {
   const displayName = deriveDisplayName(user.full_name, user.email);
+  const routedResponse = routeAssistantMessage(input);
+
+  if (routedResponse) {
+    return routedResponse;
+  }
 
   try {
     const providerResponse =
@@ -2325,12 +2351,6 @@ export async function generateAssistantResponse(
     // Fall through to the deterministic local fallback below.
   }
 
-  const routedResponse = routeAssistantMessage(input);
-
-  if (routedResponse) {
-    return routedResponse;
-  }
-
   if (!hasConfiguredAssistantProvider()) {
     return createAnswerOnly(
       "Planner actions still work, but broad assistant answers need AI provider configuration. Add OPENAI_API_KEY or GROQ_API_KEY to enable smarter freeform chat.",
@@ -2341,7 +2361,7 @@ export async function generateAssistantResponse(
   }
 
   return createAnswerOnly(
-    "I hit a model problem, so I can still help with DayStack planning basics, summaries, and visible task changes. Try the request again, or rephrase it in plain language and I’ll keep working through it.",
+    "I can still help with DayStack planning. Try a direct command like \"add study from 6 to 7\", \"move gym to 5 PM\", \"rename the first block to review notes\", or paste a task list and I will turn it into blocks.",
     {
       answerMode: "general",
     },

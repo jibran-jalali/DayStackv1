@@ -77,9 +77,10 @@ interface SpeechRecognitionLike extends EventTarget {
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 const STARTER_PROMPTS = [
+  { icon: Sparkles, text: "Add study from 6 to 7 PM", color: "from-violet-500 to-fuchsia-500" },
   { icon: ListTodo, text: "Move all pending tasks to tomorrow", color: "from-emerald-500 to-teal-500" },
   { icon: Star, text: "Mark all pending tasks complete", color: "from-amber-500 to-orange-500" },
-  { icon: Clock3, text: "Extend pending blocks by 30 minutes", color: "from-blue-500 to-cyan-500" },
+  { icon: Clock3, text: "Plan my day: study, gym, review notes", color: "from-blue-500 to-cyan-500" },
 ] as const;
 
 const CAPABILITY_CHIPS = [
@@ -381,6 +382,96 @@ function ActionCard({
             Cancel
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function getFollowUpSuggestions(followUp: AssistantFollowUpContext | null) {
+  if (!followUp) {
+    return [];
+  }
+
+  if (followUp.kind === "task_selection") {
+    return followUp.candidates.slice(0, 4).map((candidate, index) => ({
+      label: `${index + 1}`,
+      value: `${index + 1}`,
+      detail: candidate.title,
+    }));
+  }
+
+  if (followUp.missingField === "title") {
+    return [
+      { label: "Study", value: "Study session" },
+      { label: "Workout", value: "Workout" },
+      { label: "Review", value: "Review notes" },
+    ];
+  }
+
+  if (followUp.missingField === "startTime") {
+    return [
+      { label: "9 AM", value: "at 9 AM" },
+      { label: "2 PM", value: "at 2 PM" },
+      { label: "6 PM", value: "at 6 PM" },
+    ];
+  }
+
+  if (followUp.missingField === "endTime") {
+    return [
+      { label: "30 min", value: "for 30 min" },
+      { label: "1 hour", value: "for 1 hour" },
+      { label: "90 min", value: "for 90 min" },
+    ];
+  }
+
+  if (followUp.missingField === "weekdays") {
+    return [
+      { label: "Weekdays", value: "weekdays" },
+      { label: "MWF", value: "Monday Wednesday Friday" },
+      { label: "Every day", value: "every day" },
+    ];
+  }
+
+  return [];
+}
+
+function FollowUpGuide({
+  disabled,
+  followUp,
+  onSelect,
+}: {
+  disabled: boolean;
+  followUp: AssistantFollowUpContext | null;
+  onSelect: (value: string) => void;
+}) {
+  const suggestions = getFollowUpSuggestions(followUp);
+
+  if (suggestions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mb-3 rounded-[18px] border border-primary/10 bg-[linear-gradient(135deg,rgba(24,190,239,0.1),rgba(109,40,240,0.06),rgba(255,255,255,0.94))] p-3 shadow-[0_12px_26px_rgba(83,78,222,0.07)]">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-secondary-foreground/65">Quick reply</p>
+        <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-primary">Guided</span>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1 soft-scrollbar">
+        {suggestions.map((suggestion) => (
+          <button
+            key={`${suggestion.label}-${suggestion.value}`}
+            suppressHydrationWarning
+            type="button"
+            disabled={disabled}
+            onClick={() => onSelect(suggestion.value)}
+            className="shrink-0 rounded-full border border-white/80 bg-white/92 px-3.5 py-2 text-left text-sm font-semibold text-foreground shadow-[0_8px_18px_rgba(15,23,42,0.06)] transition-all active:scale-[0.97] disabled:opacity-60"
+          >
+            <span>{suggestion.label}</span>
+            {"detail" in suggestion && suggestion.detail ? (
+              <span className="ml-1 text-xs font-medium text-secondary-foreground"> {suggestion.detail}</span>
+            ) : null}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -874,6 +965,11 @@ export function AssistantShell({
                 <p>I need one more detail to draft the right change.</p>
               </div>
             )}
+            <FollowUpGuide
+              disabled={isBusy}
+              followUp={pendingFollowUp}
+              onSelect={(value) => void submitPrompt(value)}
+            />
 
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
               <div className="flex items-center gap-2">
