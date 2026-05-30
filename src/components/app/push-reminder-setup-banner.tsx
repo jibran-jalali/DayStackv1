@@ -51,9 +51,15 @@ export function PushReminderSetupBanner({
   const [canEnablePush, setCanEnablePush] = useState(false);
 
   useEffect(() => {
-    setIsDismissed(wasDismissedRecently());
-    setNeedsHomeScreen(needsIosHomeScreenInstall());
-    setCanEnablePush(getPushSupportState() === "configured");
+    const refreshTimer = window.setTimeout(() => {
+      setIsDismissed(wasDismissedRecently());
+      setNeedsHomeScreen(needsIosHomeScreenInstall());
+      setCanEnablePush(getPushSupportState() === "configured");
+    }, 0);
+
+    return () => {
+      window.clearTimeout(refreshTimer);
+    };
   }, [pushEnabled]);
 
   if (pushEnabled || isDismissed) {
@@ -68,7 +74,7 @@ export function PushReminderSetupBanner({
   const title = urgent ? "Turn on 5-minute reminders" : "Get a push before every block";
   const description = needsHomeScreen
     ? isIosDevice()
-      ? "On iPhone: Share → Add to Home Screen, open DayStack from your home screen, then enable reminders below."
+      ? "On iPhone: Share > Add to Home Screen, open DayStack from your home screen, then enable reminders below."
       : "Install DayStack to your home screen, then enable reminders."
     : "You will get one alert 5 minutes before each task, even when the app is closed. Overlapping or back-to-back tasks each get their own notification.";
 

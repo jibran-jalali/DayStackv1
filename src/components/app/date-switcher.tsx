@@ -4,7 +4,7 @@ import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/shared/button";
 import { StatusChip } from "@/components/shared/status-chip";
-import { getRelativeDateLabel, shiftDate } from "@/lib/daystack";
+import { shiftDate } from "@/lib/daystack";
 import type { PlannerDateMode } from "@/types/daystack";
 
 interface DateSwitcherProps {
@@ -17,15 +17,12 @@ interface DateSwitcherProps {
 }
 
 export function DateSwitcher({
-  dateLabel,
   dateMode,
   isPending,
   onSelectDate,
   selectedDate,
   todayDate,
 }: DateSwitcherProps) {
-  const relativeLabel = getRelativeDateLabel(selectedDate, new Date(`${todayDate}T00:00:00`));
-
   return (
     <div className="rounded-[22px] border border-border/80 bg-white/82 p-3 shadow-[0_14px_30px_rgba(15,23,42,0.04)]">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

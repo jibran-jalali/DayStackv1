@@ -29,7 +29,6 @@ import { WorkspaceFriendsContent } from "@/components/app/workspace-friends-cont
 import type { PlannerViewMode } from "@/components/app/view-toggle";
 import { WorkspaceNotificationsContent } from "@/components/app/workspace-notifications-content";
 import { WorkspaceSettingsContent } from "@/components/app/workspace-settings-content";
-import { Button } from "@/components/shared/button";
 import {
   createTask,
   deleteRecurringSeries,
@@ -1035,9 +1034,6 @@ export function PlannerShell({
     () => snapshot.tasks.filter((task) => isBlockedTask(task)).length,
     [snapshot.tasks],
   );
-  const handleCreateTaskFromDashboard = useCallback(() => {
-    handleCreateTask();
-  }, [handleCreateTask]);
   const resolveTaskVisualState = useCallback(
     (task: PlannerTask) => getTaskVisualState(task, now, snapshot.taskDate),
     [now, snapshot.taskDate],

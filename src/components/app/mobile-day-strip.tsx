@@ -44,9 +44,16 @@ export function MobileDayStrip({
 
   useEffect(() => {
     selectedDateRef.current = selectedDate;
-    setVisibleSelectedDate(selectedDate);
-    setSlotVisualDate(selectedDate);
-    setDayWindowCenter(selectedDate);
+
+    const syncTimer = window.setTimeout(() => {
+      setVisibleSelectedDate(selectedDate);
+      setSlotVisualDate(selectedDate);
+      setDayWindowCenter(selectedDate);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(syncTimer);
+    };
   }, [selectedDate]);
 
   useLayoutEffect(() => {
@@ -89,20 +96,6 @@ export function MobileDayStrip({
       }
     };
   }, []);
-
-  useEffect(() => {
-    const strip = stripRef.current;
-
-    if (!strip) {
-      return;
-    }
-
-    strip.addEventListener("scroll", handleStripScroll, { passive: true });
-
-    return () => {
-      strip.removeEventListener("scroll", handleStripScroll);
-    };
-  });
 
   function selectCenteredDay() {
     const strip = stripRef.current;

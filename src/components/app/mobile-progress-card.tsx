@@ -75,7 +75,13 @@ export function MobileProgressCard({
         window.navigator.vibrate?.([10, 22, 10]);
       }
 
-      setCompletingTaskId(null);
+      const resetTimer = window.setTimeout(() => {
+        setCompletingTaskId(null);
+      }, 0);
+
+      return () => {
+        window.clearTimeout(resetTimer);
+      };
     }
   }, [completingTaskId, nextTask]);
 
