@@ -4,9 +4,26 @@ import { NextResponse } from "next/server";
 
 import { getDb } from "@/db/client";
 import { user_notification_preferences, users } from "@/db/schema";
+import { rateLimitRequest, requireSameOriginRequest } from "@/lib/security";
 import { signupSchema } from "@/types/daystack";
 
 export async function POST(request: Request) {
+  const originError = requireSameOriginRequest(request);
+
+  if (originError) {
+    return originError;
+  }
+
+  const rateLimitError = rateLimitRequest(request, {
+    keyPrefix: "signup",
+    limit: 8,
+    windowMs: 15 * 60 * 1000,
+  });
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const db = getDb();
 
   if (!db) {

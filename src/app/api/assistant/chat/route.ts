@@ -2,11 +2,28 @@ import { NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth";
 import { generateAssistantResponse } from "@/lib/assistant/server";
+import { rateLimitRequest, requireSameOriginRequest } from "@/lib/security";
 import { assistantChatRequestSchema } from "@/types/assistant";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const originError = requireSameOriginRequest(request);
+
+  if (originError) {
+    return originError;
+  }
+
+  const rateLimitError = rateLimitRequest(request, {
+    keyPrefix: "assistant-chat",
+    limit: 60,
+    windowMs: 10 * 60 * 1000,
+  });
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

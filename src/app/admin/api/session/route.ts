@@ -6,8 +6,25 @@ import {
   setAdminSessionCookie,
   validateAdminCredentials,
 } from "@/lib/admin/auth";
+import { rateLimitRequest, requireSameOriginRequest } from "@/lib/security";
 
 export async function POST(request: Request) {
+  const originError = requireSameOriginRequest(request);
+
+  if (originError) {
+    return originError;
+  }
+
+  const rateLimitError = rateLimitRequest(request, {
+    keyPrefix: "admin-login",
+    limit: 6,
+    windowMs: 15 * 60 * 1000,
+  });
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   if (!isAdminConfigured()) {
     return NextResponse.json(
       {
@@ -45,7 +62,13 @@ export async function POST(request: Request) {
   return response;
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
+  const originError = requireSameOriginRequest(request);
+
+  if (originError) {
+    return originError;
+  }
+
   const response = NextResponse.json({
     ok: true,
     redirectTo: "/admin/login",
