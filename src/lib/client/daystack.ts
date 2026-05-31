@@ -41,6 +41,21 @@ export async function createTask(values: TaskFormValues): Promise<TaskRecord> {
   return payload.task;
 }
 
+export async function syncGoogleCalendarToDayStack(taskDate: string): Promise<{ imported: number; skipped: number }> {
+  return requestJson<{ imported: number; skipped: number }>(
+    "/api/calendar/google/sync",
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ taskDate }),
+    },
+    "Google Calendar sync failed.",
+  );
+}
+
 export async function updateTask(
   taskId: string,
   values: TaskFormValues,

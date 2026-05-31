@@ -35,6 +35,7 @@ import {
   deleteTask,
   fetchDashboardSnapshot,
   rescheduleTask,
+  syncGoogleCalendarToDayStack,
   toggleTaskStatus,
   updateRecurringSeries,
   updateTask,
@@ -278,6 +279,7 @@ export function PlannerShell({
   const initialNow = useMemo(() => new Date(initialNowIso), [initialNowIso]);
   const snapshotCacheRef = useRef<Map<string, DashboardSnapshot>>(new Map([[initialSnapshot.taskDate, initialSnapshot]]));
   const dateRequestIdRef = useRef(0);
+  const calendarImportDatesRef = useRef<Map<string, number>>(new Map());
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [friendsSnapshot, setFriendsSnapshot] = useState(initialFriendsSnapshot);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>(initialTab);
@@ -317,6 +319,48 @@ export function PlannerShell({
   useEffect(() => {
     snapshotCacheRef.current.set(snapshot.taskDate, snapshot);
   }, [snapshot]);
+
+  useEffect(() => {
+    const lastImportedAt = calendarImportDatesRef.current.get(snapshot.taskDate) ?? 0;
+
+    if (Date.now() - lastImportedAt < 60_000) {
+      return;
+    }
+
+    calendarImportDatesRef.current.set(snapshot.taskDate, Date.now());
+    let ignore = false;
+
+    async function syncExternalCalendarEvents() {
+      try {
+        const result = await syncGoogleCalendarToDayStack(snapshot.taskDate);
+
+        if (ignore || result.imported === 0) {
+          return;
+        }
+
+        const refreshedSnapshot = await fetchDashboardSnapshot(snapshot.taskDate);
+
+        if (ignore) {
+          return;
+        }
+
+        snapshotCacheRef.current.set(snapshot.taskDate, refreshedSnapshot);
+        setSnapshot(refreshedSnapshot);
+        setNotice({
+          type: "success",
+          message: `${result.imported} Google Calendar event${result.imported === 1 ? "" : "s"} added to DayStack.`,
+        });
+      } catch {
+        calendarImportDatesRef.current.delete(snapshot.taskDate);
+      }
+    }
+
+    void syncExternalCalendarEvents();
+
+    return () => {
+      ignore = true;
+    };
+  }, [snapshot.taskDate]);
 
   useEffect(() => {
     if (notificationPreferences.push_enabled) {

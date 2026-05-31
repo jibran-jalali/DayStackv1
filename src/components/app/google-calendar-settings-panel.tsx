@@ -57,7 +57,7 @@ export function GoogleCalendarSettingsPanel({ compact = false }: GoogleCalendarS
     const callbackMessage = searchParams.get("message");
 
     if (calendarResult === "connected") {
-      setMessage("Google Calendar connected. Future DayStack blocks will sync automatically.");
+      setMessage("Google Calendar connected. Future DayStack blocks sync out, and visible calendar events can appear in DayStack.");
       return;
     }
 
@@ -110,7 +110,7 @@ export function GoogleCalendarSettingsPanel({ compact = false }: GoogleCalendarS
             <div>
               <p className="text-sm font-semibold text-foreground">Google Calendar</p>
               <p className="mt-1 text-sm leading-6 text-secondary-foreground">
-                Sync future DayStack blocks to your personal Google Calendar.
+                Sync DayStack blocks to Google Calendar and import visible Google events back into DayStack.
               </p>
             </div>
             {isLoading ? <Loader2 className="mt-1 h-4 w-4 animate-spin text-secondary-foreground" /> : null}

@@ -6,7 +6,9 @@ import { and, eq } from "drizzle-orm";
 import { after } from "next/server";
 
 import { getDb } from "@/db/client";
-import { google_calendar_connections, task_calendar_events } from "@/db/schema";
+import { google_calendar_connections, task_calendar_events, tasks } from "@/db/schema";
+import { syncDailySummaryForDate } from "@/lib/data/daystack";
+import { syncTaskRemindersForTask } from "@/lib/data/reminders";
 import { getAppBaseUrl, getAppTimeZone, getGoogleCalendarEnv, isGoogleCalendarConfigured } from "@/lib/env";
 import type { GoogleCalendarConnectionRecord, TaskRecord } from "@/types/daystack";
 
@@ -28,6 +30,34 @@ interface GoogleTokenResponse {
 
 interface GoogleUserInfoResponse {
   email?: string;
+}
+
+interface GoogleCalendarEventDate {
+  date?: string;
+  dateTime?: string;
+}
+
+interface GoogleCalendarEventListItem {
+  description?: string | null;
+  end?: GoogleCalendarEventDate;
+  extendedProperties?: {
+    private?: Record<string, string | undefined>;
+  };
+  hangoutLink?: string | null;
+  htmlLink?: string | null;
+  id: string;
+  location?: string | null;
+  start?: GoogleCalendarEventDate;
+  summary?: string | null;
+}
+
+interface GoogleCalendarEventsResponse {
+  items?: GoogleCalendarEventListItem[];
+}
+
+export interface GoogleCalendarImportResult {
+  imported: number;
+  skipped: number;
 }
 
 function getRequiredDb(): DayStackDb {
@@ -97,6 +127,44 @@ function getTodayDateKeyInAppTimeZone(now = new Date()) {
   const values = new Map(parts.map((part) => [part.type, part.value]));
 
   return `${values.get("year")}-${values.get("month")}-${values.get("day")}`;
+}
+
+function getDateKeyInAppTimeZone(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: getAppTimeZone(),
+    year: "numeric",
+  }).formatToParts(value);
+  const values = new Map(parts.map((part) => [part.type, part.value]));
+
+  return `${values.get("year")}-${values.get("month")}-${values.get("day")}`;
+}
+
+function getTimeKeyInAppTimeZone(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    hour12: false,
+    minute: "2-digit",
+    timeZone: getAppTimeZone(),
+  }).formatToParts(value);
+  const values = new Map(parts.map((part) => [part.type, part.value]));
+
+  return `${values.get("hour")}:${values.get("minute")}`;
+}
+
+function getGoogleCalendarQueryWindow(taskDate: string) {
+  const start = new Date(`${taskDate}T00:00:00.000Z`);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+
+  start.setUTCHours(start.getUTCHours() - 14);
+  end.setUTCHours(end.getUTCHours() + 14);
+
+  return {
+    timeMax: end.toISOString(),
+    timeMin: start.toISOString(),
+  };
 }
 
 function shouldSyncTaskToCalendar(task: Pick<TaskRecord, "task_date">) {
@@ -369,6 +437,205 @@ async function googleCalendarFetch(
       ...init?.headers,
     },
   });
+}
+
+async function fetchTaskCalendarEventByGoogleEvent(
+  userId: string,
+  calendarId: string,
+  eventId: string,
+) {
+  const db = getRequiredDb();
+  const [eventRow] = await db
+    .select()
+    .from(task_calendar_events)
+    .where(
+      and(
+        eq(task_calendar_events.user_id, userId),
+        eq(task_calendar_events.google_calendar_id, calendarId),
+        eq(task_calendar_events.google_event_id, eventId),
+      ),
+    )
+    .limit(1);
+
+  return eventRow ?? null;
+}
+
+function getImportableEventWindow(event: GoogleCalendarEventListItem, taskDate: string) {
+  if (!event.start?.dateTime || !event.end?.dateTime) {
+    return null;
+  }
+
+  if (event.extendedProperties?.private?.daystackTaskId) {
+    return null;
+  }
+
+  const startDate = new Date(event.start.dateTime);
+  const endDate = new Date(event.end.dateTime);
+
+  if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime()) || endDate <= startDate) {
+    return null;
+  }
+
+  if (getDateKeyInAppTimeZone(startDate) !== taskDate) {
+    return null;
+  }
+
+  const startTime = getTimeKeyInAppTimeZone(startDate);
+  const endTime = getTimeKeyInAppTimeZone(endDate);
+
+  if (endTime <= startTime) {
+    return null;
+  }
+
+  return {
+    endTime,
+    startTime,
+  };
+}
+
+function getEventMeetingLink(event: GoogleCalendarEventListItem) {
+  const candidates = [
+    event.hangoutLink,
+    event.location,
+    event.description,
+  ];
+
+  for (const candidate of candidates) {
+    const match = candidate?.match(/https?:\/\/[^\s<>"')]+/i);
+
+    if (match?.[0]) {
+      return match[0].slice(0, 500);
+    }
+  }
+
+  return null;
+}
+
+async function importGoogleCalendarEventAsTask(
+  userId: string,
+  connection: GoogleCalendarConnectionRecord,
+  event: GoogleCalendarEventListItem,
+  taskDate: string,
+) {
+  const eventWindow = getImportableEventWindow(event, taskDate);
+
+  if (!eventWindow) {
+    return null;
+  }
+
+  const title = event.summary?.trim().slice(0, 120) || "Calendar event";
+  const meetingLink = getEventMeetingLink(event);
+  const now = new Date().toISOString();
+  const db = getRequiredDb();
+  const existingLink = await fetchTaskCalendarEventByGoogleEvent(userId, connection.calendar_id, event.id);
+
+  if (existingLink) {
+    return null;
+  }
+
+  const importedTask = await db.transaction(async (tx) => {
+    const [createdTask] = await tx
+      .insert(tasks)
+      .values({
+        id: crypto.randomUUID(),
+        user_id: userId,
+        title,
+        task_date: taskDate,
+        start_time: eventWindow.startTime,
+        end_time: eventWindow.endTime,
+        task_type: meetingLink ? "meeting" : "generic",
+        meeting_link: meetingLink,
+        status: "pending",
+        created_at: now,
+        updated_at: now,
+      })
+      .returning();
+
+    const [createdLink] = await tx
+      .insert(task_calendar_events)
+      .values({
+        id: crypto.randomUUID(),
+        user_id: userId,
+        task_id: createdTask.id,
+        google_calendar_id: connection.calendar_id,
+        google_event_id: event.id,
+        created_at: now,
+        updated_at: now,
+      })
+      .onConflictDoNothing({
+        target: [
+          task_calendar_events.user_id,
+          task_calendar_events.google_calendar_id,
+          task_calendar_events.google_event_id,
+        ],
+      })
+      .returning();
+
+    if (!createdLink) {
+      await tx.delete(tasks).where(eq(tasks.id, createdTask.id));
+      return null;
+    }
+
+    return createdTask;
+  });
+
+  if (!importedTask) {
+    return null;
+  }
+
+  await syncTaskRemindersForTask(userId, importedTask);
+
+  return importedTask;
+}
+
+export async function syncGoogleCalendarEventsToDayStack(
+  userId: string,
+  taskDate: string,
+): Promise<GoogleCalendarImportResult> {
+  const connection = await fetchGoogleCalendarConnection(userId);
+
+  if (!connection) {
+    return {
+      imported: 0,
+      skipped: 0,
+    };
+  }
+
+  const { timeMax, timeMin } = getGoogleCalendarQueryWindow(taskDate);
+  const searchParams = new URLSearchParams({
+    maxResults: "250",
+    orderBy: "startTime",
+    showDeleted: "false",
+    singleEvents: "true",
+    timeMax,
+    timeMin,
+  });
+  const response = await googleCalendarFetch(
+    connection,
+    `/calendars/${encodeURIComponent(connection.calendar_id)}/events?${searchParams.toString()}`,
+  );
+  const eventList = await readJson<GoogleCalendarEventsResponse>(response, "Google Calendar import failed.");
+  let imported = 0;
+  let skipped = 0;
+
+  for (const event of eventList.items ?? []) {
+    const importedTask = await importGoogleCalendarEventAsTask(userId, connection, event, taskDate);
+
+    if (importedTask) {
+      imported += 1;
+    } else {
+      skipped += 1;
+    }
+  }
+
+  if (imported > 0) {
+    await syncDailySummaryForDate(userId, taskDate);
+  }
+
+  return {
+    imported,
+    skipped,
+  };
 }
 
 export async function syncTaskToGoogleCalendar(userId: string, task: TaskRecord) {
