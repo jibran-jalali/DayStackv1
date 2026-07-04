@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { Bell, Mail, Plus, Sparkles, UserRoundPlus } from "lucide-react";
 
+import { AiPlanModal } from "@/components/app/ai-plan-modal";
 import { DateSwitcher } from "@/components/app/date-switcher";
 import { LeaderboardView } from "@/components/app/leaderboard-view";
 import { MobileBottomNav } from "@/components/app/mobile-bottom-nav";
@@ -292,6 +293,7 @@ export function PlannerShell({
   const [composerDefaults, setComposerDefaults] = useState<TaskFormValues | null>(null);
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
   const [followToday, setFollowToday] = useState(() => initialSnapshot.taskDate === formatDateKey(initialNow));
+  const [isAiPlanModalOpen, setIsAiPlanModalOpen] = useState(false);
   const [pushSetupUrgent, setPushSetupUrgent] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
@@ -691,10 +693,20 @@ export function PlannerShell({
       setEditorTask(null);
       setRecurringSeriesEditor(null);
       setComposerDefaults(createDefaultTask(snapshot.taskDate, now, startTime));
+      setIsAiPlanModalOpen(false);
       setNotice(null);
     },
     [now, playActionFeedback, snapshot.taskDate],
   );
+
+  function handleOpenAiPlan() {
+    playActionFeedback("navigate");
+    setEditorTask(null);
+    setRecurringSeriesEditor(null);
+    setComposerDefaults(null);
+    setIsAiPlanModalOpen(true);
+    setNotice(null);
+  }
 
   function handleCancelEditor() {
     setEditorTask(null);
@@ -1636,6 +1648,7 @@ export function PlannerShell({
             subtitle={activeSubtitle}
             viewMode={viewMode}
             pomodoroHref="https://flocus.com/"
+            onAiPlan={workspaceTab === "plan" ? handleOpenAiPlan : undefined}
             onAddTask={workspaceTab === "plan" ? () => handleCreateTask() : undefined}
             onViewChange={handleChangePlannerView}
             onSignOutError={(message) =>
@@ -1901,6 +1914,19 @@ export function PlannerShell({
           />
         ) : null}
       </TaskModal>
+
+      <AiPlanModal
+        open={isAiPlanModalOpen}
+        taskDate={snapshot.taskDate}
+        onClose={() => setIsAiPlanModalOpen(false)}
+        onNotice={setNotice}
+        onConfirm={() =>
+          refreshWorkspaceDate(snapshot.taskDate, {
+            forceRefresh: true,
+            nextTab: "plan",
+          })
+        }
+      />
 
       <RecurringScopeModal
         open={recurringScopeRequest !== null}

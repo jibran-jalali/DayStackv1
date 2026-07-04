@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Bell, CalendarDays, Clock3, Flame, LoaderCircle, LogOut, MessageSquareText, Plus, Settings2, UserRoundPlus } from "lucide-react";
+import { Bell, CalendarDays, Clock3, Flame, LoaderCircle, LogOut, MessageSquareText, Plus, Settings2, Sparkles, UserRoundPlus } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useTransition } from "react";
 
@@ -27,6 +27,7 @@ interface PlannerHeaderProps {
   metricLabel?: string;
   metricTone?: "brand" | "default" | "success" | "warning";
   onAddTask?: () => void;
+  onAiPlan?: () => void;
   onNotice?: (notice: { message: string; type: "error" | "success" }) => void;
   onOpenAssistant?: () => void;
   onOpenFriends?: () => void;
@@ -91,6 +92,7 @@ export function PlannerHeader({
   metricLabel,
   metricTone = "brand",
   onAddTask,
+  onAiPlan,
   onNotice,
   onOpenAssistant,
   onOpenFriends,
@@ -258,12 +260,20 @@ export function PlannerHeader({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {activePage === "planner" && onAddTask ? (
+          {activePage === "planner" ? (
             <>
-              <Button size="sm" className="min-w-[8.25rem]" onClick={onAddTask}>
-                <Plus className="h-4 w-4" />
-                Add Block
-              </Button>
+              {onAiPlan ? (
+                <Button size="sm" variant="secondary" className="min-w-[8.25rem]" onClick={onAiPlan}>
+                  <Sparkles className="h-4 w-4" />
+                  AI Plan
+                </Button>
+              ) : null}
+              {onAddTask ? (
+                <Button size="sm" className="min-w-[8.25rem]" onClick={onAddTask}>
+                  <Plus className="h-4 w-4" />
+                  Add Block
+                </Button>
+              ) : null}
             </>
           ) : null}
 
