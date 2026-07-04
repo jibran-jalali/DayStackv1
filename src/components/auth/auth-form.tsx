@@ -191,18 +191,23 @@ export function AuthForm({ mode }: AuthFormProps) {
         </div>
       ) : null}
 
-      <Button type="submit" size="lg" className="w-full" disabled={isPending}>
+      <Button
+        type="submit"
+        size="lg"
+        className="h-[3.25rem] w-full rounded-[16px] bg-[rgba(0,132,255,0.84)] text-base shadow-[inset_0px_4px_4px_0px_rgba(255,255,255,0.35),0_22px_44px_rgba(0,132,255,0.24)] backdrop-blur-[2px] hover:scale-[1.01]"
+        disabled={isPending}
+      >
         {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-        {isSignup ? "Create account" : "Log in"}
+        {isSignup ? "Create account" : "Sign in"}
       </Button>
 
       <p className="pt-1 text-center text-sm text-secondary-foreground">
         {isSignup ? "Already have an account?" : "Need an account?"}{" "}
         <Link
-          href={isSignup ? "/login" : "/signup"}
+          href={isSignup ? "/signin" : "/signup"}
           className="font-semibold text-primary transition hover:text-[var(--primary-strong)]"
         >
-          {isSignup ? "Log in" : "Create one"}
+          {isSignup ? "Sign in" : "Create one"}
         </Link>
       </p>
 

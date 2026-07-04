@@ -1,240 +1,101 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import {
-  ArrowRight,
-  CalendarClock,
-  CheckCircle2,
-  Download,
-  Flame,
-  Focus,
-  Layers3,
-  Menu,
-  Smartphone,
-  Sparkles,
-  Target,
-  X,
-} from "lucide-react";
+import { ArrowRight, Star } from "lucide-react";
 
-import { LeaderboardView } from "@/components/app/leaderboard-view";
-import { Reveal } from "@/components/marketing/reveal";
-import { Button, buttonVariants } from "@/components/shared/button";
 import { Logo, LogoMark } from "@/components/shared/logo";
-import { cn } from "@/lib/utils";
 import type { LeaderboardEntry } from "@/types/daystack";
 
-const problemPoints = [
-  {
-    title: "The day gets noisy fast",
-    copy: "Tasks pile up, priorities blur, and by noon you are reacting instead of executing.",
-  },
-  {
-    title: "Most tools create clutter",
-    copy: "Lists keep growing. Calendars stay passive. The plan never feels alive enough to follow.",
-  },
-  {
-    title: "You finish without clarity",
-    copy: "Busy does not tell you whether the day held together. Most systems never close that loop.",
-  },
-];
+function BrowserPreview() {
+  const timeSlots = ["1 PM", "1:30", "2 PM", "2:30", "3 PM", "3:30", "4 PM"];
 
-const whyRows = [
-  {
-    icon: CalendarClock,
-    title: "Plan clearly",
-    copy: "Turn the day into visible blocks instead of holding it together in your head.",
-  },
-  {
-    icon: Focus,
-    title: "See what matters now",
-    copy: "Keep the current block and the next one obvious enough that momentum can survive interruption.",
-  },
-  {
-    icon: CheckCircle2,
-    title: "Follow through",
-    copy: "Complete the work from the same surface where you planned it, without switching into dashboard mode.",
-  },
-  {
-    icon: Flame,
-    title: "Build consistency",
-    copy: "Score and streak stay in the background until they matter, then tell the truth about the day.",
-  },
-];
-
-const quickStatements = [
-  "A plan only matters if you can follow it.",
-  "Your time should feel visible.",
-  "Less chaos. More follow-through.",
-];
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
-};
-
-const navItems = [
-  { href: "#problem", label: "Why it breaks" },
-  { href: "#why-daystack", label: "Why DayStack" },
-  { href: "#mobile-app", label: "App" },
-  { href: "#start", label: "Start" },
-];
-
-const heroTimeline = [
-  {
-    time: "08:00",
-    title: "Deep work",
-    copy: "Protected focus time for the task that matters most.",
-    tone: "done" as const,
-  },
-  {
-    time: "11:20",
-    title: "Reset",
-    copy: "A visible handoff point so the day does not blur together.",
-    tone: "current" as const,
-  },
-  {
-    time: "15:00",
-    title: "Finish clean",
-    copy: "Wrap the day with clarity instead of loose ends.",
-    tone: "upcoming" as const,
-  },
-];
-
-function SectionIntro({
-  eyebrow,
-  title,
-  copy,
-  align = "left",
-}: {
-  align?: "center" | "left";
-  copy: string;
-  eyebrow: string;
-  title: string;
-}) {
   return (
-    <div className={cn("space-y-4", align === "center" ? "mx-auto max-w-3xl text-center" : "max-w-3xl")}>
-      <p className={cn("section-label", align === "center" && "text-center")}>{eyebrow}</p>
-      <h2 className="font-display text-[2.2rem] font-semibold tracking-[-0.055em] text-foreground sm:text-[2.9rem] lg:text-[3.4rem]">
-        {title}
-      </h2>
-      <p className="max-w-2xl text-base leading-7 text-secondary-foreground sm:text-lg sm:leading-8">
-        {copy}
-      </p>
-    </div>
-  );
-}
-
-function StatementBand({
-  eyebrow,
-  statement,
-  supporting,
-}: {
-  eyebrow: string;
-  statement: string;
-  supporting: string;
-}) {
-  return (
-    <div className="overflow-hidden rounded-[30px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,248,252,0.94))] px-6 py-10 shadow-[0_28px_80px_rgba(15,23,42,0.08)] sm:px-10 sm:py-14">
-      <p className="section-label text-center">{eyebrow}</p>
-      <p className="mx-auto mt-5 max-w-4xl text-center font-display text-[2.2rem] font-semibold leading-[1.05] tracking-[-0.06em] text-foreground sm:text-[3.2rem] lg:text-[3.9rem]">
-        {statement}
-      </p>
-      <p className="mx-auto mt-5 max-w-2xl text-center text-base leading-7 text-secondary-foreground sm:text-lg sm:leading-8">
-        {supporting}
-      </p>
-    </div>
-  );
-}
-
-function HeroPlannerPreview() {
-  return (
-    <div className="relative mx-auto w-full max-w-[35rem]">
-      <div className="absolute inset-x-12 inset-y-8 rounded-[36px] bg-[radial-gradient(circle_at_top,rgba(24,190,239,0.16),transparent_56%)] blur-3xl" />
-
-      <div className="relative overflow-hidden rounded-[30px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,248,252,0.94))] p-4 shadow-[0_30px_90px_rgba(15,23,42,0.12)] sm:rounded-[34px] sm:p-6">
-        <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(24,190,239,0),rgba(24,190,239,0.5),rgba(109,40,240,0))]" />
-
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <LogoMark className="h-11 w-11 shrink-0" />
-            <div className="space-y-1">
-              <p className="section-label">A calmer day</p>
-              <h3 className="font-display text-[1.55rem] font-semibold tracking-[-0.05em] text-foreground sm:text-[1.8rem]">
-                Tuesday rhythm
-              </h3>
-              <p className="text-sm text-secondary-foreground">
-                The next move stays clear. Open time stops disappearing.
-              </p>
-            </div>
-          </div>
-
-          <div className="hidden rounded-full border border-slate-200/90 bg-white/90 px-3 py-1.5 text-xs font-semibold text-secondary-foreground shadow-[0_10px_24px_rgba(15,23,42,0.05)] sm:inline-flex">
-            Now matters
-          </div>
+    <div className="w-[580px] max-w-[calc(100vw-34px)] scale-[0.7] overflow-hidden rounded-[14px] border border-[#9aa3ad]/60 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.18)] backdrop-blur-sm sm:scale-80 md:scale-90 lg:scale-95">
+      <div className="flex h-10 items-center gap-4 border-b border-[#6d7480]/45 bg-white px-5 sm:h-[46px]">
+        <div className="flex gap-1.5">
+          <span className="h-3 w-3 rounded-full bg-[#ed6258]" />
+          <span className="h-3 w-3 rounded-full bg-[#f4bd4f]" />
+          <span className="h-3 w-3 rounded-full bg-[#61c554]" />
         </div>
+        <div className="ml-auto h-6 w-[48%] rounded-md bg-[#f0f0f0]" />
+      </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          {[
-            { label: "4 blocks", copy: "planned with intent" },
-            { label: "78% score", copy: "visible, not hidden" },
-            { label: "3 day streak", copy: "earned through follow-through" },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="rounded-[22px] border border-slate-200/80 bg-white/86 px-4 py-3.5 shadow-[0_12px_28px_rgba(15,23,42,0.05)]"
-            >
-              <p className="text-sm font-semibold text-foreground">{item.label}</p>
-              <p className="mt-1 text-sm leading-6 text-secondary-foreground">{item.copy}</p>
+      <div className="relative h-[260px] overflow-hidden bg-white sm:h-[300px]">
+        <div className="absolute inset-x-0 top-0 z-10 rounded-b-[20px] border-b border-[#e3eaf3] bg-white/92 px-5 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-[18px] sm:px-7 sm:py-4">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <LogoMark className="h-7 w-7 rounded-[9px] sm:h-8 sm:w-8" />
+              <span className="font-display text-lg font-bold tracking-[-0.05em] text-[#141923] sm:text-xl">DayStack</span>
             </div>
-          ))}
-        </div>
-
-        <div className="mt-5 rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.92))] p-3 shadow-[0_16px_34px_rgba(15,23,42,0.06)] sm:p-4">
-          <div className="flex items-center justify-between gap-4 border-b border-slate-200/75 px-2 pb-3">
-            <div>
-              <p className="section-label">The day in view</p>
-              <p className="mt-1 text-sm font-medium text-secondary-foreground">
-                Visible blocks. Clear rhythm. Less mental drag.
-              </p>
-            </div>
-            <div className="rounded-full border border-slate-200/90 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-secondary-foreground">
-              Focused
+            <div className="hidden sm:block">
+              <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-[#9aa3b2]">Past Day</p>
+              <p className="text-sm font-semibold tracking-[-0.03em] text-[#667084]">Friday, May 29, 2026</p>
             </div>
           </div>
 
-          <div className="mt-3 space-y-3">
-            {heroTimeline.map((item) => (
+          <div className="mt-3 flex min-w-max gap-2">
+            {[
+              ["Grid", true],
+              ["List", false],
+              ["Recurring", false],
+              ["Leaderboard", false],
+              ["Assistant", false],
+            ].map(([label, active]) => (
               <div
-                key={item.time}
-                className={cn(
-                  "flex gap-3 rounded-[20px] border px-3 py-3.5 transition-colors duration-200",
-                  item.tone === "current"
-                    ? "border-[rgba(24,190,239,0.22)] bg-[rgba(24,190,239,0.07)]"
-                    : "border-slate-200/80 bg-white/92",
-                )}
+                key={String(label)}
+                className={
+                  active
+                    ? "rounded-[12px] bg-[linear-gradient(135deg,#28b4ea,#6c31ef)] px-5 py-2 text-xs font-semibold text-white shadow-[0_12px_24px_rgba(79,89,239,0.24)] sm:text-sm sm:px-6 sm:py-2.5"
+                    : "rounded-[12px] border border-[#dfe7f2] bg-white px-5 py-2 text-xs font-semibold text-[#667084] shadow-[0_10px_24px_rgba(15,23,42,0.05)] sm:text-sm sm:px-6 sm:py-2.5"
+                }
               >
-                <div className="min-w-[4.1rem] pt-0.5 text-sm font-semibold text-foreground">{item.time}</div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                    <span
-                      className={cn(
-                        "inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                        item.tone === "done"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : item.tone === "current"
-                            ? "bg-white text-[#1496e8]"
-                            : "bg-slate-100 text-secondary-foreground",
-                      )}
-                    >
-                      {item.tone === "done" ? "Locked" : item.tone === "current" ? "Current" : "Next"}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm leading-6 text-secondary-foreground">{item.copy}</p>
-                </div>
+                {String(label)}
               </div>
             ))}
+          </div>
+
+          <div className="mt-2 flex items-center gap-2">
+            <div className="daystack-btn-glow relative rounded-[12px] bg-[linear-gradient(135deg,#28b4ea,#6c31ef)] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(79,89,239,0.22)] sm:text-sm sm:px-5 sm:py-2.5">
+              + Add Block
+              <span className="daystack-click-ripple absolute inset-0 rounded-[12px]" />
+            </div>
+          </div>
+        </div>
+
+        <div className="daystack-cursor absolute z-20 h-6 w-6 sm:h-7 sm:w-7">
+          <svg viewBox="0 0 24 24" fill="white" className="drop-shadow-md">
+            <path d="M4 3l15 11.9-6.4.6 2.8 6.1-2.5 1-2.8-6.1L4 21V3z" fill="black" stroke="white" strokeWidth="1.2" />
+          </svg>
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 top-[118px] grid grid-cols-[56px_1fr] bg-[#fbfdff] sm:top-[130px] sm:grid-cols-[64px_1fr] sm:bottom-0">
+          <div className="border-r border-[#dce5ef] bg-white/80 pt-2 text-right">
+            {timeSlots.map((time) => (
+              <div key={time} className="h-[28px] pr-4 text-[10px] font-semibold tracking-[-0.02em] text-[#6c7585] sm:h-[32px] sm:pr-5 sm:text-xs">
+                {time}
+              </div>
+            ))}
+          </div>
+          <div className="relative overflow-hidden">
+            <div className="daystack-preview-scan absolute left-0 right-0 top-0 z-10 h-px bg-[#0084ff]/50 shadow-[0_0_12px_rgba(0,132,255,0.5)]" />
+            {timeSlots.map((time) => (
+              <div key={time} className="h-[28px] border-b border-dashed border-[#dce5ef] sm:h-[32px]" />
+            ))}
+            <div className="daystack-preview-float-1 absolute left-3 top-[38px] h-[44px] w-[38%] rounded-[14px] border border-[#f5cbd5] bg-[#fff2f5] p-2 shadow-[0_8px_20px_rgba(244,92,128,0.08)] sm:left-4 sm:top-[44px] sm:h-[52px] sm:w-[40%] sm:p-3">
+              <div className="daystack-preview-pulse absolute bottom-2 left-2 top-2 w-1 rounded-full bg-[#ff4f7a] sm:bottom-2.5 sm:left-2.5 sm:top-2.5" />
+              <p className="pl-4 text-[10px] font-bold text-[#d6255b] sm:pl-5 sm:text-xs">can u block</p>
+            </div>
+            <div className="daystack-preview-float-2 absolute left-[48%] top-[40px] h-[78px] w-[40%] rounded-[14px] border border-[#f5cbd5] bg-[#fff2f5] p-2 shadow-[0_8px_20px_rgba(244,92,128,0.08)] sm:left-[48%] sm:top-[46px] sm:h-[90px] sm:w-[42%] sm:p-3">
+              <div className="daystack-preview-pulse absolute bottom-2 left-2 top-2 w-1 rounded-full bg-[#ff4f7a] sm:bottom-2.5 sm:left-2.5 sm:top-2.5" />
+              <p className="pl-4 text-[10px] font-bold text-[#d6255b] sm:pl-5 sm:text-xs">task</p>
+            </div>
+            <div className="daystack-preview-float-3 absolute left-3 top-[106px] h-[48px] w-[38%] rounded-[14px] border border-[#f5cbd5] bg-[#fff2f5] p-2 shadow-[0_8px_20px_rgba(244,92,128,0.08)] sm:left-4 sm:top-[122px] sm:h-[56px] sm:w-[40%] sm:p-3">
+              <div className="daystack-preview-pulse absolute bottom-2 left-2 top-2 w-1 rounded-full bg-[#ff4f7a] sm:bottom-2.5 sm:left-2.5 sm:top-2.5" />
+              <p className="pl-4 text-[10px] font-bold text-[#d6255b] sm:pl-5 sm:text-xs">test</p>
+            </div>
+            <div className="daystack-new-block absolute left-[3%] top-[66px] z-10 h-[44px] w-[44%] rounded-[14px] border border-[#bdeedc] bg-[#effdf6] p-2 shadow-[0_8px_20px_rgba(28,184,125,0.08)] sm:left-[3%] sm:top-[76px] sm:h-[52px] sm:w-[46%] sm:p-3">
+              <div className="absolute bottom-2 left-2 top-2 w-1 rounded-full bg-[#45e0a2] sm:bottom-2.5 sm:left-2.5 sm:top-2.5" />
+              <p className="pl-4 text-[10px] font-bold text-[#2e8a68] sm:pl-5 sm:text-xs">workflow task</p>
+              <p className="pl-4 text-[9px] font-medium text-[#667084] sm:pl-5 sm:text-[10px]">12:30 PM — 1:30 PM</p>
+            </div>
           </div>
         </div>
       </div>
@@ -242,543 +103,282 @@ function HeroPlannerPreview() {
   );
 }
 
-function MobileAppDownloadSection() {
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-
-  useEffect(() => {
-    function handleBeforeInstallPrompt(event: Event) {
-      event.preventDefault();
-      setInstallPrompt(event as BeforeInstallPromptEvent);
-    }
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-  }, []);
-
-  async function handleInstallWebApp() {
-    if (!installPrompt) {
-      return;
-    }
-
-    await installPrompt.prompt();
-    await installPrompt.userChoice.catch(() => null);
-    setInstallPrompt(null);
-  }
+function MotionDayPreview() {
+  const timelineRows = ["7:30", "8 AM", "8:30", "9 AM", "9:30", "10 AM", "10:30", "11 AM", "11:30", "12 PM"];
+  const blocks = [
+    { title: "review notes", time: "8:00 AM — 9:00 AM", top: "13%", left: "3%", width: "92%", height: "15%", tone: "done" as const, delay: "0s" },
+    { title: "study", time: "9:15 AM — 10:45 AM", top: "35%", left: "3%", width: "92%", height: "23%", tone: "done" as const, delay: ".35s" },
+    { title: "gym", time: "11:00 AM", top: "66%", left: "3%", width: "45%", height: "22%", tone: "focus" as const, delay: ".7s" },
+    { title: "lunch", time: "11:30 AM", top: "74%", left: "50%", width: "45%", height: "16%", tone: "focus" as const, delay: "1.05s" },
+  ];
 
   return (
-    <section id="mobile-app" className="container-shell content-auto pb-20 sm:pb-24 lg:pb-28">
-      <div className="mx-auto grid max-w-[1180px] gap-5 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
-        <Reveal>
-          <div className="flex h-full flex-col justify-between overflow-hidden rounded-[32px] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,248,252,0.94))] p-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)] sm:p-8">
-            <div>
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(24,190,239,0.14),rgba(109,40,240,0.12))] text-primary">
-                <Smartphone className="h-5 w-5" />
-              </span>
-              <p className="section-label mt-6">Mobile app</p>
-              <h2 className="mt-4 font-display text-[2.35rem] font-semibold leading-[1.02] tracking-[-0.055em] text-foreground sm:text-[3.1rem]">
-                DayStack on your phone.
-              </h2>
-              <p className="mt-4 text-base leading-7 text-secondary-foreground sm:text-lg sm:leading-8">
-                Install DayStack from the browser today. Native APK and signed IPA downloads can be added here once
-                the production builds are generated and signed.
-              </p>
-            </div>
+    <section className="relative mx-auto mt-20 w-full max-w-[1500px] px-4 pb-10 sm:px-8 lg:px-14">
+      <div className="relative overflow-hidden rounded-[24px] border border-black/[0.06] bg-[#fff4f4] px-3 py-10 shadow-[inset_0px_4px_4px_0px_rgba(255,255,255,0.5),0_30px_100px_rgba(15,23,42,0.08)] sm:rounded-[34px] sm:px-6 sm:py-12 lg:px-12">
+        <div className="pointer-events-none absolute left-1/2 top-10 h-[320px] w-[560px] -translate-x-1/2 rounded-full bg-[#60B1FF]/16 blur-[120px] sm:h-[420px] sm:w-[760px]" />
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                disabled={!installPrompt}
-                className={buttonVariants({
-                  variant: "secondary",
-                  className: "w-full justify-center disabled:cursor-not-allowed disabled:opacity-60",
-                })}
-                onClick={handleInstallWebApp}
-              >
-                {installPrompt ? "Install web app" : "Use browser install"}
-                <ArrowRight className="h-4 w-4" />
-              </button>
-              <a
-                href="/signup"
-                className={buttonVariants({ className: "w-full justify-center" })}
-              >
-                Open DayStack
-                <ArrowRight className="h-4 w-4" />
-              </a>
-            </div>
-          </div>
-        </Reveal>
+        <div className="relative z-10 mx-auto mb-6 max-w-3xl text-center sm:mb-8">
+          <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#0084ff]/70 sm:text-sm">DayStack in motion</p>
+          <h2 className="mt-3 font-display text-[28px] font-bold leading-[1.02] tracking-[-1.5px] text-[#07111f] sm:text-[38px] sm:mt-4 lg:text-[48px]">
+            See your day become a clear execution map
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 tracking-[-0.04em] text-[#344155]/72 sm:text-base sm:leading-7 sm:mt-5">
+            Drop tasks into time blocks, track what is done, and keep the next move visible from morning to night.
+          </p>
+        </div>
 
-        <Reveal delay={100}>
-          <div className="grid h-full gap-4 sm:grid-cols-2">
-            {[
-              {
-                title: "Android APK",
-                status: "Build required",
-                copy: "Ready for a signed APK link after wrapping the web app with Android tooling and uploading the generated file.",
-              },
-              {
-                title: "iPhone IPA",
-                status: "Apple signing required",
-                copy: "iOS needs a signed IPA from Xcode with an Apple Developer certificate before it can be installed on devices.",
-              },
-            ].map((item) => (
-              <article
-                key={item.title}
-                className="flex min-h-[17rem] flex-col justify-between rounded-[30px] border border-white/82 bg-white/92 p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]"
+        {/* Mobile: horizontally scrollable card view */}
+        <div className="relative z-10 block sm:hidden">
+          <div className="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-none" style={{ scrollbarWidth: "none" }}>
+            {blocks.map((block, i) => (
+              <div
+                key={block.title}
+                className={`snap-center shrink-0 w-[260px] rounded-[20px] border p-5 ${
+                  block.tone === "done"
+                    ? "border-[#bdeedc] bg-[#effdf6]"
+                    : "border-[#f5cbd5] bg-[#fff2f5]"
+                } ${i === 0 ? "daystack-motion-float" : i === 1 ? "daystack-motion-float-delayed" : "daystack-motion-float"}`}
+                style={{ animationDelay: block.delay }}
               >
-                <div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[rgba(24,190,239,0.08)] text-primary">
-                      <Download className="h-4 w-4" />
-                    </span>
-                    <span className="rounded-full border border-slate-200/90 bg-slate-50 px-3 py-1 text-xs font-semibold text-secondary-foreground">
-                      {item.status}
-                    </span>
+                <div className="flex items-start gap-4">
+                  <div className={`mt-1 h-3 w-3 shrink-0 rounded-full ${block.tone === "done" ? "bg-[#45e0a2]" : "bg-[#ff4f7a]"} daystack-glow-pulse`} />
+                  <div>
+                    <p className={`text-base font-bold ${block.tone === "done" ? "text-[#2e8a68]" : "text-[#d6255b]"}`}>
+                      {block.title}
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-[#667084]">{block.time}</p>
+                    <div className="mt-3 h-2 w-full rounded-full bg-black/5 overflow-hidden">
+                      <div className={`h-full rounded-full ${block.tone === "done" ? "bg-[#45e0a2]" : "bg-[#ff4f7a]"} daystack-progress-fill`} style={{ width: block.tone === "done" ? "85%" : "40%" }} />
+                    </div>
                   </div>
-                  <h3 className="mt-5 font-display text-[1.85rem] font-semibold tracking-[-0.045em] text-foreground">
-                    {item.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-6 text-secondary-foreground">{item.copy}</p>
                 </div>
-
-                <button
-                  type="button"
-                  disabled
-                  className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-full border border-border/80 bg-muted/70 px-4 text-sm font-semibold text-secondary-foreground/70"
-                >
-                  Download coming after build
-                </button>
-              </article>
+              </div>
             ))}
           </div>
-        </Reveal>
+          <div className="flex justify-center gap-2 mt-3">
+            {blocks.map((_, i) => (
+              <span key={i} className={`h-2 w-2 rounded-full ${i === 0 ? "bg-[#0084ff]" : "bg-black/10"}`} />
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop: full timeline preview */}
+        <div className="relative z-10 mx-auto hidden max-w-[1200px] overflow-hidden rounded-[8px] border border-black/30 bg-white shadow-[0_34px_80px_rgba(0,0,0,0.22)] sm:block">
+          <div className="flex h-10 items-center gap-4 bg-[#151a1f] px-4 text-[#8f98a5]">
+            <div className="flex gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b5f]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#f7c84f]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#65d064]" />
+            </div>
+            <div className="hidden gap-3 text-lg leading-none sm:flex">
+              <span>‹</span>
+              <span>›</span>
+            </div>
+            <div className="mx-auto h-6 w-[34%] rounded bg-[#0c1116]" />
+            <div className="hidden gap-4 text-lg sm:flex">
+              <span>↓</span>
+              <span>↥</span>
+              <span>+</span>
+            </div>
+          </div>
+
+          <div className="relative h-[480px] overflow-hidden bg-[linear-gradient(90deg,#eefbff_0,#fff_12%,#fff_88%,#f5f0ff_100%)] sm:h-[560px]">
+            <div className="absolute left-[9%] right-[7%] top-2 z-20 rounded-b-[28px] rounded-t-[22px] border border-[#dfe7f2] bg-white/92 px-5 py-4 shadow-[0_24px_70px_rgba(15,23,42,0.09)] backdrop-blur-[18px] sm:px-7 sm:py-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <LogoMark className="h-10 w-10 rounded-[13px] sm:h-11 sm:w-11" />
+                  <div>
+                    <p className="font-display text-xl font-bold tracking-[-0.05em] text-[#141923] sm:text-2xl">DayStack</p>
+                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.28em] text-[#9aa3b2]">Today</p>
+                    <p className="text-sm font-semibold tracking-[-0.03em] text-[#667084]">Sunday, June 7, 2026</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 text-xs font-bold">
+                  <span className="rounded-full bg-[#fff8dd] px-3 py-1.5 text-[#c86b09] sm:px-4 sm:py-2">68% score</span>
+                  <span className="rounded-full border border-[#dfe7f2] px-3 py-1.5 text-[#667084] sm:px-4 sm:py-2">3 days</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="absolute bottom-0 left-[13%] right-[9%] top-[155px] grid grid-cols-[64px_1fr] sm:top-[185px] sm:grid-cols-[74px_1fr]">
+              <div className="border-r border-[#dce5ef] bg-white/64 pt-2 text-right">
+                {timelineRows.map((row) => (
+                  <div key={row} className="h-[42px] pr-4 text-xs font-bold text-[#6c7585] sm:h-[48px] sm:pr-5 sm:text-sm">
+                    {row}
+                  </div>
+                ))}
+              </div>
+              <div className="relative overflow-hidden bg-white/55">
+                {timelineRows.map((row) => (
+                  <div key={row} className="h-[42px] border-b border-dashed border-[#dce5ef] sm:h-[48px]" />
+                ))}
+                <div className="daystack-scan-line-fast absolute left-0 right-0 top-0 h-px bg-[#0084ff]/55 shadow-[0_0_18px_rgba(0,132,255,0.65)]" />
+                {blocks.map((block) => (
+                  <div
+                    key={block.title}
+                    className={`daystack-card-enter absolute rounded-[18px] border p-3 shadow-[0_12px_30px_rgba(0,0,0,0.08)] sm:p-4 ${
+                      block.tone === "done"
+                        ? "border-[#bdeedc] bg-[#effdf6]"
+                        : "border-[#f5cbd5] bg-[#fff2f5]"
+                    } ${block.tone === "done" ? "daystack-motion-float" : "daystack-motion-float-delayed"}`}
+                    style={{
+                      top: block.top,
+                      left: block.left,
+                      width: block.width,
+                      height: block.height,
+                      animationDelay: block.delay,
+                    }}
+                  >
+                    <div className={`absolute bottom-2 left-2 top-2 w-1.5 rounded-full sm:bottom-3 sm:left-3 sm:top-3 ${
+                      block.tone === "done" ? "bg-[#45e0a2]" : "bg-[#ff4f7a]"
+                    } daystack-glow-pulse`} />
+                    <p className={`pl-4 text-xs font-bold sm:pl-5 sm:text-sm ${
+                      block.tone === "done" ? "text-[#2e8a68]" : "text-[#d6255b]"
+                    }`}>
+                      {block.title}
+                    </p>
+                    <p className="pl-4 text-[10px] font-medium text-[#667084] sm:pl-5 sm:text-xs">{block.time}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="absolute inset-x-0 bottom-0 z-30 bg-[linear-gradient(180deg,transparent,rgba(255,244,244,0.92))] px-6 pb-6 pt-24 text-center sm:pb-7 sm:pt-28">
+              <div className="mx-auto max-w-2xl rounded-[24px] border border-white/70 bg-white/45 px-5 py-4 shadow-[inset_0px_4px_4px_0px_rgba(255,255,255,0.3),0_24px_70px_rgba(15,23,42,0.1)] backdrop-blur-[28px] sm:px-6 sm:py-5">
+                <p className="font-display text-xl font-bold tracking-[-0.06em] text-[#07111f] sm:text-2xl lg:text-3xl">
+                  One surface for every commitment.
+                </p>
+                <p className="mt-1 text-sm leading-6 tracking-[-0.03em] text-[#344155]/74 sm:mt-2 sm:text-base">
+                  DayStack helps you see when work happens, not just what needs doing.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
 }
 
-interface LandingPageProps {
-  leaderboard: LeaderboardEntry[];
-}
+const companies = [
+  { name: "Basecamp", color: "#1DED83", svg: "M7 17l5-8 5 8" },
+  { name: "Mailchimp", color: "#FFE01B", svg: "M4 6h16v12H4V6zm2 2l6 5 6-5" },
+  { name: "Sketch", color: "#F7B500", svg: "M12 4l8 6-4 10H8L4 10l8-6z" },
+  { name: "Notion", color: "#000000", svg: "M5 5h14v14H5V5zm2 2v10h10V7H7z" },
+  { name: "Figma", color: "#F24E1E", svg: "M12 12a4 4 0 110-8 4 4 0 010 8zm0 0v8" },
+  { name: "Linear", color: "#5E6AD2", svg: "M4 20L20 4M4 4h16v16" },
+  { name: "Vercel", color: "#000000", svg: "M12 2L2 22h20L12 2z" },
+  { name: "Raycast", color: "#FF6363", svg: "M12 2l3 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7l3-7z" },
+  { name: "Supabase", color: "#3ECF8E", svg: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" },
+  { name: "Cal.com", color: "#292929", svg: "M8 4v16M16 4v16M4 8h16M4 16h16" },
+];
 
-export function LandingPage({ leaderboard }: LandingPageProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const scrollProgressRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    let animationFrame = 0;
-
-    function updateScrollProgress() {
-      animationFrame = 0;
-      const root = document.documentElement;
-      const scrollRange = root.scrollHeight - window.innerHeight;
-      const nextProgress = scrollRange <= 0 ? 0 : window.scrollY / scrollRange;
-      const clampedProgress = Math.max(0, Math.min(1, nextProgress));
-
-      if (scrollProgressRef.current) {
-        scrollProgressRef.current.style.transform = `scaleX(${clampedProgress})`;
-      }
-    }
-
-    function handleScroll() {
-      if (animationFrame !== 0) {
-        return;
-      }
-
-      animationFrame = window.requestAnimationFrame(updateScrollProgress);
-    }
-
-    updateScrollProgress();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll);
-
-    return () => {
-      if (animationFrame !== 0) {
-        window.cancelAnimationFrame(animationFrame);
-      }
-
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
-    };
-  }, []);
-
-  useEffect(() => {
-    function handleResize() {
-      if (window.innerWidth >= 768) {
-        setMobileMenuOpen(false);
-      }
-    }
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }) {
+  const ratedCustomerCount = Math.max(2700, leaderboard.length);
 
   return (
-    <main className="relative overflow-x-clip pb-16 sm:pb-20">
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-50 h-px bg-black/5">
-        <div
-          ref={scrollProgressRef}
-          className="render-smooth h-full origin-left bg-[linear-gradient(90deg,#18beef_0%,#1496e8_45%,#6d28f0_100%)] will-change-transform"
-          style={{ transform: "scaleX(0)" }}
-        />
-      </div>
+    <main className="relative min-h-screen overflow-hidden bg-white text-[#0b1220]">
+      <div className="pointer-events-none absolute left-[-150px] top-[-180px] h-[520px] w-[640px] rounded-full bg-[#60B1FF]/35 blur-[120px]" />
+      <div className="pointer-events-none absolute left-[90px] top-[-110px] h-[380px] w-[460px] rounded-full bg-[#319AFF]/24 blur-[105px]" />
+      <div className="pointer-events-none absolute left-[280px] top-[85px] h-[220px] w-[320px] rounded-full bg-[#60B1FF]/16 blur-[95px]" />
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] bg-[radial-gradient(circle_at_top_left,rgba(24,190,239,0.14),transparent_34%),radial-gradient(circle_at_top_right,rgba(109,40,240,0.12),transparent_28%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-[40rem] h-[24rem] bg-[radial-gradient(circle_at_center,rgba(15,23,42,0.03),transparent_60%)]" />
+      <nav className="sticky top-[18px] z-30 mx-auto flex w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] items-center justify-between gap-2 rounded-[16px] border border-[rgba(0,0,0,0.1)] bg-[rgba(255,255,255,0.34)] px-3 py-2 shadow-[inset_0px_4px_4px_0px_rgba(255,255,255,0.25),0_22px_60px_rgba(15,23,42,0.08)] backdrop-blur-[50px] sm:top-[30px] sm:w-fit sm:justify-center sm:gap-4 sm:px-4">
+        <Logo className="px-0" priority />
+        <Link
+          href="/signin"
+          className="hidden rounded-full px-3 py-2 text-sm font-medium tracking-[-0.02em] text-[#253041]/75 transition hover:text-[#0b1220] sm:inline-flex"
+        >
+          Sign in
+        </Link>
+        <Link
+          href="/signup"
+          className="flex items-center gap-2 rounded-[14px] border border-white/65 bg-white/35 py-1.5 pl-4 pr-1.5 text-sm font-medium tracking-[-0.02em] text-[#0b1220] shadow-[inset_0px_4px_4px_0px_rgba(255,255,255,0.35),0_14px_34px_rgba(15,23,42,0.08)] backdrop-blur-[18px] transition hover:scale-[1.02]"
+        >
+          Sign up
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-[#101827] text-white">
+            <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
+          </span>
+        </Link>
+      </nav>
 
-      <header className="sticky top-0 z-40 border-b border-black/5 bg-[rgba(248,250,252,0.86)] backdrop-blur-xl">
-        <div className="container-shell">
-          <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4 py-4">
-            <Logo priority />
-
-            <nav className="hidden items-center gap-7 text-sm font-medium text-secondary-foreground md:flex">
-              {navItems.map((item) => (
-                <a key={item.href} href={item.href} className="transition-colors duration-200 hover:text-foreground">
-                  {item.label}
-                </a>
-              ))}
-            </nav>
-
-            <div className="hidden items-center gap-2.5 md:flex">
-              <Link href="/login" className={buttonVariants({ variant: "ghost", size: "sm" })}>
-                Log in
-              </Link>
-              <Link href="/signup" className={buttonVariants({ size: "sm" })}>
-                Create account
-              </Link>
-            </div>
-
-            <div className="flex items-center gap-2 md:hidden">
-              <Link href="/signup" className={buttonVariants({ size: "sm", className: "h-10 px-4 text-sm" })}>
-                Start free
-              </Link>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="h-10 w-10 rounded-full px-0"
-                aria-expanded={mobileMenuOpen}
-                aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-                onClick={() => setMobileMenuOpen((open) => !open)}
-              >
-                {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-              </Button>
-            </div>
-          </div>
-
-          <div
-            className={cn(
-              "overflow-hidden transition-[max-height,opacity,transform,padding] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] md:hidden",
-              mobileMenuOpen ? "max-h-80 opacity-100 pb-4" : "pointer-events-none max-h-0 -translate-y-2 opacity-0",
-            )}
-          >
-            <div className="mx-auto max-w-[1180px] rounded-[24px] border border-white/85 bg-white/94 p-3 shadow-[0_22px_48px_rgba(15,23,42,0.08)]">
-              <nav className="flex flex-col gap-1.5">
-                {navItems.map((item) => (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    className="rounded-2xl px-3 py-3 text-sm font-medium text-secondary-foreground transition-colors duration-200 hover:bg-muted/75 hover:text-foreground"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {item.label}
-                  </a>
+      <section className="relative z-10 mx-auto flex min-h-screen max-w-[1400px] flex-col items-center justify-center px-5 pb-8 pt-8 sm:px-8 lg:pt-12">
+        <div className="grid w-full flex-1 items-center gap-8 lg:grid-cols-[1fr_1.1fr] lg:gap-12">
+          <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+            <div className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/55 px-3 py-1.5 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur-[22px] sm:px-4 sm:py-2">
+              <span className="flex items-center gap-0.5 text-[#FF801E]">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Star key={index} className="h-3.5 w-3.5 fill-current sm:h-4 sm:w-4" strokeWidth={1.8} />
                 ))}
-                <Link
-                  href="/login"
-                  className="rounded-2xl px-3 py-3 text-sm font-medium text-secondary-foreground transition-colors duration-200 hover:bg-muted/75 hover:text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Log in
-                </Link>
-              </nav>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <section className="container-shell pt-10 sm:pt-14 lg:pt-18">
-        <div className="mx-auto grid max-w-[1180px] gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:gap-16">
-          <Reveal className="space-y-8">
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[rgba(24,190,239,0.14)] bg-white/88 px-3.5 py-1.5 text-xs font-semibold text-sky-700 shadow-[0_10px_22px_rgba(15,23,42,0.04)]">
-              <Sparkles className="h-3.5 w-3.5" />
-              Built for students, builders, freelancers
+              </span>
+              <span className="text-xs font-medium tracking-[-0.03em] text-[#253041]/80 sm:text-sm">
+                Rated 4.9/5 by {ratedCustomerCount}+ focused planners
+              </span>
             </div>
 
-            <div className="space-y-5">
-              <h1 className="max-w-4xl font-display text-[3rem] font-semibold leading-[0.94] tracking-[-0.075em] text-foreground sm:text-[4.3rem] lg:text-[5.6rem]">
-                Plan your day before it disappears.
-              </h1>
-              <p className="max-w-2xl text-[1.02rem] leading-7 text-secondary-foreground sm:text-xl sm:leading-8">
-                DayStack helps you give the day structure, stay with what matters now, and follow through without the
-                chaos of generic productivity tools.
-              </p>
-            </div>
+            <h1 className="mt-4 font-display text-[36px] font-bold leading-[1.05] tracking-[-2px] text-[#07111f] sm:text-[52px] lg:text-[64px]">
+              Plan your day,<br />execute with clarity
+            </h1>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link href="/signup" className={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })}>
-                Start free
-                <ArrowRight className="h-4 w-4" />
+            <p className="mt-3 max-w-[520px] text-[15px] leading-7 tracking-[-1px] text-[#344155]/78 sm:text-[17px] sm:leading-8">
+              DayStack turns tasks, meetings, and routines into a simple timeline so you can manage your day without the mental clutter.
+            </p>
+
+            <div className="mt-5 flex flex-col items-center gap-3 sm:flex-row sm:mt-6 lg:justify-start">
+              <Link
+                href="/signup"
+                className="group flex items-center gap-3 rounded-[14px] bg-[rgba(0,132,255,0.8)] py-2.5 pl-5 pr-1.5 text-sm font-medium tracking-[-0.03em] text-white shadow-[inset_0px_4px_4px_0px_rgba(255,255,255,0.35),0_24px_50px_rgba(0,132,255,0.28)] backdrop-blur-[2px] transition duration-300 hover:scale-[1.02] sm:text-base sm:py-3 sm:pl-6 sm:pr-2"
+              >
+                Get Started Now
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-white text-[#0084ff] sm:h-8 sm:w-8">
+                  <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2.4} />
+                </span>
               </Link>
               <Link
-                href="/login"
-                className={buttonVariants({ variant: "secondary", size: "lg", className: "w-full sm:w-auto" })}
+                href="/signin"
+                className="rounded-[14px] border border-black/10 bg-white/45 px-5 py-2.5 text-sm font-medium tracking-[-0.03em] text-[#0b1220] backdrop-blur-[18px] transition hover:bg-white/70 sm:text-base sm:px-6 sm:py-3"
               >
-                Log in
+                Sign in
               </Link>
             </div>
+          </div>
 
-            <div className="grid gap-3 border-t border-black/6 pt-6 sm:grid-cols-3">
-              {quickStatements.map((item, index) => (
-                <div
-                  key={item}
-                  className="rounded-[20px] border border-white/82 bg-white/88 px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.05)]"
-                >
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/65">
-                    0{index + 1}
-                  </p>
-                  <p className="mt-2 text-sm font-medium leading-6 text-foreground">{item}</p>
-                </div>
+          <div className="relative flex min-h-[280px] w-full items-center justify-center overflow-visible sm:min-h-[360px] lg:min-h-[460px]">
+            <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(0,132,255,0.18),transparent_58%)] blur-3xl" />
+            <video
+              className="absolute z-0 h-[410px] w-[410px] scale-125 object-contain opacity-80 mix-blend-screen sm:h-[560px] sm:w-[560px] lg:h-[680px] lg:w-[680px]"
+              src="https://future.co/images/homepage/glassy-orb/orb-purple.webm"
+              autoPlay
+              loop
+              muted
+              playsInline
+              aria-hidden="true"
+              style={{ filter: "hue-rotate(-55deg) saturate(250%) brightness(1.2) contrast(1.1)" }}
+            />
+            <BrowserPreview />
+          </div>
+        </div>
+      </section>
+
+      <section className="relative w-full bg-[#0b1220] py-10 sm:py-12">
+        <div className="mx-auto max-w-[1400px] px-5 sm:px-8">
+          <p className="mb-6 text-center text-xs font-bold uppercase tracking-[0.2em] text-white/40">Trusted by workers at</p>
+          <div className="flex overflow-hidden">
+            <div className="flex animate-marquee items-center gap-14 whitespace-nowrap">
+              {[...companies, ...companies, ...companies, ...companies].map((c, i) => (
+                <span key={`${c.name}-${i}`} className="inline-flex items-center gap-3 text-sm font-semibold text-white/80 sm:text-base">
+                  <svg className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect width="24" height="24" rx="5" fill={c.color} />
+                    <path d={c.svg} stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {c.name}
+                </span>
               ))}
             </div>
-          </Reveal>
-
-          <Reveal delay={100}>
-            <HeroPlannerPreview />
-          </Reveal>
-        </div>
-
-        <Reveal delay={160} className="mx-auto mt-10 max-w-[1180px] sm:mt-14">
-          <LeaderboardView entries={leaderboard} mode="website" />
-        </Reveal>
-      </section>
-
-      <section id="problem" className="container-shell content-auto py-20 sm:py-24 lg:py-28">
-        <div className="mx-auto max-w-[1180px] space-y-10">
-          <Reveal>
-            <SectionIntro
-              eyebrow="Why it breaks"
-              title="Most days do not fail from lack of ambition."
-              copy="They fail because the plan is too easy to ignore, too hard to revisit, or too messy to trust once the day starts moving."
-            />
-          </Reveal>
-
-          <div className="grid gap-5 lg:grid-cols-3">
-            {problemPoints.map((item, index) => (
-              <Reveal key={item.title} delay={index * 80}>
-                <article className="flex h-full flex-col rounded-[28px] border border-white/82 bg-white/90 p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/65">
-                    0{index + 1}
-                  </p>
-                  <h3 className="mt-4 font-display text-[1.8rem] font-semibold tracking-[-0.04em] text-foreground">
-                    {item.title}
-                  </h3>
-                  <p className="mt-3 text-base leading-7 text-secondary-foreground">{item.copy}</p>
-                </article>
-              </Reveal>
-            ))}
           </div>
         </div>
       </section>
 
-      <section className="container-shell content-auto pb-20 sm:pb-24 lg:pb-28">
-        <div className="mx-auto max-w-[1180px]">
-          <Reveal>
-            <StatementBand
-              eyebrow="Brand statement"
-              statement='"A plan only matters if you can follow it."'
-              supporting="DayStack is not built to collect tasks. It is built to make the day feel visible, manageable, and honest."
-            />
-          </Reveal>
-        </div>
-      </section>
-
-      <section id="why-daystack" className="container-shell content-auto pb-20 sm:pb-24 lg:pb-28">
-        <div className="mx-auto max-w-[1180px] space-y-10">
-          <Reveal>
-            <SectionIntro
-              eyebrow="Why DayStack"
-              title="Less system. More control."
-              copy="Plan clearly, see what matters, follow through, and let consistency build from the shape of the day instead of from guilt."
-            />
-          </Reveal>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            {whyRows.map((row, index) => (
-              <Reveal key={row.title} delay={index * 70}>
-                <article className="h-full rounded-[28px] border border-white/82 bg-white/90 p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
-                  <div className="flex items-start gap-4">
-                    <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,rgba(24,190,239,0.12),rgba(109,40,240,0.12))] text-primary">
-                      <row.icon className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0">
-                      <h3 className="font-display text-[1.65rem] font-semibold tracking-[-0.04em] text-foreground sm:text-[1.9rem]">
-                        {row.title}
-                      </h3>
-                      <p className="mt-3 text-base leading-7 text-secondary-foreground">{row.copy}</p>
-                    </div>
-                  </div>
-                </article>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <MobileAppDownloadSection />
-
-      <section className="container-shell content-auto pb-20 sm:pb-24 lg:pb-28">
-        <div className="mx-auto grid max-w-[1180px] gap-5 lg:grid-cols-[1.04fr_0.96fr]">
-          <Reveal>
-            <div className="flex h-full flex-col justify-between rounded-[30px] border border-white/82 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,248,252,0.94))] p-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)] sm:p-8">
-              <div>
-                <p className="section-label">Clarity changes the mood of the day</p>
-                <h2 className="mt-4 font-display text-[2.2rem] font-semibold leading-[1.05] tracking-[-0.055em] text-foreground sm:text-[3rem]">
-                  Your time should feel visible.
-                </h2>
-                <p className="mt-4 max-w-2xl text-base leading-7 text-secondary-foreground sm:text-lg sm:leading-8">
-                  That is the shift. Less mental drag. Less hidden urgency. More calm momentum from the first block to
-                  the last.
-                </p>
-              </div>
-
-              <div className="mt-8 flex flex-wrap gap-3">
-                {[
-                  "For people tired of chaotic systems",
-                  "For days that need structure",
-                  "For momentum that feels earned",
-                ].map((item) => (
-                  <span
-                    key={item}
-                    className="inline-flex rounded-full border border-slate-200/80 bg-white/92 px-4 py-2 text-sm font-medium text-secondary-foreground shadow-[0_10px_22px_rgba(15,23,42,0.04)]"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </Reveal>
-
-          <Reveal delay={100}>
-            <div className="grid h-full gap-5">
-              <div className="rounded-[30px] border border-white/82 bg-white/92 p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)] sm:p-7">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[rgba(24,190,239,0.08)] text-primary">
-                    <Target className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <p className="section-label">What changes</p>
-                    <p className="mt-1 text-base font-semibold text-foreground">The day stops feeling abstract.</p>
-                  </div>
-                </div>
-                <div className="mt-5 space-y-3">
-                  {[
-                    "The next move stays obvious enough to act on.",
-                    "Open time becomes visible before it disappears.",
-                    "Momentum survives interruption more easily.",
-                  ].map((item) => (
-                    <div
-                      key={item}
-                      className="rounded-[20px] border border-slate-200/80 bg-slate-50/82 px-4 py-3 text-sm leading-6 text-secondary-foreground"
-                    >
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-[30px] border border-white/82 bg-[linear-gradient(135deg,rgba(24,190,239,0.07),rgba(109,40,240,0.08))] p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)] sm:p-7">
-                <p className="section-label">The point</p>
-                <p className="mt-3 font-display text-[1.8rem] font-semibold leading-[1.08] tracking-[-0.04em] text-foreground sm:text-[2.15rem]">
-                  Less chaos. More follow-through.
-                </p>
-                <p className="mt-4 text-base leading-7 text-secondary-foreground">
-                  DayStack is designed to feel lightweight while still making the day sharper, calmer, and easier to
-                  trust.
-                </p>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section id="start" className="container-shell content-auto pb-14 sm:pb-16">
-        <div className="mx-auto max-w-[1180px]">
-          <Reveal>
-            <div className="relative overflow-hidden rounded-[34px] border border-[rgba(17,24,39,0.05)] bg-[linear-gradient(135deg,#101725_0%,#172133_55%,#1c2840_100%)] px-6 py-9 text-white shadow-[0_32px_90px_rgba(15,23,42,0.24)] sm:px-10 sm:py-12">
-              <div className="absolute inset-y-0 right-0 w-[26rem] bg-[radial-gradient(circle_at_center,rgba(24,190,239,0.26),transparent_65%)]" />
-              <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,0.5),rgba(255,255,255,0))]" />
-
-              <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-                <div className="max-w-2xl">
-                  <p className="section-label text-white/64">Ready to start</p>
-                  <h2 className="mt-4 font-display text-[2.5rem] font-semibold leading-[1.02] tracking-[-0.055em] sm:text-[3.4rem]">
-                    Structure your day. Follow through.
-                  </h2>
-                  <p className="mt-4 max-w-2xl text-base leading-7 text-white/78 sm:text-lg sm:leading-8">
-                    Create an account, plan the day clearly, and let DayStack keep the shape of it honest.
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Link
-                    href="/signup"
-                    className={buttonVariants({
-                      className:
-                        "w-full sm:w-auto !border-white/80 !bg-white !text-foreground hover:!bg-white/94 [&_svg]:!text-foreground",
-                    })}
-                  >
-                    Create account
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                  <Link
-                    href="/login"
-                    className={buttonVariants({
-                      variant: "ghost",
-                      className: "w-full border border-white/18 text-white hover:bg-white/10 hover:text-white sm:w-auto",
-                    })}
-                  >
-                    Log in
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <footer className="container-shell">
-        <div className="mx-auto flex max-w-[1180px] flex-col gap-6 border-t border-black/6 py-8 text-sm text-secondary-foreground lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <Logo />
-            <div className="hidden h-5 w-px bg-border sm:block" />
-            <p>A calmer way to take control of your day.</p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-5">
-            {navItems.map((item) => (
-              <a key={item.href} href={item.href} className="transition-colors duration-200 hover:text-foreground">
-                {item.label}
-              </a>
-            ))}
-            <Link href="/login" className="transition-colors duration-200 hover:text-foreground">
-              Log in
-            </Link>
-            <Link href="/signup" className="transition-colors duration-200 hover:text-foreground">
-              Create account
-            </Link>
-            <Link href="/privacy" className="transition-colors duration-200 hover:text-foreground">
-              Privacy
-            </Link>
-            <Link href="/terms" className="transition-colors duration-200 hover:text-foreground">
-              Terms
-            </Link>
-            <span className="inline-flex items-center gap-2">
-              <Layers3 className="h-4 w-4" />
-              DayStack v1
-            </span>
-          </div>
-        </div>
-      </footer>
+      <MotionDayPreview />
     </main>
   );
 }

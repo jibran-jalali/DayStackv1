@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Sora } from "next/font/google";
+import { Fustat, Inter } from "next/font/google";
 
 import { TouchFeedback } from "@/components/app/touch-feedback";
 
@@ -18,9 +18,10 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-const sora = Sora({
-  variable: "--font-sora",
+const fustat = Fustat({
+  variable: "--font-fustat",
   subsets: ["latin"],
+  weight: ["700"],
 });
 
 export const metadata: Metadata = {
@@ -90,7 +91,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${sora.variable} bg-background text-foreground antialiased`}>
+      <body className={`${inter.variable} ${fustat.variable} bg-background text-foreground antialiased`}>
         <TouchFeedback />
         {children}
       </body>

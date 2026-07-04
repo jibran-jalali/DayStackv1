@@ -14,19 +14,22 @@ export function Logo({ className, href = "/", priority = false }: LogoProps) {
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center rounded-full px-1 py-1 transition-opacity duration-200 hover:opacity-90 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)]",
+        "inline-flex items-center gap-2 rounded-full px-1 py-1 transition-opacity duration-200 hover:opacity-90 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)]",
         className,
       )}
       aria-label="DayStack home"
     >
       <Image
-        src="/brand/daystack-logo.png"
-        alt="DayStack"
-        width={2852}
-        height={834}
+        src="/brand/daystack-mark.png"
+        alt=""
+        width={512}
+        height={512}
         priority={priority}
-        className="h-10 w-auto md:h-11"
+        className="h-9 w-9 rounded-xl md:h-10 md:w-10"
       />
+      <span className="font-display text-2xl font-bold tracking-[-0.055em] text-[#111827] md:text-[1.7rem]">
+        DayStack
+      </span>
     </Link>
   );
 }

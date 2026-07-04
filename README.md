@@ -1,34 +1,99 @@
 # DayStack
 
-DayStack is a timeline-based daily execution planner built on:
+DayStack is a timeline-based daily execution planner built for people who want a clear plan, visible momentum, and fewer decisions during the day. It combines structured time blocking, task execution tracking, reminders, friend-based meeting mentions, Google Calendar import, and DayStack AI scheduling.
+
+## What DayStack Does
+
+- Turns a day into a visual timeline of focused blocks.
+- Tracks completion, execution score, streaks, and daily progress.
+- Supports one-time and recurring blocks.
+- Handles meeting blocks, participant mentions, friend requests, and in-app approvals.
+- Sends reminder emails and push notifications when configured.
+- Imports Google Calendar events into the planner when connected.
+- Provides a DayStack AI assistant tab inside the planner shell.
+- Adds an AI Plan button that schedules multiple tasks at productive times, then creates them after confirmation.
+- Exposes a first-party automation API for external integrations.
+- Includes an internal admin console for operational user management.
+
+## Tech Stack
 
 - Next.js 16 App Router
 - React 19
 - TypeScript
-- Vercel Postgres-compatible PostgreSQL
-- Auth.js credentials auth
-- Gmail SMTP reminder emails
+- Drizzle ORM
+- PostgreSQL, including Vercel Postgres-compatible databases
+- Auth.js credentials authentication
+- Tailwind CSS 4
+- Nodemailer for email reminders
+- Web Push for browser and installed-PWA reminders
+- Groq or OpenAI for DayStack AI planning
 
-## Core features
+## App Surfaces
 
-- Landing page at `/`
-- Email/password auth at `/login` and `/signup`
-- Protected planner at `/app`
-- AI chat assistant tab inside `/app`
-- Daily timeline planning with create/edit/delete/complete flows
-- Execution score and streak tracking
-- Meeting blocks with participant mentions
-- Friend requests that gate who can mention whom in meetings
-- In-app notification center
-- Reminder preferences plus test email delivery
-- Reminder dispatch route for Vercel Cron
-- Internal admin console at `/admin`
+- `/` - marketing landing page
+- `/login`, `/signin`, `/signup` - authentication
+- `/app` - protected planner workspace
+- `/app?tab=assistant` - DayStack AI planner assistant inside the standard app shell
+- `/app/notifications` and `?tab=notifications` - notification inbox
+- `/app/friends` and `?tab=friends` - friend requests and accepted connections
+- `/app/settings` and `?tab=settings` - reminders, push settings, Google Calendar, automation keys, and preferences
+- `/admin/login` and `/admin` - internal admin console
+- `/privacy` and `/terms` - policy pages
 
-## Environment
+## Core Planner Features
 
-Create `.env.local` from `.env.example`.
+- Timeline grid and list views for the selected day.
+- Drag/reschedule-oriented task timing APIs.
+- Add, edit, complete, delete, and batch-delete task blocks.
+- Recurring block management with occurrence-only or this-and-future scope.
+- Execution scoring and active streak calculation.
+- Blocked-time support that stays visible without counting against score.
+- Meeting block mentions restricted to accepted friends.
+- Mention notifications that users can accept into their own timeline.
+- Google Calendar sync that imports external events into DayStack blocks.
 
-Required:
+## DayStack AI
+
+DayStack currently has two AI entry points.
+
+### Assistant Tab
+
+The Assistant tab is inside the normal planner shell. It lets users describe a day in natural language, generate a proposed schedule, review the timeline, and confirm creation.
+
+Example prompt:
+
+```text
+Plan my day from 9 AM to 6 PM: calculus 1h, gym 1h, lunch 1h, dinner 1h, review notes 45m
+```
+
+### AI Plan Modal
+
+The planner header includes an `AI Plan` button before `Add Block`. It opens a modal where users can add multiple tasks with durations, click the DayStack AI scheduling button, preview the generated timeline, and confirm creation.
+
+The server-side planner uses AI output plus deterministic productivity heuristics. It anchors task categories into sensible day windows, including:
+
+- Deep work and study during peak focus time.
+- Writing and creative work in the late morning.
+- Meetings near late morning or early afternoon.
+- Admin and email during the post-lunch slump.
+- Review work in the late afternoon.
+- Gym and exercise toward late afternoon when possible.
+- Lunch and dinner at human-rhythm-friendly times instead of first available slots.
+
+### AI Provider Selection
+
+The planner checks providers in this order:
+
+1. `OPENAI_API_KEY` with `OPENAI_MODEL`, defaulting to `gpt-5`
+2. `GROQ_API_KEY` with `GROQ_MODEL`, defaulting to `openai/gpt-oss-120b`
+
+If neither key is configured, AI planning returns a setup error instead of creating tasks.
+
+## Environment Variables
+
+Create `.env.local` from `.env.example` and fill in the values needed for the features you want enabled.
+
+### Required For Core App
 
 ```bash
 POSTGRES_URL=
@@ -37,127 +102,139 @@ ADMIN_USERNAME=
 ADMIN_PASSWORD=
 ```
 
-Optional:
+### Recommended / Optional
 
 ```bash
 POSTGRES_URL_NON_POOLING=
 NEXTAUTH_URL=http://localhost:3000
-OPENAI_API_KEY=
-OPENAI_MODEL=gpt-5
-OPENAI_WEB_MODEL=gpt-5
-GROQ_API_KEY=
-GROQ_MODEL=openai/gpt-oss-120b
-GROQ_WEB_MODEL=groq/compound-mini
-GMAIL_SMTP_USER=
-GMAIL_SMTP_APP_PASSWORD=
-EMAIL_FROM_NAME=DayStack
-CRON_SECRET=
-NEXT_PUBLIC_VAPID_PUBLIC_KEY=
-VAPID_PRIVATE_KEY=
-VAPID_SUBJECT=mailto:you@example.com
+DAYSTACK_TIME_ZONE=Asia/Karachi
 ADMIN_SESSION_SECRET=
 ```
 
-Generate Web Push keys (required for iPhone/desktop reminders while the app is closed):
+### AI Planning
+
+```bash
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5
+GROQ_API_KEY=
+GROQ_MODEL=openai/gpt-oss-120b
+```
+
+### Email Reminders
+
+```bash
+GMAIL_SMTP_USER=
+GMAIL_SMTP_APP_PASSWORD=
+EMAIL_FROM_NAME=DayStack
+```
+
+### Push Notifications
+
+```bash
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:admin@daystack.local
+```
+
+Generate VAPID keys with:
 
 ```bash
 npx web-push generate-vapid-keys
 ```
 
-Put the public key in `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and the private key in `VAPID_PRIVATE_KEY`.
+### Google Calendar
+
+```bash
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 ```
 
-## Local setup
+### Reminder Dispatch
 
-1. Install dependencies:
+```bash
+CRON_SECRET=
+```
+
+Never commit `.env.local` or real secrets. The file is intentionally ignored by Git.
+
+## Local Development
+
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-2. Generate and apply the database migration:
+Create the database schema:
 
 ```bash
 npm run db:generate
 npm run db:migrate
 ```
 
-3. Add your environment variables to `.env.local`.
-
-4. Start the app:
+Start the development server:
 
 ```bash
 npm run dev
 ```
 
+Open:
+
+```text
+http://localhost:3000
+```
+
+## Scripts
+
+```bash
+npm run dev          # Start Next.js in development mode
+npm run build        # Create a production build
+npm run start        # Start the production server after build
+npm run lint         # Run ESLint
+npm run db:generate  # Generate Drizzle migrations
+npm run db:migrate   # Apply Drizzle migrations
+```
+
+TypeScript verification:
+
+```bash
+npx tsc --noEmit
+```
+
+On Windows PowerShell, if `npx` script execution is blocked, run:
+
+```powershell
+& "node_modules\.bin\tsc.cmd" --noEmit
+```
+
 ## Database
 
-The Drizzle schema lives in [src/db/schema.ts](/D:/DayStack/src/db/schema.ts) and generated SQL migrations live in [drizzle](/D:/DayStack/drizzle).
+The Drizzle schema is in `src/db/schema.ts`. Generated migrations live in `drizzle/`.
 
-Main tables:
+Main data areas:
 
-- `users`
-- `api_keys`
-- `tasks`
-- `task_participants`
-- `friend_connections`
-- `daily_summaries`
-- `user_notification_preferences`
-- `task_reminders`
-- `task_notifications`
+- `users` for app-owned accounts
+- `tasks` for planner blocks
+- `task_participants` for meeting mentions
+- `friend_connections` for social graph and mention permissions
+- `daily_summaries` for execution history
+- `user_notification_preferences` for reminder settings
+- `task_reminders` for reminder dispatch tracking
+- `task_notifications` for mention notifications
+- `api_keys` for automation API credentials
+- Google Calendar connection and imported event tables
 
-## Deployment
-
-Recommended setup:
-
-1. Create a Vercel project.
-2. Attach Vercel Postgres.
-3. Add the environment variables from `.env.example`.
-4. Run the generated Drizzle migration against the production database.
-5. Deploy.
-
-For scheduled reminders (required for push while the app is closed):
-
-1. Set `CRON_SECRET`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` in the Vercel project.
-2. On Vercel Pro, add a Cron Job that sends `GET /api/reminders/dispatch` every minute with `Authorization: Bearer <CRON_SECRET>`.
-3. On Vercel Hobby, use an external cron service such as cron-job.org, GitHub Actions, or Upstash QStash to call the same URL every minute. Hobby projects only support daily Vercel Cron schedules, so the repository does not include a minute-level `crons` entry in [vercel.json](./vercel.json).
-4. On iPhone, users must **Add to Home Screen** and enable **Push reminders** in Settings — Safari tabs alone cannot receive background push.
-
-Each pending task gets its own push **5 minutes before start** (overlapping or back-to-back tasks each fire separately). Notification title format: `{Task name} starts in 5 minutes` with the DayStack icon only.
-
-## DayStack Assistant
-
-DayStack now includes an AI assistant tab inside `/app`.
-
-What it can do:
-
-- Answer questions about how DayStack works
-- Draft planner changes from chat prompts
-- Create, edit, reschedule, complete, and delete visible blocks
-- Work with recurring blocks using confirmation before applying changes
-
-Setup:
-
-1. Add `OPENAI_API_KEY` to `.env.local` for the strongest default assistant path, or add `GROQ_API_KEY` to use Groq.
-2. Optionally set `OPENAI_MODEL`, `OPENAI_WEB_MODEL`, `GROQ_MODEL`, or `GROQ_WEB_MODEL` if you want to override the defaults.
-3. Open the `Assistant` tab inside the app and start chatting naturally.
-
-Notes:
-
-- The assistant is grounded to the currently selected day plus the visible tasks and recurring blocks in that context.
-- It can answer broader questions, and when supported by the configured provider it can return web-backed answers with sources.
-- It always asks for confirmation before changing data.
-- If a request is ambiguous or the target is not visible in the current context, it will ask a follow-up question instead of guessing.
+See `docs/database-schema.md` for a table-by-table schema reference.
 
 ## Automation API
 
-DayStack now includes a first-party automation API for Zapier-style integrations.
+DayStack includes a first-party automation API for Zapier-style integrations.
 
-How it works:
+Create an API key in the app under `Settings -> Automation API`, then call endpoints with:
 
-1. Open `Settings` inside the app.
-2. Create an API key in the `Automation API` section.
-3. Use that key as `Authorization: Bearer <YOUR_DAYSTACK_API_KEY>` when calling `/api/v1/...`.
+```http
+Authorization: Bearer YOUR_DAYSTACK_API_KEY
+```
 
 Available endpoints:
 
@@ -190,14 +267,54 @@ curl -X POST "https://your-app.vercel.app/api/v1/tasks" \
   }'
 ```
 
-Vercel note:
+## Reminder Delivery
 
-- No extra Vercel environment variables are required for automation keys.
-- API keys are stored in the database, not in Vercel env vars.
-- You do need to apply the latest Drizzle migration in production so the new `api_keys` table exists.
+Reminder delivery supports email and push, depending on environment setup and user preferences.
 
-## Notes
+- Email reminders require Gmail SMTP credentials.
+- Push reminders require VAPID keys and browser permission.
+- iPhone push requires installing DayStack to the Home Screen and enabling push reminders in Settings.
+- Each pending task can generate its own notification before start time.
+- `/api/reminders/dispatch` is designed for cron invocation and should be protected with `CRON_SECRET`.
 
-- Notification delivery is email-based.
-- The app no longer depends on Supabase for auth, data access, admin operations, or realtime updates.
-- Notification refresh is polling-based rather than realtime subscription based.
+For Vercel Pro, configure a cron job that calls `/api/reminders/dispatch` regularly with:
+
+```http
+Authorization: Bearer <CRON_SECRET>
+```
+
+For Vercel Hobby, use an external scheduler such as cron-job.org, GitHub Actions, Upstash QStash, or another reliable cron provider.
+
+## Deployment
+
+Recommended production flow:
+
+1. Create a Vercel project.
+2. Attach a Postgres database or provide compatible Postgres connection strings.
+3. Add the required environment variables.
+4. Run Drizzle migrations against production.
+5. Deploy the app.
+6. Configure optional integrations: AI provider, Google Calendar, email, push, and reminder cron.
+
+## Quality Checks
+
+Before shipping changes, run:
+
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
+## Security Notes
+
+- Authentication uses app-owned credentials through Auth.js.
+- Passwords are stored as bcrypt hashes.
+- Application authorization is enforced server-side.
+- API keys are stored in the database, not environment variables.
+- Production secrets should only live in the hosting provider environment.
+- `.env.local` must remain untracked.
+
+## Project Status
+
+DayStack is an active production-oriented planner application. The current build focuses on a polished planner workspace, AI-assisted scheduling, reliable reminders, social meeting workflows, and API-driven automation.
