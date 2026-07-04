@@ -315,6 +315,14 @@ npm run build
 - Production secrets should only live in the hosting provider environment.
 - `.env.local` must remain untracked.
 
+## License
+
+DayStack is proprietary software owned by Jibran Jalali.
+
+Copyright (c) 2026 Jibran Jalali. All rights reserved.
+
+No permission is granted to copy, modify, distribute, sublicense, sell, publish, host, deploy, reverse engineer, or otherwise use this software without prior written permission. See `LICENSE` for details.
+
 ## Project Status
 
 DayStack is an active production-oriented planner application. The current build focuses on a polished planner workspace, AI-assisted scheduling, reliable reminders, social meeting workflows, and API-driven automation.
