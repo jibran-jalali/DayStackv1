@@ -3,11 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUp,
+  Bot,
   CheckCircle2,
   Clock3,
   ExternalLink,
+  LayoutDashboard,
   ListTodo,
   Loader2,
+  MessageSquareText,
   Mic,
   MicOff,
   Sparkles,
@@ -75,18 +78,15 @@ type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 const STARTER_PROMPTS = [
   { icon: Sparkles, text: "Add study from 6 to 7 PM", color: "from-violet-500 to-fuchsia-500" },
+  { icon: LayoutDashboard, text: "Plan my day: study, gym, review notes", color: "from-blue-500 to-cyan-500" },
   { icon: ListTodo, text: "Move all pending tasks to tomorrow", color: "from-emerald-500 to-teal-500" },
   { icon: Star, text: "Mark all pending tasks complete", color: "from-amber-500 to-orange-500" },
-  { icon: Clock3, text: "Plan my day: study, gym, review notes", color: "from-blue-500 to-cyan-500" },
 ] as const;
 
-const CAPABILITY_CHIPS = [
-  { label: "Create blocks", icon: "✦" },
-  { label: "Edit & reschedule", icon: "✦" },
-  { label: "Mark complete", icon: "✦" },
-  { label: "Delete tasks", icon: "✦" },
-  { label: "Batch schedule", icon: "✦" },
-  { label: "Web search", icon: "✦" },
+const AUTO_PLAN_PROMPTS = [
+  { label: "Morning routine", tasks: "wake up, meditate, breakfast, plan day" },
+  { label: "Deep work", tasks: "code feature, review PRs, write docs" },
+  { label: "Full day", tasks: "study calculus, gym, review notes, meeting prep" },
 ];
 
 function createMessage(
@@ -260,9 +260,9 @@ function SourceList({ sources }: { sources: AssistantAnswerSource[] }) {
 function TypingIndicator() {
   return (
     <div className="flex items-center gap-1.5 px-1 py-2">
-      <span className="h-2 w-2 rounded-full bg-current animate-bounce [animation-delay:-0.3s]" />
-      <span className="h-2 w-2 rounded-full bg-current animate-bounce [animation-delay:-0.15s]" />
-      <span className="h-2 w-2 rounded-full bg-current animate-bounce" />
+      <span className="h-2 w-2 rounded-full bg-brand-gradient animate-bounce [animation-delay:-0.3s]" />
+      <span className="h-2 w-2 rounded-full bg-brand-gradient animate-bounce [animation-delay:-0.15s]" />
+      <span className="h-2 w-2 rounded-full bg-brand-gradient animate-bounce" />
     </div>
   );
 }
@@ -320,7 +320,6 @@ function ActionCard({
   return (
     <div className="ml-10 sm:ml-11">
       <div className="max-w-[min(100%,44rem)] overflow-hidden rounded-[22px] rounded-tl-md border border-white/80 bg-white/94 shadow-[0_16px_36px_rgba(83,78,222,0.1)] backdrop-blur-xl">
-        {/* Header stripe */}
         <div className={cn(
           "px-4 py-3 flex items-center justify-between",
           isDestructive
@@ -344,7 +343,6 @@ function ActionCard({
           </span>
         </div>
 
-        {/* Detail lines */}
         <div className="px-4 py-3 space-y-1.5">
           {lines.map((line) => (
             <p key={line} className="text-sm leading-6 text-secondary-foreground">
@@ -353,7 +351,6 @@ function ActionCard({
           ))}
         </div>
 
-        {/* Actions */}
         <div className="grid grid-cols-2 gap-2 border-t border-border/50 px-4 py-3">
           <button
             type="button"
@@ -553,28 +550,43 @@ function FollowUpGuide({
   );
 }
 
-function StarterPromptCard({
+function PlanMyDayCard({
   disabled,
   onSelect,
-  prompt,
 }: {
   disabled: boolean;
   onSelect: (text: string) => void;
-  prompt: (typeof STARTER_PROMPTS)[number];
 }) {
-  const Icon = prompt.icon;
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => onSelect(prompt.text)}
-      className="group flex items-center gap-3 rounded-[18px] border border-border/70 bg-white/94 px-4 py-3.5 text-left shadow-[0_8px_22px_rgba(15,23,42,0.055)] backdrop-blur-xl transition-all hover:border-primary/25 hover:bg-white hover:shadow-[0_12px_28px_rgba(83,78,222,0.1)] hover:-translate-y-0.5 disabled:opacity-60 disabled:translate-y-0 disabled:hover:border-border/70 disabled:hover:shadow-[0_8px_22px_rgba(15,23,42,0.055)]"
-    >
-      <span className={cn("mt-0.5 shrink-0 flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-[0_10px_20px_rgba(83,78,222,0.16)]", prompt.color)}>
-        <Icon className="h-3.5 w-3.5" />
-      </span>
-      <p className="text-[15px] leading-5 text-foreground">{prompt.text}</p>
-    </button>
+    <div className="rounded-[18px] border border-primary/15 bg-[linear-gradient(135deg,rgba(24,190,239,0.07),rgba(109,40,240,0.05))] p-3.5 shadow-[0_8px_20px_rgba(83,78,222,0.06)]">
+      <div className="mb-2.5 flex items-center gap-2.5">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-gradient text-white shadow-[0_8px_16px_rgba(83,78,222,0.16)]">
+          <LayoutDashboard className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">
+            Auto-plan your day
+          </h3>
+          <p className="truncate text-[11px] leading-4 text-secondary-foreground">
+            Tell me what to do and I will schedule it all
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 soft-scrollbar">
+        {AUTO_PLAN_PROMPTS.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            disabled={disabled}
+            onClick={() => onSelect(`Plan my day: ${item.tasks}`)}
+            className="shrink-0 rounded-full border border-border/70 bg-white/92 px-3 py-1.5 text-xs font-semibold text-foreground transition-all hover:border-primary/25 hover:bg-white hover:shadow-[0_4px_12px_rgba(83,78,222,0.08)] active:scale-[0.97] disabled:opacity-60"
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -988,71 +1000,80 @@ export function AssistantShell({
 
   const isBusy = isSending || isConfirming;
 
+  const completionRate = snapshot.summary.totalTasks > 0
+    ? Math.round((snapshot.summary.completedTasks / snapshot.summary.totalTasks) * 100)
+    : 0;
+
   return (
     <section className="mobile-app-shell flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:bg-transparent">
-      {/* Main chat area */}
       <div className="flex h-full min-h-0 flex-1 flex-col">
-        {/* Scrollable messages */}
+        {/* ── Chat Header ── */}
+        {hasConversation ? (
+          <div className="flex items-center gap-3 border-b border-white/70 bg-white/72 px-4 py-2.5 backdrop-blur-xl sm:px-6 lg:px-8">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-gradient shadow-[0_8px_18px_rgba(83,78,222,0.18)]">
+              <Bot className="h-4 w-4 text-white" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="font-display text-sm font-bold tracking-tight text-foreground">DayStack AI</h2>
+                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              </div>
+              <p className="truncate text-[11px] text-secondary-foreground/60">{formatDateLabel(snapshot.taskDate)}</p>
+            </div>
+            <div className="shrink-0 rounded-full border border-border/70 bg-white/80 px-3 py-1 text-[11px] font-semibold text-secondary-foreground shadow-sm">
+              {completionRate}% done
+            </div>
+          </div>
+        ) : null}
+
+        {/* ── Scrollable messages ── */}
         <div ref={chatScrollRef} className="soft-scrollbar flex-1 overflow-y-auto">
           {!hasConversation ? (
-            /* ── Welcome / empty state ── */
-            <div className="flex min-h-full flex-col px-4 pb-6 pt-6 sm:px-6 lg:px-8">
-              <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center">
-                {/* Header */}
-                <div className="hidden">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-[0_14px_28px_rgba(83,78,222,0.2)] sm:rounded-2xl">
-                    <Sparkles className="h-5 w-5 text-white" />
+            /* ── Welcome / no-scroll compact ── */
+            <div className="flex min-h-full flex-col items-center justify-center px-4 pb-3 pt-3 sm:px-6 lg:px-8">
+              <div className="mx-auto flex w-full max-w-lg flex-col gap-3">
+                {/* Brand header */}
+                <div className="flex flex-col items-center text-center">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient shadow-[0_10px_20px_rgba(83,78,222,0.2)]">
+                    <Sparkles className="h-4.5 w-4.5 text-white" />
                   </span>
-                  <div>
-                    <h2 className="text-lg font-bold tracking-tight text-foreground">DayStack AI</h2>
-                    <p className="text-xs text-secondary-foreground/70">
-                      {formatDateLabel(snapshot.taskDate)} · {snapshot.tasks.length} task{snapshot.tasks.length !== 1 ? "s" : ""} in context
-                    </p>
-                  </div>
-                </div>
-
-                <p className="hidden">
-                  I can see your full schedule and act on anything — just talk to me naturally.
-                </p>
-
-                <p className="hidden">
-                  Ask naturally. I can draft changes, plan your day, and run bulk actions after you confirm.
-                </p>
-
-                {/* Capability chips */}
-                <div className="hidden">
-                  {CAPABILITY_CHIPS.map((chip) => (
-                    <span
-                      key={chip.label}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/86 px-3 py-1 text-xs font-semibold text-primary shadow-[0_8px_18px_rgba(83,78,222,0.06)]"
-                    >
-                      {chip.label}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="mb-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-secondary-foreground/60">
-                    Assistant shortcuts
-                  </p>
-                  <h2 className="mt-1 font-display text-2xl font-semibold tracking-tight text-foreground">
-                    What should DayStack do?
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-secondary-foreground">
-                    Choose a quick action or type a custom request. You will confirm before anything changes.
+                  <h1 className="mt-2 font-display text-lg font-bold tracking-tight text-foreground">
+                    DayStack AI
+                  </h1>
+                  <p className="mt-0.5 text-xs leading-5 text-secondary-foreground">
+                    Your schedule for{" "}
+                    <span className="font-semibold text-foreground">{formatDateLabel(snapshot.taskDate)}</span>
                   </p>
                 </div>
 
-                <div className="grid gap-2.5">
-                  {STARTER_PROMPTS.map((prompt) => (
-                    <StarterPromptCard
-                      key={prompt.text}
-                      disabled={isBusy}
-                      onSelect={(text) => void submitPrompt(text)}
-                      prompt={prompt}
-                    />
-                  ))}
+                {/* Plan My Day card */}
+                <PlanMyDayCard
+                  disabled={isBusy}
+                  onSelect={(text) => void submitPrompt(text)}
+                />
+
+                {/* Quick actions as compact row */}
+                <div className="flex gap-1.5 overflow-x-auto pb-0.5 soft-scrollbar">
+                  {STARTER_PROMPTS.map((prompt) => {
+                    const Icon = prompt.icon;
+                    return (
+                      <button
+                        key={prompt.text}
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => void submitPrompt(prompt.text)}
+                        className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-foreground shadow-[0_4px_10px_rgba(15,23,42,0.04)] transition-all hover:border-primary/25 hover:bg-white hover:shadow-[0_6px_14px_rgba(83,78,222,0.08)] active:scale-[0.97] disabled:opacity-60"
+                      >
+                        <Icon className="h-3 w-3" />
+                        <span className="truncate max-w-[160px]">{prompt.text}</span>
+                      </button>
+                    );
+                  })}
                 </div>
+
+                <p className="text-center text-[10px] leading-4 text-secondary-foreground/40">
+                  Every change is confirmed before applying
+                </p>
               </div>
             </div>
           ) : (
@@ -1076,7 +1097,7 @@ export function AssistantShell({
               {/* Typing indicator */}
               {isSending && (
                 <div className="flex items-start gap-3 fade-in-up">
-                  <span className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-[0_4px_12px_rgba(99,102,241,0.35)]">
+                  <span className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-brand-gradient shadow-[0_4px_12px_rgba(99,102,241,0.35)]">
                     <LogoMark className="h-5 w-5 rounded-lg" />
                   </span>
                   <div className="rounded-[20px] rounded-tl-[6px] border border-border/60 bg-white px-4 py-3 shadow-[0_4px_16px_rgba(15,23,42,0.06)]">
@@ -1088,7 +1109,7 @@ export function AssistantShell({
               )}
               {isConfirming && (
                 <div className="flex items-start gap-3 fade-in-up">
-                  <span className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600">
+                  <span className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-brand-gradient">
                     <LogoMark className="h-5 w-5 rounded-lg" />
                   </span>
                   <div className="rounded-[20px] rounded-tl-[6px] border border-border/60 bg-white px-4 py-3 text-sm text-secondary-foreground shadow-[0_4px_16px_rgba(15,23,42,0.06)]">
@@ -1141,6 +1162,9 @@ export function AssistantShell({
                         : voiceStatus ?? "Voice input and spoken replies are free browser features."}
                 </p>
               </div>
+              <span className="text-[11px] text-secondary-foreground/40">
+                {hasConversation ? `${messages.length - 1} messages` : "Start a conversation"}
+              </span>
             </div>
 
             {/* Input box */}
@@ -1221,9 +1245,6 @@ export function AssistantShell({
               </button>
             </div>
 
-            <p className="hidden">
-              Enter to send · Shift+Enter for new line · Changes are always confirmed before applying
-            </p>
             <p className="mt-2 text-center text-[11px] text-secondary-foreground/50">
               Changes are always confirmed before applying
             </p>
