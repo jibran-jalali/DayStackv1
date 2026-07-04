@@ -26,7 +26,7 @@ export function ActionFeedbackPanel({ compact = false, enabled, onToggle }: Acti
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground">Action sounds</p>
           <p className={cn("mt-1 text-secondary-foreground", compact ? "text-xs" : "text-sm")}>
-            Sound feedback for taps and tab changes.
+            Audio feedback for actions.
           </p>
           <button
             suppressHydrationWarning
@@ -42,7 +42,6 @@ export function ActionFeedbackPanel({ compact = false, enabled, onToggle }: Acti
           >
             {enabled ? "Sounds on" : "Turn sounds on"}
           </button>
-          {!compact ? <p className="mt-2 text-xs text-secondary-foreground/78">Default is off. Works only after direct taps.</p> : null}
         </div>
       </div>
     </section>

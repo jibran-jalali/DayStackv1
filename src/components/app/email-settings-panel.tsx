@@ -102,7 +102,7 @@ export function EmailSettingsPanel({
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/70">Email delivery</p>
           <p className={cn("mt-1.5 text-secondary-foreground", compact ? "text-xs" : "text-sm")}>
-            Sends reminders to <span className="font-medium text-foreground">{accountEmail ?? "your account email"}</span>.
+            Sends to <span className="font-medium text-foreground">{accountEmail ?? "your account email"}</span>.
           </p>
         </div>
         <StatusChip
@@ -117,7 +117,7 @@ export function EmailSettingsPanel({
         <ToggleRow
           checked={preferences.email_enabled}
           compact={compact}
-          description="Send one pre-start email for every scheduled block, including blocked time."
+          description="Email before scheduled blocks."
           disabled={isBusy}
           label="Email block reminders"
           onChange={onToggleEmail}
@@ -125,7 +125,7 @@ export function EmailSettingsPanel({
         <ToggleRow
           checked={preferences.meeting_mention_email_enabled}
           compact={compact}
-          description="Send an email when someone tags you in a meeting block."
+          description="Email when someone mentions you."
           disabled={isBusy}
           label="Email meeting tags"
           onChange={onToggleMeetingMentionEmail}
@@ -138,9 +138,9 @@ export function EmailSettingsPanel({
             <Mail className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">Email reminder timing</p>
+            <p className="text-sm font-semibold text-foreground">Reminder timing</p>
             <p className={cn("mt-1 text-secondary-foreground", compact ? "text-xs" : "text-sm")}>
-              Minutes before each block for email and push. Use <span className="font-medium text-foreground">0</span> to skip the early nudge and rely on the start-time alert.
+              Minutes before each block for email and push.
             </p>
 
             <div className="mt-2.5 flex flex-col gap-1.5 sm:flex-row sm:items-center">
@@ -164,14 +164,14 @@ export function EmailSettingsPanel({
               </Button>
               <Button size="sm" className={compact ? "h-9 text-xs" : undefined} disabled={isBusy} onClick={onSendTest}>
                 <Send className="h-4 w-4" />
-                Send test email
+                Test email
               </Button>
             </div>
 
             {leadMinutesError ? <p className="mt-2 text-xs font-medium text-danger">{leadMinutesError}</p> : null}
             {!leadMinutesError ? (
               <p className="mt-2 text-xs text-secondary-foreground">
-                Sends a sample reminder email to <span className="font-medium text-foreground">{accountEmail ?? "your account email"}</span>.
+                Sends a sample to <span className="font-medium text-foreground">{accountEmail ?? "your account email"}</span>.
               </p>
             ) : null}
           </div>

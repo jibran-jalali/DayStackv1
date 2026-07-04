@@ -57,7 +57,7 @@ export function GoogleCalendarSettingsPanel({ compact = false }: GoogleCalendarS
     const callbackMessage = searchParams.get("message");
 
     if (calendarResult === "connected") {
-      setMessage("Google Calendar connected. Future DayStack blocks sync out, and visible calendar events can appear in DayStack.");
+      setMessage("Google Calendar connected.");
       return;
     }
 
@@ -110,7 +110,7 @@ export function GoogleCalendarSettingsPanel({ compact = false }: GoogleCalendarS
             <div>
               <p className="text-sm font-semibold text-foreground">Google Calendar</p>
               <p className="mt-1 text-sm leading-6 text-secondary-foreground">
-                Sync DayStack blocks to Google Calendar and import visible Google events back into DayStack.
+                Import visible calendar events into DayStack.
               </p>
             </div>
             {isLoading ? <Loader2 className="mt-1 h-4 w-4 animate-spin text-secondary-foreground" /> : null}
@@ -124,7 +124,7 @@ export function GoogleCalendarSettingsPanel({ compact = false }: GoogleCalendarS
 
           {status && !status.configured ? (
             <div className="mt-3 rounded-[14px] border border-amber-200 bg-amber-50/85 px-3 py-2 text-xs leading-5 text-amber-900">
-              Add Google OAuth env values before users can connect calendars.
+              Google OAuth env values are missing.
             </div>
           ) : null}
 

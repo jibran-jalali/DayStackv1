@@ -205,6 +205,10 @@ export function AiPlanModal({ open, taskDate, onClose, onNotice, onConfirm }: Ai
   const windowEnd = minutesSinceMidnight(endTime);
   const totalWindow = windowEnd - windowStart;
 
+  if (!open) {
+    return null;
+  }
+
   return (
     <div
       className={cn(
@@ -243,8 +247,7 @@ export function AiPlanModal({ open, taskDate, onClose, onNotice, onConfirm }: Ai
                     Plan with AI
                   </h2>
                   <p className="mt-1 text-sm leading-6 text-secondary-foreground">
-                    Add your tasks and let AI schedule them at the best times for{" "}
-                    {formatDateLabel(taskDate)}.
+                    Add tasks, generate a schedule, then confirm for {formatDateLabel(taskDate)}.
                   </p>
                 </div>
                 <Button
@@ -269,7 +272,7 @@ export function AiPlanModal({ open, taskDate, onClose, onNotice, onConfirm }: Ai
                     <div className="bg-[linear-gradient(135deg,rgba(24,190,239,0.1),rgba(109,40,240,0.06))] border-b border-cyan-100/60 px-4 py-3">
                       <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Sparkles className="h-4 w-4 text-primary" />
-                        AI-optimized schedule
+                        DayStack AI plan
                       </div>
                       <p className="mt-0.5 text-xs text-secondary-foreground">
                         {startTime} — {endTime} · {plannedTasks.length} task{plannedTasks.length !== 1 ? "s" : ""}
@@ -349,7 +352,7 @@ export function AiPlanModal({ open, taskDate, onClose, onNotice, onConfirm }: Ai
                       ) : (
                         <Sparkles className="h-4 w-4" />
                       )}
-                      Confirm & create
+                      Create plan
                     </Button>
                   </div>
                 </div>
@@ -463,7 +466,7 @@ export function AiPlanModal({ open, taskDate, onClose, onNotice, onConfirm }: Ai
                         className="h-5 w-5 rounded-md"
                       />
                     )}
-                    {isPlanning ? "DayStack AI is planning..." : "DayStack AI — schedule at best times"}
+                    {isPlanning ? "DayStack AI is planning..." : "DayStack AI — build my plan"}
                   </button>
                 </div>
               )}

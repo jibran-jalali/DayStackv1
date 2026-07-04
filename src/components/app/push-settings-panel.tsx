@@ -29,7 +29,7 @@ function getSupportMessage(supportState: PushSupportState) {
     return "This browser does not support web push.";
   }
 
-  return "One alert 5 minutes before each task, even when the app is closed.";
+  return "Alerts before tasks, even when the app is closed.";
 }
 
 export function PushSettingsPanel({
@@ -92,7 +92,7 @@ export function PushSettingsPanel({
             Push reminders
           </p>
           <p className={cn("mt-1.5 text-secondary-foreground", compact ? "text-xs" : "text-sm")}>
-            Each task gets its own push 5 minutes before start. On iPhone, add DayStack to your Home Screen first.
+            Browser and installed-app task alerts.
           </p>
         </div>
         <StatusChip
@@ -118,7 +118,7 @@ export function PushSettingsPanel({
         aria-pressed={pushEnabled}
       >
         <span>
-          <span className="block text-sm font-medium text-foreground">Push task reminders</span>
+          <span className="block text-sm font-medium text-foreground">Push reminders</span>
           <span className={cn("block text-xs text-secondary-foreground", compact && "line-clamp-1")}>
             {getSupportMessage(supportState)}
           </span>
@@ -146,10 +146,10 @@ export function PushSettingsPanel({
           onClick={onSendTest}
         >
           <Send className="h-4 w-4" />
-          Send test push
+          Test push
         </Button>
         <p className="text-xs text-secondary-foreground sm:flex sm:items-center">
-          {hasDeviceSubscription ? "This device is connected." : "Enable push on each device you use."}
+          {hasDeviceSubscription ? "Device connected." : "Enable on this device first."}
         </p>
       </div>
     </section>

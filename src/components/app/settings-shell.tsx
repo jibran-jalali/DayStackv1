@@ -108,7 +108,7 @@ export function SettingsShell({
         <PlannerHeader
           activePage="settings"
           assistantHref={assistantHref}
-          dateLabel="Notifications & reminders"
+          dateLabel="Settings"
           displayName={displayName}
           email={email}
           metricIcon={activeChannelCount > 0 ? Mail : Bell}
@@ -117,7 +117,7 @@ export function SettingsShell({
           notificationsHref={notificationsHref}
           plannerHref={plannerHref}
           settingsHref={settingsHref}
-          subtitle="Manage how DayStack nudges the plan."
+          subtitle="Reminders, calendar, and account."
           onNotice={setNotice}
           onSignOutError={(message) =>
             setNotice({
@@ -145,12 +145,12 @@ export function SettingsShell({
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_19rem]">
           <section className="glass-panel p-4 sm:p-5">
             <div className="border-b border-border/70 pb-4">
-              <p className="section-label">Notifications</p>
+              <p className="section-label">Settings</p>
               <h1 className="mt-1 font-display text-2xl font-semibold text-foreground sm:text-[2rem]">
-                Notification settings
+                Preferences
               </h1>
               <p className="mt-1.5 text-sm text-secondary-foreground">
-                Configure email reminders, meeting-tag emails, and a quick delivery test from one place.
+                Manage reminders and notification delivery.
               </p>
             </div>
 
@@ -176,7 +176,7 @@ export function SettingsShell({
 
           <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
             <section className="rounded-[22px] border border-border/70 bg-white/82 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
-              <p className="section-label">Account</p>
+              <p className="section-label">Profile</p>
               <div className="mt-3 space-y-3">
                 <div>
                   <p className="text-sm font-semibold text-foreground">{displayName}</p>
@@ -193,19 +193,6 @@ export function SettingsShell({
               </div>
             </section>
 
-            <section className="rounded-[22px] border border-border/70 bg-white/82 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-cyan-50 text-sky-700">
-                  <Mail className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Email uses your account address</p>
-                  <p className="mt-1 text-sm text-secondary-foreground">
-                    DayStack sends reminder and meeting-tag emails to {email ?? "your signed-in email"} once those toggles are enabled.
-                  </p>
-                </div>
-              </div>
-            </section>
           </aside>
         </div>
       </div>

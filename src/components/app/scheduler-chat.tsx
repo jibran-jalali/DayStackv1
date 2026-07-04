@@ -32,9 +32,9 @@ interface ChatMessage {
 }
 
 const QUICK_PROMPTS = [
-  "Plan my work day from 9 AM to 6 PM: code feature 3h, team standup 30m, lunch, review PRs 1h, email 30m, gym 1h",
-  "Plan my study day from 8 AM to 8 PM: study calculus 2h, break 15m, practice problems 1.5h, lunch, review notes 1h, read textbook 1.5h, dinner, flashcards 30m",
-  "Plan a light day from 10 AM to 4 PM: morning routine 30m, admin work 1h, lunch, walk 30m, plan tomorrow 30m",
+  "From 9 AM to 6 PM: code feature 3h, standup 30m, lunch 1h, PR review 1h, email 30m, gym 1h",
+  "From 8 AM to 8 PM: calculus 2h, practice 90m, lunch 1h, notes 1h, textbook 90m, dinner 1h",
+  "From 10 AM to 4 PM: morning routine 30m, admin 1h, lunch 1h, walk 30m, plan tomorrow 30m",
 ];
 
 const TASK_COLORS = [
@@ -85,7 +85,7 @@ function TimelineCard({
       <div className="bg-[linear-gradient(135deg,rgba(24,190,239,0.1),rgba(109,40,240,0.06))] border-b border-cyan-100/60 px-4 py-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Sparkles className="h-4 w-4 text-primary" />
-          Your optimized schedule
+          Optimized plan
         </div>
         <p className="mt-0.5 text-xs text-secondary-foreground">
           {schedule.window.start} — {schedule.window.end} · {schedule.tasks.length} task{schedule.tasks.length !== 1 ? "s" : ""}
@@ -155,7 +155,7 @@ function TimelineCard({
           ) : (
             <CheckCircle2 className="h-4 w-4" />
           )}
-          {isConfirming ? "Creating tasks..." : "Confirm schedule"}
+          {isConfirming ? "Creating plan..." : "Create plan"}
         </button>
       </div>
     </div>
@@ -250,8 +250,8 @@ export function SchedulerChat({
             id: crypto.randomUUID(),
             role: "assistant",
             content:
-              "I couldn't find tasks in your message. Try something like:\n\n" +
-              "> *From 9 AM to 5 PM: study calculus 2h, gym 1h, lunch, review notes 45m*",
+              "Add a time window and durations. Example:\n\n" +
+              "> *From 9 AM to 5 PM: calculus 2h, gym 1h, lunch 1h, review notes 45m*",
           },
         ]);
         setIsPlanning(false);
@@ -285,7 +285,7 @@ export function SchedulerChat({
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: `I scheduled your day within **${planInfo.startTime} — ${planInfo.endTime}** based on productivity principles:\n\n> ${summary}`,
+          content: `Drafted a productive plan for **${planInfo.startTime} — ${planInfo.endTime}**.\n\n> ${summary}`,
           schedule: {
             tasks: data.tasks,
             date: snapshot.taskDate,
@@ -333,7 +333,7 @@ export function SchedulerChat({
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: `✅ Created ${result.created.length} task${result.created.length !== 1 ? "s" : ""} successfully!${result.errors.length > 0 ? `\n⚠️ ${result.errors.length} task${result.errors.length !== 1 ? "s" : ""} failed.` : ""}`,
+            content: `Created ${result.created.length} task${result.created.length !== 1 ? "s" : ""}.${result.errors.length > 0 ? `\n${result.errors.length} failed.` : ""}`,
         },
       ]);
 
@@ -362,20 +362,17 @@ export function SchedulerChat({
   return (
     <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       {/* ── Header ── */}
-      <div className="flex items-center gap-3 border-b border-white/70 bg-white/72 px-4 py-2.5 backdrop-blur-xl sm:px-6 lg:px-8">
+      <div className="flex items-center gap-3 border-b border-white/70 bg-white/78 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
         <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-gradient shadow-[0_8px_18px_rgba(83,78,222,0.18)]">
           <Sparkles className="h-4 w-4 text-white" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h2 className="font-display text-sm font-bold tracking-tight text-foreground">DayStack AI</h2>
-            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          </div>
-          <p className="truncate text-[11px] text-secondary-foreground/60">{formatDateLabel(snapshot.taskDate)}</p>
+          <h2 className="font-display text-sm font-bold tracking-tight text-foreground">DayStack AI</h2>
+          <p className="truncate text-[11px] text-secondary-foreground/60">Planning {formatDateLabel(snapshot.taskDate)}</p>
         </div>
         {snapshot.summary.totalTasks > 0 && (
           <div className="shrink-0 rounded-full border border-border/70 bg-white/80 px-3 py-1 text-[11px] font-semibold text-secondary-foreground shadow-sm">
-            {snapshot.summary.completedTasks}/{snapshot.summary.totalTasks} done
+            {snapshot.summary.completedTasks}/{snapshot.summary.totalTasks}
           </div>
         )}
       </div>
@@ -390,15 +387,15 @@ export function SchedulerChat({
                 <Sparkles className="h-6 w-6 text-white" />
               </span>
               <h1 className="mt-4 font-display text-xl font-bold tracking-tight text-foreground">
-                Plan your day with AI
+                Build a better day
               </h1>
               <p className="mt-1.5 max-w-sm text-sm leading-6 text-secondary-foreground">
-                Tell me your available time and what you need to do. I will optimize the schedule for maximum productivity.
+                Add your window and tasks. DayStack AI will place the work where it fits best.
               </p>
 
               <div className="mt-6 w-full space-y-2 text-left">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/50">
-                  Try an example
+                  Examples
                 </p>
                 {QUICK_PROMPTS.slice(0, 2).map((prompt) => (
                   <button
@@ -433,11 +430,11 @@ export function SchedulerChat({
                     <div className="min-w-0 flex-1">
                       <div className="mb-1.5 flex items-center gap-2">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-secondary-foreground/60">
-                          Assistant
+                          DayStack AI
                         </p>
                         {msg.schedule ? (
                           <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
-                            Schedule ready
+                            Ready
                           </span>
                         ) : null}
                       </div>
@@ -494,7 +491,7 @@ export function SchedulerChat({
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={1}
-              placeholder={hasConversation ? "Refine or ask for changes..." : "Describe your day (e.g., From 9 to 5: study 2h, gym 1h, lunch...)"}
+              placeholder={hasConversation ? "Ask for changes..." : "From 9 to 5: calculus 2h, gym 1h, lunch 1h..."}
               disabled={isBusy}
               className="max-h-40 min-h-0 flex-1 resize-none border-0 bg-transparent py-1.5 text-[16px] leading-6 text-foreground outline-none placeholder:text-secondary-foreground/50 disabled:opacity-60"
             />
@@ -519,7 +516,7 @@ export function SchedulerChat({
           </div>
 
           <p className="mt-2 text-center text-[11px] text-secondary-foreground/45">
-            {hasConversation ? "Ask for changes or create a new plan" : "Paste your task list naturally — I'll handle the rest"}
+             {hasConversation ? "Ask for changes or start over" : "Include durations: 30m, 1h, 90m"}
           </p>
         </div>
       </div>

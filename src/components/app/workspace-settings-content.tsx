@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, LogOut, Mail } from "lucide-react";
+import { CalendarDays, LogOut } from "lucide-react";
 
 import { ActionFeedbackPanel } from "@/components/app/action-feedback-panel";
 import { EmailSettingsPanel } from "@/components/app/email-settings-panel";
@@ -74,7 +74,7 @@ export function WorkspaceSettingsContent({
         <GoogleCalendarSettingsPanel compact />
 
         <section className="mobile-card p-3">
-          <p className="section-label">Account</p>
+          <p className="section-label">Profile</p>
           <div className="mt-2.5 space-y-2.5">
             <div>
               <p className="text-sm font-semibold text-foreground">{displayName}</p>
@@ -93,7 +93,7 @@ export function WorkspaceSettingsContent({
                 onClick={onOpenPlanner}
               >
                 <CalendarDays className="h-4 w-4" />
-                Back to plan
+                Open planner
               </button>
               {onSignOut ? (
                 <button
@@ -117,12 +117,12 @@ export function WorkspaceSettingsContent({
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_19rem]">
       <section className="glass-panel p-4 sm:p-5">
         <div className="border-b border-border/70 pb-4">
-          <p className="section-label">Notifications</p>
+          <p className="section-label">Settings</p>
           <h1 className="mt-1 font-display text-2xl font-semibold text-foreground sm:text-[2rem]">
-            Notification settings
+            Preferences
           </h1>
           <p className="mt-1.5 text-sm text-secondary-foreground">
-            Configure email reminders, meeting-tag emails, and a quick delivery test from one place.
+            Manage reminders, calendar sync, and app feedback.
           </p>
         </div>
 
@@ -152,7 +152,7 @@ export function WorkspaceSettingsContent({
 
       <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
         <section className="rounded-[22px] border border-border/70 bg-white/82 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
-          <p className="section-label">Account</p>
+          <p className="section-label">Profile</p>
           <div className="mt-3 space-y-3">
             <div>
               <p className="text-sm font-semibold text-foreground">{displayName}</p>
@@ -170,7 +170,7 @@ export function WorkspaceSettingsContent({
               onClick={onOpenPlanner}
             >
               <CalendarDays className="h-4 w-4" />
-              Back to plan
+              Open planner
             </button>
             {onSignOut ? (
               <button
@@ -183,20 +183,6 @@ export function WorkspaceSettingsContent({
                 Logout
               </button>
             ) : null}
-          </div>
-        </section>
-
-        <section className="rounded-[22px] border border-border/70 bg-white/82 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-cyan-50 text-sky-700">
-              <Mail className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Email uses your account address</p>
-              <p className="mt-1 text-sm text-secondary-foreground">
-                DayStack sends reminder and meeting-tag emails to {email ?? "your signed-in email"} once those toggles are enabled.
-              </p>
-            </div>
           </div>
         </section>
       </aside>
