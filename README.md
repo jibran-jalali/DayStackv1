@@ -1,0 +1,203 @@
+# DayStack
+
+DayStack is a timeline-based daily execution planner built on:
+
+- Next.js 16 App Router
+- React 19
+- TypeScript
+- Vercel Postgres-compatible PostgreSQL
+- Auth.js credentials auth
+- Gmail SMTP reminder emails
+
+## Core features
+
+- Landing page at `/`
+- Email/password auth at `/login` and `/signup`
+- Protected planner at `/app`
+- AI chat assistant tab inside `/app`
+- Daily timeline planning with create/edit/delete/complete flows
+- Execution score and streak tracking
+- Meeting blocks with participant mentions
+- Friend requests that gate who can mention whom in meetings
+- In-app notification center
+- Reminder preferences plus test email delivery
+- Reminder dispatch route for Vercel Cron
+- Internal admin console at `/admin`
+
+## Environment
+
+Create `.env.local` from `.env.example`.
+
+Required:
+
+```bash
+POSTGRES_URL=
+AUTH_SECRET=
+ADMIN_USERNAME=
+ADMIN_PASSWORD=
+```
+
+Optional:
+
+```bash
+POSTGRES_URL_NON_POOLING=
+NEXTAUTH_URL=http://localhost:3000
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5
+OPENAI_WEB_MODEL=gpt-5
+GROQ_API_KEY=
+GROQ_MODEL=openai/gpt-oss-120b
+GROQ_WEB_MODEL=groq/compound-mini
+GMAIL_SMTP_USER=
+GMAIL_SMTP_APP_PASSWORD=
+EMAIL_FROM_NAME=DayStack
+CRON_SECRET=
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:you@example.com
+ADMIN_SESSION_SECRET=
+```
+
+Generate Web Push keys (required for iPhone/desktop reminders while the app is closed):
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Put the public key in `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and the private key in `VAPID_PRIVATE_KEY`.
+```
+
+## Local setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Generate and apply the database migration:
+
+```bash
+npm run db:generate
+npm run db:migrate
+```
+
+3. Add your environment variables to `.env.local`.
+
+4. Start the app:
+
+```bash
+npm run dev
+```
+
+## Database
+
+The Drizzle schema lives in [src/db/schema.ts](/D:/DayStack/src/db/schema.ts) and generated SQL migrations live in [drizzle](/D:/DayStack/drizzle).
+
+Main tables:
+
+- `users`
+- `api_keys`
+- `tasks`
+- `task_participants`
+- `friend_connections`
+- `daily_summaries`
+- `user_notification_preferences`
+- `task_reminders`
+- `task_notifications`
+
+## Deployment
+
+Recommended setup:
+
+1. Create a Vercel project.
+2. Attach Vercel Postgres.
+3. Add the environment variables from `.env.example`.
+4. Run the generated Drizzle migration against the production database.
+5. Deploy.
+
+For scheduled reminders (required for push while the app is closed):
+
+1. Set `CRON_SECRET`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` in the Vercel project.
+2. On Vercel Pro, add a Cron Job that sends `GET /api/reminders/dispatch` every minute with `Authorization: Bearer <CRON_SECRET>`.
+3. On Vercel Hobby, use an external cron service such as cron-job.org, GitHub Actions, or Upstash QStash to call the same URL every minute. Hobby projects only support daily Vercel Cron schedules, so the repository does not include a minute-level `crons` entry in [vercel.json](./vercel.json).
+4. On iPhone, users must **Add to Home Screen** and enable **Push reminders** in Settings — Safari tabs alone cannot receive background push.
+
+Each pending task gets its own push **5 minutes before start** (overlapping or back-to-back tasks each fire separately). Notification title format: `{Task name} starts in 5 minutes` with the DayStack icon only.
+
+## DayStack Assistant
+
+DayStack now includes an AI assistant tab inside `/app`.
+
+What it can do:
+
+- Answer questions about how DayStack works
+- Draft planner changes from chat prompts
+- Create, edit, reschedule, complete, and delete visible blocks
+- Work with recurring blocks using confirmation before applying changes
+
+Setup:
+
+1. Add `OPENAI_API_KEY` to `.env.local` for the strongest default assistant path, or add `GROQ_API_KEY` to use Groq.
+2. Optionally set `OPENAI_MODEL`, `OPENAI_WEB_MODEL`, `GROQ_MODEL`, or `GROQ_WEB_MODEL` if you want to override the defaults.
+3. Open the `Assistant` tab inside the app and start chatting naturally.
+
+Notes:
+
+- The assistant is grounded to the currently selected day plus the visible tasks and recurring blocks in that context.
+- It can answer broader questions, and when supported by the configured provider it can return web-backed answers with sources.
+- It always asks for confirmation before changing data.
+- If a request is ambiguous or the target is not visible in the current context, it will ask a follow-up question instead of guessing.
+
+## Automation API
+
+DayStack now includes a first-party automation API for Zapier-style integrations.
+
+How it works:
+
+1. Open `Settings` inside the app.
+2. Create an API key in the `Automation API` section.
+3. Use that key as `Authorization: Bearer <YOUR_DAYSTACK_API_KEY>` when calling `/api/v1/...`.
+
+Available endpoints:
+
+- `GET /api/v1/me`
+- `GET /api/v1/dashboard?date=YYYY-MM-DD`
+- `GET /api/v1/tasks?date=YYYY-MM-DD`
+- `POST /api/v1/tasks`
+- `PATCH /api/v1/tasks/:taskId`
+- `DELETE /api/v1/tasks/:taskId`
+- `PATCH /api/v1/tasks/:taskId/status`
+- `PATCH /api/v1/tasks/:taskId/reschedule`
+- `GET /api/v1/participants/search?q=name`
+
+Example:
+
+```bash
+curl -X POST "https://your-app.vercel.app/api/v1/tasks" \
+  -H "Authorization: Bearer YOUR_DAYSTACK_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "blockMode": "one_time",
+    "title": "Follow up with client",
+    "taskDate": "2026-04-02",
+    "startTime": "14:00",
+    "endTime": "14:30",
+    "taskType": "generic",
+    "meetingLink": "",
+    "participants": [],
+    "weekdays": []
+  }'
+```
+
+Vercel note:
+
+- No extra Vercel environment variables are required for automation keys.
+- API keys are stored in the database, not in Vercel env vars.
+- You do need to apply the latest Drizzle migration in production so the new `api_keys` table exists.
+
+## Notes
+
+- Notification delivery is email-based.
+- The app no longer depends on Supabase for auth, data access, admin operations, or realtime updates.
+- Notification refresh is polling-based rather than realtime subscription based.

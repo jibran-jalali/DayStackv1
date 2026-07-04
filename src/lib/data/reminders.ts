@@ -1,0 +1,514 @@
+import "server-only";
+
+import { and, asc, eq, gt, gte, inArray, lt, lte, or } from "drizzle-orm";
+
+import { getDb } from "@/db/client";
+import { task_reminders, tasks, user_notification_preferences, users } from "@/db/schema";
+import { formatClockTime } from "@/lib/daystack";
+import { getAppTimeZone } from "@/lib/env";
+import type {
+  DueTaskReminder,
+  ReminderStatus,
+  ReminderType,
+  TaskRecord,
+  TaskReminderRecord,
+  UserNotificationPreferencesRecord,
+} from "@/types/daystack";
+
+type DayStackDb = NonNullable<ReturnType<typeof getDb>>;
+
+const DEFAULT_EMAIL_REMINDER_LEAD_MINUTES = 15;
+
+/** iOS / Web Push truncate long titles; keep the time phrase intact. */
+const MAX_PUSH_REMINDER_TITLE_LENGTH = 64;
+
+const DEFAULT_REMINDER_PREFERENCES = {
+  push_enabled: false,
+  email_enabled: false,
+  meeting_mention_email_enabled: false,
+  email_reminder_lead_minutes: DEFAULT_EMAIL_REMINDER_LEAD_MINUTES,
+  remind_5_min_before: true,
+  remind_at_start: false,
+  remind_overdue: false,
+} as const;
+
+const MUTABLE_REMINDER_STATUSES: ReminderStatus[] = ["failed", "pending", "processing", "skipped"];
+
+function getRequiredDb(): DayStackDb {
+  const db = getDb();
+
+  if (!db) {
+    throw new Error("Database is not configured.");
+  }
+
+  return db;
+}
+
+function truncateTaskTitleForPushReminderTitle(taskTitle: string, suffix: string) {
+  const maxTaskChars = Math.max(8, MAX_PUSH_REMINDER_TITLE_LENGTH - suffix.length);
+  if (taskTitle.length <= maxTaskChars) {
+    return `${taskTitle}${suffix}`;
+  }
+
+  return `${taskTitle.slice(0, maxTaskChars - 1)}…${suffix}`;
+}
+
+function clampEmailReminderLeadMinutes(value: number | null | undefined) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return DEFAULT_EMAIL_REMINDER_LEAD_MINUTES;
+  }
+
+  return Math.min(1440, Math.max(0, Math.round(value)));
+}
+
+function createDefaultPreferences(userId: string): UserNotificationPreferencesRecord {
+  const nowIso = new Date().toISOString();
+
+  return {
+    user_id: userId,
+    ...DEFAULT_REMINDER_PREFERENCES,
+    created_at: nowIso,
+    updated_at: nowIso,
+  };
+}
+
+function getTimeZoneDateParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+    minute: "2-digit",
+    month: "2-digit",
+    second: "2-digit",
+    timeZone,
+    year: "numeric",
+  }).formatToParts(date);
+  const values = new Map(parts.map((part) => [part.type, part.value]));
+
+  return {
+    day: Number(values.get("day")),
+    hour: Number(values.get("hour")),
+    minute: Number(values.get("minute")),
+    month: Number(values.get("month")),
+    second: Number(values.get("second")),
+    year: Number(values.get("year")),
+  };
+}
+
+function zonedTimeToUtc(taskDate: string, time: string, timeZone: string) {
+  const [year, month, day] = taskDate.split("-").map(Number);
+  const [hour, minute, second = 0] = time.split(":").map(Number);
+
+  if (![year, month, day, hour, minute, second].every(Number.isFinite)) {
+    throw new Error("Unable to schedule the reminder for this task.");
+  }
+
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second);
+  const zoneParts = getTimeZoneDateParts(new Date(utcGuess), timeZone);
+  const zoneAsUtc = Date.UTC(
+    zoneParts.year,
+    zoneParts.month - 1,
+    zoneParts.day,
+    zoneParts.hour,
+    zoneParts.minute,
+    zoneParts.second,
+  );
+
+  return new Date(utcGuess - (zoneAsUtc - utcGuess));
+}
+
+function buildReminderTimestamp(taskDate: string, time: string, offsetMinutes = 0) {
+  const localDate = zonedTimeToUtc(taskDate, time, getAppTimeZone());
+
+  if (Number.isNaN(localDate.getTime())) {
+    throw new Error("Unable to schedule the reminder for this task.");
+  }
+
+  localDate.setMinutes(localDate.getMinutes() + offsetMinutes);
+
+  return localDate.toISOString();
+}
+
+function formatDateKeyInAppTimeZone(date: Date) {
+  const parts = getTimeZoneDateParts(date, getAppTimeZone());
+  const month = `${parts.month}`.padStart(2, "0");
+  const day = `${parts.day}`.padStart(2, "0");
+
+  return `${parts.year}-${month}-${day}`;
+}
+
+function isFutureReminder(remindAt: string, now: Date) {
+  return new Date(remindAt).getTime() > now.getTime();
+}
+
+function getReminderRowsForTask(
+  userId: string,
+  task: Pick<TaskRecord, "end_time" | "id" | "start_time" | "status" | "task_date">,
+  preferences: UserNotificationPreferencesRecord,
+  now: Date,
+) {
+  if (task.status !== "pending") {
+    return [];
+  }
+
+  const rows: Array<Pick<TaskReminderRecord, "remind_at" | "reminder_type" | "status" | "task_id" | "user_id">> = [];
+
+  if (preferences.email_enabled) {
+    const remindAt = buildReminderTimestamp(
+      task.task_date,
+      task.start_time,
+      clampEmailReminderLeadMinutes(preferences.email_reminder_lead_minutes) * -1,
+    );
+
+    if (isFutureReminder(remindAt, now)) {
+      rows.push({
+        user_id: userId,
+        task_id: task.id,
+        reminder_type: "email_before_start",
+        remind_at: remindAt,
+        status: "pending",
+      });
+    }
+  }
+
+  if (preferences.push_enabled) {
+    if (preferences.remind_5_min_before) {
+      const remindAt = buildReminderTimestamp(task.task_date, task.start_time, -5);
+
+      if (isFutureReminder(remindAt, now)) {
+        rows.push({
+          user_id: userId,
+          task_id: task.id,
+          reminder_type: "5_minutes_before",
+          remind_at: remindAt,
+          status: "pending",
+        });
+      }
+    }
+  }
+
+  return rows;
+}
+
+export async function fetchNotificationPreferences(
+  userId: string,
+): Promise<UserNotificationPreferencesRecord> {
+  const db = getRequiredDb();
+  const [preferences] = await db
+    .select()
+    .from(user_notification_preferences)
+    .where(eq(user_notification_preferences.user_id, userId))
+    .limit(1);
+
+  return preferences ?? createDefaultPreferences(userId);
+}
+
+async function fetchPendingTasksForReminderSync(
+  db: DayStackDb,
+  userId: string,
+  fromDate: string,
+): Promise<TaskRecord[]> {
+  return db
+    .select()
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.user_id, userId),
+        eq(tasks.status, "pending"),
+        gte(tasks.task_date, fromDate),
+      ),
+    )
+    .orderBy(asc(tasks.task_date), asc(tasks.start_time));
+}
+
+export async function syncTaskRemindersForTask(
+  userId: string,
+  task: Pick<TaskRecord, "end_time" | "id" | "start_time" | "status" | "task_date">,
+  preferences?: UserNotificationPreferencesRecord,
+  now = new Date(),
+) {
+  const db = getRequiredDb();
+  const activePreferences = preferences ?? (await fetchNotificationPreferences(userId));
+  const nowIso = now.toISOString();
+
+  await db
+    .delete(task_reminders)
+    .where(
+      and(
+        eq(task_reminders.task_id, task.id),
+        inArray(task_reminders.status, MUTABLE_REMINDER_STATUSES),
+        gt(task_reminders.remind_at, nowIso),
+      ),
+    );
+
+  const reminderRows = getReminderRowsForTask(userId, task, activePreferences, now);
+
+  if (reminderRows.length === 0) {
+    return;
+  }
+
+  await db
+    .insert(task_reminders)
+    .values(
+      reminderRows.map((row) => ({
+        id: crypto.randomUUID(),
+        ...row,
+      })),
+    )
+    .onConflictDoNothing();
+}
+
+export async function syncTaskRemindersForUser(
+  userId: string,
+  preferences?: UserNotificationPreferencesRecord,
+  now = new Date(),
+) {
+  const db = getRequiredDb();
+  const activePreferences = preferences ?? (await fetchNotificationPreferences(userId));
+  const pendingTasks = await fetchPendingTasksForReminderSync(db, userId, formatDateKeyInAppTimeZone(now));
+
+  if (pendingTasks.length === 0) {
+    return activePreferences;
+  }
+
+  await Promise.all(pendingTasks.map((task) => syncTaskRemindersForTask(userId, task, activePreferences, now)));
+
+  return activePreferences;
+}
+
+export async function syncTaskRemindersForActiveUsers(now = new Date()) {
+  const db = getRequiredDb();
+  const preferenceRows = await db
+    .select()
+    .from(user_notification_preferences)
+    .where(
+      or(
+        eq(user_notification_preferences.push_enabled, true),
+        eq(user_notification_preferences.email_enabled, true),
+      ),
+    );
+
+  await Promise.all(preferenceRows.map((preferences) => syncTaskRemindersForUser(preferences.user_id, preferences, now)));
+
+  return preferenceRows.length;
+}
+
+export async function deleteStaleMutableReminders(now = new Date(), graceMinutes = 30) {
+  const db = getRequiredDb();
+  const cutoff = new Date(now.getTime() - graceMinutes * 60 * 1000).toISOString();
+
+  await db
+    .delete(task_reminders)
+    .where(
+      and(
+        inArray(task_reminders.status, MUTABLE_REMINDER_STATUSES),
+        lt(task_reminders.remind_at, cutoff),
+      ),
+    );
+}
+
+export async function updateNotificationPreferences(
+  userId: string,
+  updates: Partial<
+    Pick<
+      UserNotificationPreferencesRecord,
+      | "push_enabled"
+      | "email_enabled"
+      | "meeting_mention_email_enabled"
+      | "email_reminder_lead_minutes"
+      | "remind_5_min_before"
+      | "remind_at_start"
+      | "remind_overdue"
+    >
+  >,
+  now = new Date(),
+): Promise<UserNotificationPreferencesRecord> {
+  const db = getRequiredDb();
+  const current = await fetchNotificationPreferences(userId);
+  const timestamp = now.toISOString();
+  const nextPreferences = {
+    user_id: userId,
+    push_enabled: updates.push_enabled ?? current.push_enabled,
+    email_enabled: updates.email_enabled ?? current.email_enabled,
+    meeting_mention_email_enabled:
+      updates.meeting_mention_email_enabled ?? current.meeting_mention_email_enabled,
+    email_reminder_lead_minutes: clampEmailReminderLeadMinutes(
+      updates.email_reminder_lead_minutes ?? current.email_reminder_lead_minutes,
+    ),
+    remind_5_min_before: updates.remind_5_min_before ?? current.remind_5_min_before,
+    remind_at_start: updates.remind_at_start ?? current.remind_at_start,
+    remind_overdue: updates.remind_overdue ?? current.remind_overdue,
+  };
+
+  const [savedPreferences] = await db
+    .insert(user_notification_preferences)
+    .values({
+      ...nextPreferences,
+      created_at: current.created_at ?? timestamp,
+      updated_at: timestamp,
+    })
+    .onConflictDoUpdate({
+      target: user_notification_preferences.user_id,
+      set: {
+        ...nextPreferences,
+        updated_at: timestamp,
+      },
+    })
+    .returning();
+
+  await syncTaskRemindersForUser(userId, savedPreferences, now);
+
+  return savedPreferences;
+}
+
+export async function fetchDueTaskReminders(options?: {
+  limit?: number;
+  nowIso?: string;
+  userId?: string;
+}): Promise<DueTaskReminder[]> {
+  const db = getRequiredDb();
+  const nowIso = options?.nowIso ?? new Date().toISOString();
+  const conditions = [eq(task_reminders.status, "pending"), lte(task_reminders.remind_at, nowIso)];
+
+  if (options?.userId) {
+    conditions.push(eq(task_reminders.user_id, options.userId));
+  }
+
+  const reminderRows = await db
+    .select()
+    .from(task_reminders)
+    .where(and(...conditions))
+    .orderBy(asc(task_reminders.remind_at))
+    .limit(options?.limit ?? 25);
+
+  if (reminderRows.length === 0) {
+    return [];
+  }
+
+  const taskIds = [...new Set(reminderRows.map((reminder) => reminder.task_id))];
+  const userIds = [...new Set(reminderRows.map((reminder) => reminder.user_id))];
+  const [taskRows, preferenceRows, recipientRows] = await Promise.all([
+    db
+      .select({
+        end_time: tasks.end_time,
+        id: tasks.id,
+        meeting_link: tasks.meeting_link,
+        start_time: tasks.start_time,
+        status: tasks.status,
+        task_date: tasks.task_date,
+        task_type: tasks.task_type,
+        title: tasks.title,
+        user_id: tasks.user_id,
+      })
+      .from(tasks)
+      .where(inArray(tasks.id, taskIds)),
+    db
+      .select()
+      .from(user_notification_preferences)
+      .where(inArray(user_notification_preferences.user_id, userIds)),
+    db
+      .select({
+        email: users.email,
+        full_name: users.full_name,
+        id: users.id,
+      })
+      .from(users)
+      .where(inArray(users.id, userIds)),
+  ]);
+
+  const tasksById = new Map(taskRows.map((task) => [task.id, task]));
+  const preferencesByUserId = new Map(
+    preferenceRows.map((preference) => [preference.user_id, preference]),
+  );
+  const recipientsById = new Map(recipientRows.map((recipient) => [recipient.id, recipient]));
+
+  return reminderRows.flatMap((reminder) => {
+    const task = tasksById.get(reminder.task_id);
+    const preference = preferencesByUserId.get(reminder.user_id) ?? createDefaultPreferences(reminder.user_id);
+    const recipient = recipientsById.get(reminder.user_id);
+
+    if (!task || !recipient) {
+      return [];
+    }
+
+    return [
+      {
+        reminder,
+        preferences: preference,
+        recipient,
+        task,
+      },
+    ];
+  });
+}
+
+export async function updateTaskReminderStatus(
+  reminderId: string,
+  status: ReminderStatus,
+  options?: {
+    sentAt?: string | null;
+    userId?: string;
+  },
+) {
+  const db = getRequiredDb();
+  const conditions = [eq(task_reminders.id, reminderId)];
+
+  if (options?.userId) {
+    conditions.push(eq(task_reminders.user_id, options.userId));
+  }
+
+  await db
+    .update(task_reminders)
+    .set({
+      status,
+      sent_at: options?.sentAt ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .where(and(...conditions));
+}
+
+export function isEmailReminderType(reminderType: ReminderType) {
+  return reminderType === "email_before_start";
+}
+
+export function isPushReminderType(reminderType: ReminderType) {
+  return reminderType === "5_minutes_before";
+}
+
+export function buildReminderCopy(
+  task: Pick<TaskRecord, "end_time" | "start_time" | "title">,
+  reminderType: ReminderType,
+  options?: {
+    emailLeadMinutes?: number;
+  },
+) {
+  if (reminderType === "email_before_start") {
+    const leadMinutes = clampEmailReminderLeadMinutes(options?.emailLeadMinutes);
+
+    if (leadMinutes === 0) {
+      return {
+        title: "Block starting now",
+        body: `${task.title} starts at ${formatClockTime(task.start_time)}.`,
+      };
+    }
+
+    return {
+      title: `Block starting in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}`,
+      body: `${task.title} begins at ${formatClockTime(task.start_time)}.`,
+    };
+  }
+
+  if (reminderType === "5_minutes_before") {
+    const suffix = " starts in 5 minutes";
+
+    return {
+      title: truncateTaskTitleForPushReminderTitle(task.title, suffix),
+      body: "",
+    };
+  }
+
+  return {
+    title: "Reminder unavailable",
+    body: `${task.title} was scheduled for ${formatClockTime(task.start_time)}.`,
+  };
+}
