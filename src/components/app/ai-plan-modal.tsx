@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LoaderCircle, Plus, Sparkles, Trash2, WandSparkles, X } from "lucide-react";
+import Image from "next/image";
+import { LoaderCircle, Plus, Sparkles, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/shared/button";
 import { formatDateLabel } from "@/lib/daystack";
@@ -454,9 +455,15 @@ export function AiPlanModal({ open, taskDate, onClose, onNotice, onConfirm }: Ai
                     {isPlanning ? (
                       <LoaderCircle className="h-5 w-5 animate-spin" />
                     ) : (
-                      <WandSparkles className="h-5 w-5" />
+                      <Image
+                        src="/brand/daystack-mark.png"
+                        alt=""
+                        width={512}
+                        height={512}
+                        className="h-5 w-5 rounded-md"
+                      />
                     )}
-                    {isPlanning ? "Optimizing schedule..." : "✨ Magic — schedule at best times"}
+                    {isPlanning ? "DayStack AI is planning..." : "DayStack AI — schedule at best times"}
                   </button>
                 </div>
               )}
