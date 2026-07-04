@@ -18,7 +18,7 @@ function BrowserPreview() {
         <div className="ml-auto h-6 w-[48%] rounded-md bg-[#f0f0f0]" />
       </div>
 
-      <div className="relative h-[220px] overflow-hidden bg-white sm:h-[260px]">
+      <div className="relative h-[260px] overflow-hidden bg-white sm:h-[300px]">
         <div className="absolute inset-x-0 top-0 z-10 rounded-b-[20px] border-b border-[#e3eaf3] bg-white/92 px-5 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-[18px] sm:px-7 sm:py-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -53,13 +53,20 @@ function BrowserPreview() {
           </div>
 
           <div className="mt-2 flex items-center gap-2">
-            <div className="rounded-[12px] bg-[linear-gradient(135deg,#28b4ea,#6c31ef)] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(79,89,239,0.22)] sm:text-sm sm:px-5 sm:py-2.5">
+            <div className="daystack-btn-glow relative rounded-[12px] bg-[linear-gradient(135deg,#28b4ea,#6c31ef)] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_20px_rgba(79,89,239,0.22)] sm:text-sm sm:px-5 sm:py-2.5">
               + Add Block
+              <span className="daystack-click-ripple absolute inset-0 rounded-[12px]" />
             </div>
           </div>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 top-[118px] grid grid-cols-[56px_1fr] bg-[#fbfdff] sm:top-[130px] sm:grid-cols-[64px_1fr]">
+        <div className="daystack-cursor absolute z-20 h-6 w-6 sm:h-7 sm:w-7">
+          <svg viewBox="0 0 24 24" fill="white" className="drop-shadow-md">
+            <path d="M4 3l15 11.9-6.4.6 2.8 6.1-2.5 1-2.8-6.1L4 21V3z" fill="black" stroke="white" strokeWidth="1.2" />
+          </svg>
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 top-[118px] grid grid-cols-[56px_1fr] bg-[#fbfdff] sm:top-[130px] sm:grid-cols-[64px_1fr] sm:bottom-0">
           <div className="border-r border-[#dce5ef] bg-white/80 pt-2 text-right">
             {timeSlots.map((time) => (
               <div key={time} className="h-[28px] pr-4 text-[10px] font-semibold tracking-[-0.02em] text-[#6c7585] sm:h-[32px] sm:pr-5 sm:text-xs">
@@ -68,20 +75,26 @@ function BrowserPreview() {
             ))}
           </div>
           <div className="relative overflow-hidden">
+            <div className="daystack-preview-scan absolute left-0 right-0 top-0 z-10 h-px bg-[#0084ff]/50 shadow-[0_0_12px_rgba(0,132,255,0.5)]" />
             {timeSlots.map((time) => (
               <div key={time} className="h-[28px] border-b border-dashed border-[#dce5ef] sm:h-[32px]" />
             ))}
-            <div className="absolute left-3 top-[38px] h-[44px] w-[38%] rounded-[14px] border border-[#f5cbd5] bg-[#fff2f5] p-2 shadow-[0_8px_20px_rgba(244,92,128,0.08)] sm:left-4 sm:top-[44px] sm:h-[52px] sm:w-[40%] sm:p-3">
-              <div className="absolute bottom-2 left-2 top-2 w-1 rounded-full bg-[#ff4f7a] sm:bottom-2.5 sm:left-2.5 sm:top-2.5" />
+            <div className="daystack-preview-float-1 absolute left-3 top-[38px] h-[44px] w-[38%] rounded-[14px] border border-[#f5cbd5] bg-[#fff2f5] p-2 shadow-[0_8px_20px_rgba(244,92,128,0.08)] sm:left-4 sm:top-[44px] sm:h-[52px] sm:w-[40%] sm:p-3">
+              <div className="daystack-preview-pulse absolute bottom-2 left-2 top-2 w-1 rounded-full bg-[#ff4f7a] sm:bottom-2.5 sm:left-2.5 sm:top-2.5" />
               <p className="pl-4 text-[10px] font-bold text-[#d6255b] sm:pl-5 sm:text-xs">can u block</p>
             </div>
-            <div className="absolute left-[48%] top-[40px] h-[78px] w-[40%] rounded-[14px] border border-[#f5cbd5] bg-[#fff2f5] p-2 shadow-[0_8px_20px_rgba(244,92,128,0.08)] sm:left-[48%] sm:top-[46px] sm:h-[90px] sm:w-[42%] sm:p-3">
-              <div className="absolute bottom-2 left-2 top-2 w-1 rounded-full bg-[#ff4f7a] sm:bottom-2.5 sm:left-2.5 sm:top-2.5" />
+            <div className="daystack-preview-float-2 absolute left-[48%] top-[40px] h-[78px] w-[40%] rounded-[14px] border border-[#f5cbd5] bg-[#fff2f5] p-2 shadow-[0_8px_20px_rgba(244,92,128,0.08)] sm:left-[48%] sm:top-[46px] sm:h-[90px] sm:w-[42%] sm:p-3">
+              <div className="daystack-preview-pulse absolute bottom-2 left-2 top-2 w-1 rounded-full bg-[#ff4f7a] sm:bottom-2.5 sm:left-2.5 sm:top-2.5" />
               <p className="pl-4 text-[10px] font-bold text-[#d6255b] sm:pl-5 sm:text-xs">task</p>
             </div>
-            <div className="absolute left-3 top-[106px] h-[48px] w-[38%] rounded-[14px] border border-[#f5cbd5] bg-[#fff2f5] p-2 shadow-[0_8px_20px_rgba(244,92,128,0.08)] sm:left-4 sm:top-[122px] sm:h-[56px] sm:w-[40%] sm:p-3">
-              <div className="absolute bottom-2 left-2 top-2 w-1 rounded-full bg-[#ff4f7a] sm:bottom-2.5 sm:left-2.5 sm:top-2.5" />
+            <div className="daystack-preview-float-3 absolute left-3 top-[106px] h-[48px] w-[38%] rounded-[14px] border border-[#f5cbd5] bg-[#fff2f5] p-2 shadow-[0_8px_20px_rgba(244,92,128,0.08)] sm:left-4 sm:top-[122px] sm:h-[56px] sm:w-[40%] sm:p-3">
+              <div className="daystack-preview-pulse absolute bottom-2 left-2 top-2 w-1 rounded-full bg-[#ff4f7a] sm:bottom-2.5 sm:left-2.5 sm:top-2.5" />
               <p className="pl-4 text-[10px] font-bold text-[#d6255b] sm:pl-5 sm:text-xs">test</p>
+            </div>
+            <div className="daystack-new-block absolute left-[3%] top-[66px] z-10 h-[44px] w-[44%] rounded-[14px] border border-[#bdeedc] bg-[#effdf6] p-2 shadow-[0_8px_20px_rgba(28,184,125,0.08)] sm:left-[3%] sm:top-[76px] sm:h-[52px] sm:w-[46%] sm:p-3">
+              <div className="absolute bottom-2 left-2 top-2 w-1 rounded-full bg-[#45e0a2] sm:bottom-2.5 sm:left-2.5 sm:top-2.5" />
+              <p className="pl-4 text-[10px] font-bold text-[#2e8a68] sm:pl-5 sm:text-xs">workflow task</p>
+              <p className="pl-4 text-[9px] font-medium text-[#667084] sm:pl-5 sm:text-[10px]">12:30 PM — 1:30 PM</p>
             </div>
           </div>
         </div>
@@ -247,6 +260,19 @@ function MotionDayPreview() {
   );
 }
 
+const companies = [
+  { name: "Basecamp", color: "#1DED83", svg: "M7 17l5-8 5 8" },
+  { name: "Mailchimp", color: "#FFE01B", svg: "M4 6h16v12H4V6zm2 2l6 5 6-5" },
+  { name: "Sketch", color: "#F7B500", svg: "M12 4l8 6-4 10H8L4 10l8-6z" },
+  { name: "Notion", color: "#000000", svg: "M5 5h14v14H5V5zm2 2v10h10V7H7z" },
+  { name: "Figma", color: "#F24E1E", svg: "M12 12a4 4 0 110-8 4 4 0 010 8zm0 0v8" },
+  { name: "Linear", color: "#5E6AD2", svg: "M4 20L20 4M4 4h16v16" },
+  { name: "Vercel", color: "#000000", svg: "M12 2L2 22h20L12 2z" },
+  { name: "Raycast", color: "#FF6363", svg: "M12 2l3 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7l3-7z" },
+  { name: "Supabase", color: "#3ECF8E", svg: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" },
+  { name: "Cal.com", color: "#292929", svg: "M8 4v16M16 4v16M4 8h16M4 16h16" },
+];
+
 export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }) {
   const ratedCustomerCount = Math.max(2700, leaderboard.length);
 
@@ -275,7 +301,7 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
         </Link>
       </nav>
 
-      <section className="relative z-10 mx-auto flex min-h-screen max-w-[1400px] flex-col items-center justify-center px-5 pb-8 pt-14 sm:px-8 lg:pt-16">
+      <section className="relative z-10 mx-auto flex min-h-screen max-w-[1400px] flex-col items-center justify-center px-5 pb-8 pt-8 sm:px-8 lg:pt-12">
         <div className="grid w-full flex-1 items-center gap-8 lg:grid-cols-[1fr_1.1fr] lg:gap-12">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
             <div className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/55 px-3 py-1.5 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur-[22px] sm:px-4 sm:py-2">
@@ -316,7 +342,7 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
             </div>
           </div>
 
-          <div className="relative flex min-h-[260px] w-full items-center justify-center overflow-visible sm:min-h-[320px] lg:min-h-[420px]">
+          <div className="relative flex min-h-[280px] w-full items-center justify-center overflow-visible sm:min-h-[360px] lg:min-h-[460px]">
             <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(0,132,255,0.18),transparent_58%)] blur-3xl" />
             <video
               className="absolute z-0 h-[410px] w-[410px] scale-125 object-contain opacity-80 mix-blend-screen sm:h-[560px] sm:w-[560px] lg:h-[680px] lg:w-[680px]"
@@ -329,6 +355,25 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
               style={{ filter: "hue-rotate(-55deg) saturate(250%) brightness(1.2) contrast(1.1)" }}
             />
             <BrowserPreview />
+          </div>
+        </div>
+      </section>
+
+      <section className="relative w-full bg-[#0b1220] py-10 sm:py-12">
+        <div className="mx-auto max-w-[1400px] px-5 sm:px-8">
+          <p className="mb-6 text-center text-xs font-bold uppercase tracking-[0.2em] text-white/40">Trusted by workers at</p>
+          <div className="flex overflow-hidden">
+            <div className="flex animate-marquee items-center gap-14 whitespace-nowrap">
+              {[...companies, ...companies, ...companies, ...companies].map((c, i) => (
+                <span key={`${c.name}-${i}`} className="inline-flex items-center gap-3 text-sm font-semibold text-white/80 sm:text-base">
+                  <svg className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect width="24" height="24" rx="5" fill={c.color} />
+                    <path d={c.svg} stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {c.name}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </section>
