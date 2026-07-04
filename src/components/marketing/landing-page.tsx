@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Star } from "lucide-react";
+import { ArrowRight, Bot, CalendarCheck, MessageSquareText, Star, UsersRound } from "lucide-react";
 
 import { Logo, LogoMark } from "@/components/shared/logo";
 import type { LeaderboardEntry } from "@/types/daystack";
@@ -260,6 +260,120 @@ function MotionDayPreview() {
   );
 }
 
+function FeatureShowcase() {
+  const features = [
+    {
+      icon: Bot,
+      eyebrow: "DayStack AI",
+      title: "Plans your tasks at the right time.",
+      description: "Add tasks with durations and DayStack AI turns them into a productivity-aware timeline before you confirm.",
+      preview: (
+        <div className="space-y-2">
+          {["Calculus", "Gym", "Lunch", "Review"].map((task, index) => (
+            <div key={task} className="flex items-center justify-between rounded-[14px] border border-white/70 bg-white/82 px-3 py-2 shadow-[0_8px_22px_rgba(15,23,42,0.05)]">
+              <span className="flex items-center gap-2 text-sm font-semibold text-[#172033]">
+                <span className={`h-2.5 w-2.5 rounded-full ${index === 0 ? "bg-[#7c3cff]" : index === 1 ? "bg-[#16a5f5]" : index === 2 ? "bg-[#10b981]" : "bg-[#ff8a00]"}`} />
+                {task}
+              </span>
+              <span className="text-xs font-bold text-[#667084]">{["09:00", "15:30", "13:00", "16:45"][index]}</span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      icon: UsersRound,
+      eyebrow: "Friends",
+      title: "Only trusted people can be tagged.",
+      description: "Send requests, accept connections, and keep meeting mentions limited to people you actually know.",
+      preview: (
+        <div className="grid gap-2">
+          {["Jibran", "Ayesha", "Hamza"].map((name, index) => (
+            <div key={name} className="flex items-center gap-3 rounded-[16px] border border-white/70 bg-white/82 px-3 py-2.5 shadow-[0_8px_22px_rgba(15,23,42,0.05)]">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-[linear-gradient(135deg,#28b4ea,#6c31ef)] text-xs font-bold text-white">{name.charAt(0)}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-[#172033]">{name}</p>
+                <p className="text-xs text-[#667084]">{index === 0 ? "Accepted" : "Ready for meetings"}</p>
+              </div>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700">Friend</span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      icon: MessageSquareText,
+      eyebrow: "Meeting mentions",
+      title: "Approvals become blocks instantly.",
+      description: "When a friend tags you in a meeting, accept it once and DayStack places it directly on your timeline.",
+      preview: (
+        <div className="rounded-[18px] border border-[#dbeafe] bg-[#eff8ff] p-4 shadow-[0_10px_26px_rgba(37,99,235,0.08)]">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#168fea] shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
+              <CalendarCheck className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-sm font-bold text-[#172033]">Design sync</p>
+              <p className="mt-1 text-xs leading-5 text-[#667084]">Mention from Ayesha · 2:30 PM</p>
+              <div className="mt-3 flex gap-2">
+                <span className="rounded-full bg-[linear-gradient(135deg,#28b4ea,#6c31ef)] px-3 py-1.5 text-xs font-bold text-white">Accept</span>
+                <span className="rounded-full border border-[#cfe3f8] bg-white px-3 py-1.5 text-xs font-bold text-[#667084]">Review</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <section className="relative mx-auto w-full max-w-[1500px] px-4 pb-24 pt-4 sm:px-8 lg:px-14">
+      <div className="relative overflow-hidden rounded-[28px] border border-black/[0.06] bg-[linear-gradient(135deg,#f8fbff,#f7f1ff)] px-4 py-10 shadow-[0_30px_100px_rgba(15,23,42,0.08)] sm:rounded-[36px] sm:px-7 sm:py-14 lg:px-12">
+        <div className="pointer-events-none absolute -left-20 top-10 h-72 w-72 rounded-full bg-[#28b4ea]/16 blur-[90px]" />
+        <div className="pointer-events-none absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-[#6c31ef]/14 blur-[100px]" />
+
+        <div className="relative z-10 mx-auto max-w-3xl text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#0084ff]/70 sm:text-sm">Built for real planning</p>
+          <h2 className="mt-3 font-display text-[30px] font-bold leading-[1.04] tracking-[-1.6px] text-[#07111f] sm:text-[42px] lg:text-[52px]">
+            AI, friends, and meetings in one workflow
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 tracking-[-0.03em] text-[#344155]/72 sm:text-base sm:leading-7">
+            DayStack keeps scheduling, collaboration, and execution connected without sending you across different tools.
+          </p>
+        </div>
+
+        <div className="relative z-10 mt-9 grid gap-4 lg:grid-cols-3">
+          {features.map((feature, index) => {
+            const Icon = feature.icon;
+
+            return (
+              <article
+                key={feature.eyebrow}
+                className="daystack-card-enter daystack-motion-float rounded-[24px] border border-white/72 bg-white/70 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_22px_70px_rgba(15,23,42,0.08)] backdrop-blur-[28px]"
+                style={{ animationDelay: `${index * 0.18}s` }}
+              >
+                <div className="mb-5 flex items-center justify-between">
+                  <span className="grid h-11 w-11 place-items-center rounded-[14px] bg-[linear-gradient(135deg,#28b4ea,#6c31ef)] text-white shadow-[0_12px_28px_rgba(79,89,239,0.22)]">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="rounded-full border border-[#dfe7f2] bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#667084]">
+                    {feature.eyebrow}
+                  </span>
+                </div>
+                <h3 className="font-display text-xl font-bold leading-tight tracking-[-0.05em] text-[#07111f]">
+                  {feature.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-[#344155]/72">{feature.description}</p>
+                <div className="mt-5">{feature.preview}</div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 const companies = [
   { name: "Basecamp", color: "#1DED83", svg: "M7 17l5-8 5 8" },
   { name: "Mailchimp", color: "#FFE01B", svg: "M4 6h16v12H4V6zm2 2l6 5 6-5" },
@@ -379,6 +493,7 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
       </section>
 
       <MotionDayPreview />
+      <FeatureShowcase />
     </main>
   );
 }

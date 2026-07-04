@@ -13,6 +13,18 @@ const features = [
   { icon: Shield, text: "Your data, encrypted" },
 ];
 
+const plannerAvatars = [
+  { color: "#28b4ea", initial: "A", name: "Ayesha" },
+  { color: "#6c31ef", initial: "J", name: "Jibran" },
+  { color: "#10b981", initial: "H", name: "Hamza" },
+];
+
+function avatarImage({ color, initial }: { color: string; initial: string }) {
+  return `data:image/svg+xml;utf8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="${color}"/><stop offset="1" stop-color="#07111f"/></linearGradient></defs><rect width="80" height="80" rx="40" fill="url(#g)"/><circle cx="58" cy="20" r="16" fill="rgba(255,255,255,0.22)"/><text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="white">${initial}</text></svg>`,
+  )}`;
+}
+
 export function AuthShell({
   mode,
   notice,
@@ -61,13 +73,14 @@ export function AuthShell({
 
           <div className="animate-auth-fade-up flex items-center gap-3 rounded-[16px] border border-white/60 bg-white/55 px-5 py-4 shadow-[0_12px_34px_rgba(15,23,42,0.06)] backdrop-blur-[24px]" style={{ animationDelay: "0.3s" }}>
             <div className="flex -space-x-2">
-              {["A", "B", "C"].map((seed) => (
-                <span
-                  key={seed}
-                  className="grid h-8 w-8 place-items-center rounded-full border-2 border-white bg-[linear-gradient(135deg,#28b4ea,#6c31ef)] text-xs font-bold text-white"
-                >
-                  {seed}
-                </span>
+              {plannerAvatars.map((avatar) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={avatar.name}
+                  src={avatarImage(avatar)}
+                  alt={`${avatar.name} avatar`}
+                  className="h-8 w-8 rounded-full border-2 border-white object-cover shadow-[0_8px_18px_rgba(15,23,42,0.12)]"
+                />
               ))}
             </div>
             <p className="text-sm text-secondary-foreground">
