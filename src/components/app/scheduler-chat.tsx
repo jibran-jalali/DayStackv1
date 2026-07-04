@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, CheckCircle2, Clock3, Loader2, Sparkles, X } from "lucide-react";
+import { ArrowUp, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 
 import { LogoMark } from "@/components/shared/logo";
 import { formatDateLabel } from "@/lib/daystack";
@@ -58,10 +58,6 @@ function formatClock(time: string) {
   const period = h >= 12 ? "PM" : "AM";
   const hour = h % 12 || 12;
   return `${hour}:${m.toString().padStart(2, "0")} ${period}`;
-}
-
-function Timestamp({ time }: { time: string }) {
-  return <span className="text-[11px] text-secondary-foreground/50">{formatClock(time)}</span>;
 }
 
 function TimelineCard({
@@ -171,7 +167,6 @@ function extractPlanInfo(text: string): {
   startTime: string;
   endTime: string;
 } | null {
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
   const tasks: Array<{ title: string; durationMinutes: number }> = [];
   let startTime = "09:00";
   let endTime = "17:00";

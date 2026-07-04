@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { LoaderCircle, Plus, Sparkles, Trash2, X } from "lucide-react";
 
@@ -68,6 +68,15 @@ export function AiPlanModal({ open, taskDate, onClose, onNotice, onConfirm }: Ai
   const [isConfirming, setIsConfirming] = useState(false);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
 
+  const handleClose = useCallback(() => {
+    if (isPlanning || isConfirming) return;
+    setTasks([createEmptyTask()]);
+    setStartTime("09:00");
+    setEndTime("17:00");
+    setPlannedTasks(null);
+    onClose();
+  }, [isConfirming, isPlanning, onClose]);
+
   useEffect(() => {
     if (!open) {
       return;
@@ -88,16 +97,7 @@ export function AiPlanModal({ open, taskDate, onClose, onNotice, onConfirm }: Ai
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open]);
-
-  function handleClose() {
-    if (isPlanning || isConfirming) return;
-    setTasks([createEmptyTask()]);
-    setStartTime("09:00");
-    setEndTime("17:00");
-    setPlannedTasks(null);
-    onClose();
-  }
+  }, [handleClose, open]);
 
   function addTask() {
     setTasks((prev) => [...prev, createEmptyTask()]);

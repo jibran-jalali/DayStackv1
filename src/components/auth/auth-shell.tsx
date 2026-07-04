@@ -62,12 +62,12 @@ export function AuthShell({
           <div className="animate-auth-fade-up flex items-center gap-3 rounded-[16px] border border-white/60 bg-white/55 px-5 py-4 shadow-[0_12px_34px_rgba(15,23,42,0.06)] backdrop-blur-[24px]" style={{ animationDelay: "0.3s" }}>
             <div className="flex -space-x-2">
               {["A", "B", "C"].map((seed) => (
-                <img
+                <span
                   key={seed}
-                  src={`https://i.pravatar.cc/40?u=${seed}`}
-                  alt=""
-                  className="h-8 w-8 rounded-full border-2 border-white"
-                />
+                  className="grid h-8 w-8 place-items-center rounded-full border-2 border-white bg-[linear-gradient(135deg,#28b4ea,#6c31ef)] text-xs font-bold text-white"
+                >
+                  {seed}
+                </span>
               ))}
             </div>
             <p className="text-sm text-secondary-foreground">
