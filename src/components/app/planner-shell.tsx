@@ -4,11 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { Bell, Mail, Plus, Sparkles, UserRoundPlus } from "lucide-react";
 
-import { AssistantShell } from "@/components/app/assistant-shell";
 import { DateSwitcher } from "@/components/app/date-switcher";
 import { LeaderboardView } from "@/components/app/leaderboard-view";
 import { MobileBottomNav } from "@/components/app/mobile-bottom-nav";
 import { MobileDayStrip } from "@/components/app/mobile-day-strip";
+import { SchedulerChat } from "@/components/app/scheduler-chat";
 import { MobileProgressCard } from "@/components/app/mobile-progress-card";
 import { MobileTabPanel } from "@/components/app/mobile-tab-panel";
 import { MobileToast } from "@/components/app/mobile-toast";
@@ -1326,19 +1326,11 @@ export function PlannerShell({
           : `${initialNotifications.length} updates`;
 
   return (
-    <main className={cn(workspaceTab === "assistant" ? "h-screen overflow-hidden" : "min-h-screen")}>
+    <main className="min-h-screen">
       <div className="mobile-app-shell mobile-viewport-shell overflow-hidden lg:hidden">
         <div className="flex h-full flex-col">
-          <div
-            className={cn(
-              "soft-scrollbar flex-1 overscroll-y-contain",
-              workspaceTab === "assistant"
-                ? "flex min-h-0 flex-col overflow-hidden"
-                : "overflow-x-hidden overflow-y-auto mobile-content-pad",
-            )}
-          >
-            {workspaceTab !== "assistant" ? (
-              <MobileWorkspaceHeader
+          <div className="soft-scrollbar flex-1 overflow-x-hidden overflow-y-auto mobile-content-pad">
+            <MobileWorkspaceHeader
                 compact
                 title={mobileHeaderTitle}
                 subtitle={mobileHeaderSubtitle}
@@ -1360,23 +1352,16 @@ export function PlannerShell({
                   ) : undefined
                 }
               />
-            ) : null}
 
             {notice ? (
               <MobileToast
                 message={notice.message}
                 type={notice.type}
-                offset={workspaceTab === "assistant" ? "top" : "header"}
+                offset={"header"}
               />
             ) : null}
 
-            <div
-              className={cn(
-                workspaceTab === "assistant"
-                  ? "flex min-h-0 flex-1 flex-col px-0 pb-2 pt-[max(0.85rem,env(safe-area-inset-top))]"
-                  : "mobile-safe-x mobile-shell-width mx-auto max-w-full overflow-x-hidden pb-3 pt-2",
-              )}
-            >
+            <div className="mobile-safe-x mobile-shell-width mx-auto max-w-full overflow-x-hidden pb-3 pt-2">
           {workspaceTab === "plan" ? (
             <MobileTabPanel panelKey="plan">
               <div className="mobile-plan-stack">
@@ -1525,9 +1510,9 @@ export function PlannerShell({
               </div>
             </MobileTabPanel>
           ) : workspaceTab === "assistant" ? (
-            <MobileTabPanel panelKey="assistant" className="min-h-0 flex flex-1 flex-col">
-            <section className="min-h-0 flex flex-1 flex-col">
-              <AssistantShell
+            <MobileTabPanel panelKey="assistant" className="flex min-h-0 flex-1 flex-col">
+            <section className="flex min-h-0 flex-1 flex-col">
+              <SchedulerChat
                 onNotice={setNotice}
                 onRefreshContext={(nextDate) =>
                   refreshWorkspaceDate(nextDate, {
@@ -1622,17 +1607,8 @@ export function PlannerShell({
         </div>
       </div>
 
-      <div
-        className={cn(
-          "container-shell hidden lg:block",
-          workspaceTab === "assistant" ? "h-screen overflow-hidden py-4 sm:py-6" : "min-h-screen py-4 sm:py-6",
-        )}
-      >
-        <div
-          className={cn(
-            workspaceTab === "assistant" ? "flex h-full min-h-0 flex-col gap-4 sm:gap-5" : "space-y-4 sm:space-y-5",
-          )}
-        >
+      <div className="container-shell hidden min-h-screen py-4 sm:py-6 lg:block">
+        <div className="space-y-4 sm:space-y-5">
           <PlannerHeader
             activePage={activePage}
             assistantHref={assistantHref}
@@ -1643,9 +1619,9 @@ export function PlannerShell({
             metricIcon={activeMetricIcon}
             metricLabel={activeMetricLabel}
             metricTone={activeMetricTone}
-            onOpenAssistant={() => handleOpenWorkspaceTab("assistant")}
             notificationsHref={notificationsHref}
             onNotice={setNotice}
+            onOpenAssistant={() => handleOpenWorkspaceTab("assistant")}
             onOpenNotifications={() => handleOpenWorkspaceTab("notifications")}
             onOpenPlanner={() => handleOpenWorkspaceTab("plan")}
             onOpenFriends={() => handleOpenWorkspaceTab("friends")}
@@ -1685,7 +1661,7 @@ export function PlannerShell({
             </div>
           ) : null}
 
-          <div className={cn("space-y-4", workspaceTab === "assistant" && "flex min-h-0 flex-1 flex-col")}>
+          <div className="space-y-4">
             <section className={cn("min-w-0", workspaceTab !== "plan" && "hidden")}>
               <div
                 className={cn("glass-panel relative p-4 sm:p-5", isSurfaceRefreshing && "opacity-90")}
@@ -1835,14 +1811,8 @@ export function PlannerShell({
               </div>
             </section>
 
-            <section
-              className={cn(
-                "min-w-0",
-                workspaceTab !== "assistant" && "hidden",
-                workspaceTab === "assistant" && "mx-auto flex min-h-0 w-full max-w-[86rem] flex-1",
-              )}
-            >
-              <AssistantShell
+            <section className={cn("min-w-0", workspaceTab !== "assistant" && "hidden")}>
+              <SchedulerChat
                 onNotice={setNotice}
                 onRefreshContext={(nextDate) =>
                   refreshWorkspaceDate(nextDate, {

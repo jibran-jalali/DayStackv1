@@ -12,8 +12,8 @@ interface MobileBottomNavProps {
   activeTab?: MobileBottomNavTab | null;
   assistantHref?: string;
   friendsHref?: string;
-  onOpenAssistant?: () => void;
   notificationsHref?: string;
+  onOpenAssistant?: () => void;
   onOpenFriends?: () => void;
   onOpenNotifications?: () => void;
   onOpenPlan?: () => void;
