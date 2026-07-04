@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Bot, CalendarCheck, MessageSquareText, Star, UsersRound } from "lucide-react";
+import { ArrowRight, Bot, CalendarCheck, MessageSquareText, RefreshCw, Star, UsersRound, Zap } from "lucide-react";
 
 import { Logo, LogoMark } from "@/components/shared/logo";
 import type { LeaderboardEntry } from "@/types/daystack";
@@ -374,6 +374,109 @@ function FeatureShowcase() {
   );
 }
 
+function GoogleCalendarSyncSection() {
+  const googleEvents = [
+    { color: "#4285F4", time: "10:00", title: "Product sync" },
+    { color: "#34A853", time: "13:00", title: "Lunch with team" },
+    { color: "#FBBC05", time: "16:30", title: "Client review" },
+  ];
+  const dayStackBlocks = [
+    { color: "#28b4ea", time: "10:00 AM", title: "Product sync" },
+    { color: "#10b981", time: "1:00 PM", title: "Lunch with team" },
+    { color: "#6c31ef", time: "4:30 PM", title: "Client review" },
+  ];
+
+  return (
+    <section className="relative mx-auto w-full max-w-[1500px] px-4 pb-24 sm:px-8 lg:px-14">
+      <div className="relative overflow-hidden rounded-[30px] border border-black/[0.06] bg-[#07111f] px-4 py-10 shadow-[0_34px_110px_rgba(7,17,31,0.18)] sm:rounded-[40px] sm:px-8 sm:py-14 lg:px-12">
+        <div className="pointer-events-none absolute left-[-10%] top-[-20%] h-[28rem] w-[28rem] rounded-full bg-[#4285F4]/20 blur-[110px]" />
+        <div className="pointer-events-none absolute bottom-[-20%] right-[-10%] h-[30rem] w-[30rem] rounded-full bg-[#34A853]/14 blur-[120px]" />
+
+        <div className="relative z-10 grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-white/70">
+              <RefreshCw className="h-3.5 w-3.5" />
+              Live sync
+            </span>
+            <h2 className="mt-5 font-display text-[32px] font-bold leading-[1.03] tracking-[-0.06em] text-white sm:text-[44px] lg:text-[56px]">
+              Google Calendar events, synced into your day plan.
+            </h2>
+            <p className="mt-4 max-w-xl text-sm leading-7 text-white/68 sm:text-base">
+              Connect Google Calendar once. DayStack imports visible events into your timeline so meetings, calls, and commitments sit beside your planned work.
+            </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              {["Import events", "Keep context", "Plan around meetings"].map((label) => (
+                <div key={label} className="rounded-[16px] border border-white/10 bg-white/[0.06] px-3 py-3 text-sm font-semibold text-white/82 backdrop-blur-xl">
+                  <Zap className="mb-2 h-4 w-4 text-[#8bd8ff]" />
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative mx-auto w-full max-w-[680px]">
+            <div className="absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/10 blur-3xl" />
+            <div className="grid gap-4 md:grid-cols-[1fr_4rem_1fr] md:items-center">
+              <div className="daystack-motion-float rounded-[24px] border border-white/12 bg-white/[0.08] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.22)] backdrop-blur-2xl">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-[13px] bg-white text-lg font-black">
+                    <span className="bg-[linear-gradient(135deg,#4285F4,#34A853,#FBBC05,#EA4335)] bg-clip-text text-transparent">G</span>
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-white">Google Calendar</p>
+                    <p className="text-xs text-white/50">Today</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {googleEvents.map((event) => (
+                    <div key={event.title} className="rounded-[16px] border border-white/10 bg-white/[0.07] px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: event.color }} />
+                        <p className="text-sm font-bold text-white">{event.title}</p>
+                      </div>
+                      <p className="mt-1 pl-4 text-xs text-white/50">{event.time}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="hidden justify-center md:flex">
+                <div className="grid h-16 w-16 place-items-center rounded-full border border-white/12 bg-white/[0.08] text-white shadow-[0_20px_60px_rgba(40,180,234,0.18)] backdrop-blur-xl">
+                  <RefreshCw className="h-6 w-6 animate-spin [animation-duration:2.8s]" />
+                </div>
+              </div>
+
+              <div className="daystack-motion-float-delayed rounded-[24px] border border-white/14 bg-white/[0.11] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.22)] backdrop-blur-2xl">
+                <div className="mb-4 flex items-center gap-3">
+                  <LogoMark className="h-10 w-10 rounded-[13px]" />
+                  <div>
+                    <p className="text-sm font-bold text-white">DayStack timeline</p>
+                    <p className="text-xs text-white/50">Synced blocks</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {dayStackBlocks.map((block) => (
+                    <div key={block.title} className="relative rounded-[16px] border border-white/12 bg-white/[0.08] px-3 py-2.5 pl-4">
+                      <span className="absolute bottom-2 left-2 top-2 w-1 rounded-full" style={{ backgroundColor: block.color }} />
+                      <p className="text-sm font-bold text-white">{block.title}</p>
+                      <p className="mt-1 text-xs text-white/50">{block.time}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-[18px] border border-emerald-300/20 bg-emerald-300/10 px-4 py-3 text-sm font-semibold text-emerald-100 backdrop-blur-xl">
+              <CalendarCheck className="mr-2 inline h-4 w-4" />
+              Live calendar context stays visible while you build the rest of your day.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 const companies = [
   { name: "Basecamp", color: "#1DED83", svg: "M7 17l5-8 5 8" },
   { name: "Mailchimp", color: "#FFE01B", svg: "M4 6h16v12H4V6zm2 2l6 5 6-5" },
@@ -494,6 +597,7 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
 
       <MotionDayPreview />
       <FeatureShowcase />
+      <GoogleCalendarSyncSection />
     </main>
   );
 }
