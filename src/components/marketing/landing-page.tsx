@@ -561,9 +561,13 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
             </div>
 
             <div className="mt-5 flex flex-wrap justify-center gap-2 lg:justify-start">
-              {["AI time blocking", "Live calendar sync", "Friend approvals"].map((label, index) => (
-                <span key={label} className="daystack-micro-pill rounded-full border border-black/10 bg-white/55 px-3 py-1.5 text-xs font-bold text-[#344155]/74 shadow-[0_14px_34px_rgba(15,23,42,0.05)] backdrop-blur-[18px]" style={{ animationDelay: `${index * 0.2}s` }}>
-                  {label}
+              {[
+                { text: "AI time blocking", icon: null },
+                { text: "Live calendar sync", icon: <span className="mr-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-white text-[9px] font-black shadow-sm"><span className="bg-[linear-gradient(135deg,#4285F4,#34A853,#FBBC05,#EA4335)] bg-clip-text text-transparent">G</span></span> },
+                { text: "Friend approvals", icon: null },
+              ].map((pill, index) => (
+                <span key={pill.text} className="daystack-micro-pill inline-flex items-center rounded-full border border-black/10 bg-white/55 px-3 py-1.5 text-xs font-bold text-[#344155]/74 shadow-[0_14px_34px_rgba(15,23,42,0.05)] backdrop-blur-[18px]" style={{ animationDelay: `${index * 0.2}s` }}>
+                  {pill.icon}{pill.text}
                 </span>
               ))}
             </div>
@@ -571,18 +575,6 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
 
           <div className="relative flex min-h-[280px] w-full items-center justify-center overflow-visible sm:min-h-[360px] lg:min-h-[460px]">
             <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(0,132,255,0.18),transparent_58%)] blur-3xl" />
-            <div className="daystack-hero-chip daystack-hero-chip-1 hidden sm:flex">
-              <Bot className="h-4 w-4 text-[#6c31ef]" />
-              <span>AI planned 4 blocks</span>
-            </div>
-            <div className="daystack-hero-chip daystack-hero-chip-2 hidden sm:flex">
-              <RefreshCw className="h-4 w-4 text-[#168fea]" />
-              <span>Calendar synced</span>
-            </div>
-            <div className="daystack-hero-chip daystack-hero-chip-3 hidden sm:flex">
-              <CalendarCheck className="h-4 w-4 text-emerald-600" />
-              <span>Meeting accepted</span>
-            </div>
             <video
               className="absolute z-0 h-[410px] w-[410px] scale-125 object-contain opacity-80 mix-blend-screen sm:h-[560px] sm:w-[560px] lg:h-[680px] lg:w-[680px]"
               src="https://future.co/images/homepage/glassy-orb/orb-purple.webm"
