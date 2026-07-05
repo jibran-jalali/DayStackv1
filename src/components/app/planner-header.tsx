@@ -115,7 +115,7 @@ export function PlannerHeader({
   const [isPending, startTransition] = useTransition();
 
   const navPillClass =
-    "ui-pressable inline-flex h-10 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold shadow-[0_10px_24px_rgba(15,23,42,0.05)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] active:scale-[0.995]";
+    "ui-pressable inline-flex h-9 items-center justify-center gap-2 rounded-full border px-3 text-[13px] font-semibold shadow-[0_10px_24px_rgba(15,23,42,0.05)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)] active:scale-[0.995]";
 
   function renderNavPill({
     active = false,
@@ -142,7 +142,7 @@ export function PlannerHeader({
     if (active) {
       return (
         <span className={className}>
-          <Icon className="h-4 w-4" />
+          <Icon className="h-3.5 w-3.5" />
           {label}
         </span>
       );
@@ -151,7 +151,7 @@ export function PlannerHeader({
     if (onClick) {
       return (
         <button suppressHydrationWarning type="button" className={className} onClick={onClick}>
-          <Icon className="h-4 w-4" />
+          <Icon className="h-3.5 w-3.5" />
           {label}
         </button>
       );
@@ -159,7 +159,7 @@ export function PlannerHeader({
 
     return (
       <Link href={href ?? "#"} className={className} target={target} rel={target === "_blank" ? "noreferrer" : undefined}>
-        <Icon className="h-4 w-4" />
+        <Icon className="h-3.5 w-3.5" />
         {label}
       </Link>
     );
@@ -181,8 +181,8 @@ export function PlannerHeader({
   }
 
   return (
-    <header className="glass-panel sticky top-4 z-30 px-4 py-3 sm:px-5">
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
+    <header className="glass-panel sticky top-4 z-30 px-4 py-2.5 sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-3">
           <Logo priority href="/app" className="shrink-0" />
           <div className="min-w-0">
@@ -192,64 +192,7 @@ export function PlannerHeader({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {metricLabel ? <StatusChip label={metricLabel} tone={metricTone} icon={metricIcon} /> : null}
-          {typeof streak === "number" ? (
-            <StatusChip
-              label={`${streak} day${streak === 1 ? "" : "s"}`}
-              tone={streak > 0 ? "success" : "default"}
-              icon={Flame}
-            />
-          ) : null}
-        </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex flex-wrap items-center gap-2">
-          {viewMode && onViewChange ? (
-            <ViewToggle value={viewMode} onChange={onViewChange} />
-          ) : (
-            renderNavPill({
-              active: activePage === "planner",
-              href: plannerHref,
-              icon: CalendarDays,
-              label: "Plan",
-              onClick: activePage === "planner" ? undefined : onOpenPlanner,
-            })
-          )}
-
-          {renderNavPill({
-            active: activePage === "assistant",
-            href: assistantHref,
-            icon: MessageSquareText,
-            label: "Assistant",
-            onClick: activePage === "assistant" ? undefined : onOpenAssistant,
-          })}
-
-          {renderNavPill({
-            active: activePage === "notifications",
-            href: notificationsHref ?? "/app/notifications",
-            icon: Bell,
-            label: "Notifications",
-            onClick: activePage === "notifications" ? undefined : onOpenNotifications,
-          })}
-
-          {renderNavPill({
-            active: activePage === "settings",
-            href: settingsHref,
-            icon: Settings2,
-            label: "Settings",
-            onClick: activePage === "settings" ? undefined : onOpenSettings,
-          })}
-
-          {renderNavPill({
-            active: activePage === "friends",
-            href: friendsHref,
-            icon: UserRoundPlus,
-            label: "Friends",
-            onClick: activePage === "friends" ? undefined : onOpenFriends,
-          })}
-
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           {renderNavPill({
             active: false,
             href: pomodoroHref,
@@ -257,20 +200,18 @@ export function PlannerHeader({
             label: "Pomodoro",
             target: "_blank",
           })}
-        </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
           {activePage === "planner" ? (
             <>
               {onAiPlan ? (
-                <Button size="sm" variant="secondary" className="min-w-[8.25rem]" onClick={onAiPlan}>
-                  <Sparkles className="h-4 w-4" />
+                <Button size="sm" variant="secondary" className="h-9 min-w-[7.25rem] px-3" onClick={onAiPlan}>
+                  <Sparkles className="h-3.5 w-3.5" />
                   AI Plan
                 </Button>
               ) : null}
               {onAddTask ? (
-                <Button size="sm" className="min-w-[8.25rem]" onClick={onAddTask}>
-                  <Plus className="h-4 w-4" />
+                <Button size="sm" className="h-9 min-w-[7.25rem] px-3" onClick={onAddTask}>
+                  <Plus className="h-3.5 w-3.5" />
                   Add Block
                 </Button>
               ) : null}
@@ -287,20 +228,75 @@ export function PlannerHeader({
             />
           ) : null}
 
-          <div className="flex items-center gap-2 rounded-full border border-border/80 bg-white/92 px-2 py-1.5 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(24,190,239,0.16),rgba(109,40,240,0.16))] text-sm font-semibold text-foreground">
+          <div className="flex items-center gap-1.5 rounded-full border border-border/80 bg-white/92 px-1.5 py-1 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(24,190,239,0.16),rgba(109,40,240,0.16))] text-xs font-semibold text-foreground">
               {displayName.charAt(0).toUpperCase()}
             </div>
             <div className="hidden min-w-0 xl:block">
-              <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
-              <p className="truncate text-xs text-secondary-foreground">{email ?? "Focused operator"}</p>
+              <p className="truncate text-xs font-semibold text-foreground">{displayName}</p>
+              <p className="truncate text-[11px] text-secondary-foreground">{email ?? "Focused operator"}</p>
             </div>
-            <Button size="sm" variant="ghost" className="h-8 px-3" onClick={handleSignOut} disabled={isPending} aria-label="Logout">
-              {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={handleSignOut} disabled={isPending} aria-label="Logout">
+              {isPending ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
               <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
+
+          {metricLabel ? <StatusChip label={metricLabel} tone={metricTone} icon={metricIcon} /> : null}
+          {typeof streak === "number" ? (
+            <StatusChip
+              label={`${streak} day${streak === 1 ? "" : "s"}`}
+              tone={streak > 0 ? "success" : "default"}
+              icon={Flame}
+            />
+          ) : null}
         </div>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {viewMode && onViewChange ? (
+          <ViewToggle value={viewMode} onChange={onViewChange} />
+        ) : (
+          renderNavPill({
+            active: activePage === "planner",
+            href: plannerHref,
+            icon: CalendarDays,
+            label: "Plan",
+            onClick: activePage === "planner" ? undefined : onOpenPlanner,
+          })
+        )}
+
+        {renderNavPill({
+          active: activePage === "assistant",
+          href: assistantHref,
+          icon: MessageSquareText,
+          label: "Assistant",
+          onClick: activePage === "assistant" ? undefined : onOpenAssistant,
+        })}
+
+        {renderNavPill({
+          active: activePage === "notifications",
+          href: notificationsHref ?? "/app/notifications",
+          icon: Bell,
+          label: "Notifications",
+          onClick: activePage === "notifications" ? undefined : onOpenNotifications,
+        })}
+
+        {renderNavPill({
+          active: activePage === "settings",
+          href: settingsHref,
+          icon: Settings2,
+          label: "Settings",
+          onClick: activePage === "settings" ? undefined : onOpenSettings,
+        })}
+
+        {renderNavPill({
+          active: activePage === "friends",
+          href: friendsHref,
+          icon: UserRoundPlus,
+          label: "Friends",
+          onClick: activePage === "friends" ? undefined : onOpenFriends,
+        })}
       </div>
     </header>
   );
