@@ -480,16 +480,16 @@ function GoogleCalendarSyncSection() {
 }
 
 const companies = [
-  { name: "Basecamp", svg: <><rect fill="#1DED83" /><path d="M11.5 7L6 18h11L11.5 7z" fill="#0b1220" /></> },
-  { name: "Mailchimp", svg: <><rect fill="#FFE01B" /><path d="M12 6l8 12H4l8-12z" fill="#241c15" /><path d="M8.5 11l3.5-5 3.5 5" fill="none" stroke="#241c15" strokeWidth="1.2" /></> },
-  { name: "Sketch", svg: <><rect fill="#F7B500" /><path d="M12 4l7 6.5-7 9-7-9L12 4z" fill="#fff" opacity="0.9" /><path d="M12 4l-2 6.5 2 9M12 4l2 6.5-2 9" stroke="#F7B500" strokeWidth="0.8" /></> },
-  { name: "Notion", svg: <><rect rx="3" fill="#fff" /><rect x="3" y="3" width="18" height="18" rx="3" fill="#0b1220" /><path d="M7 7h10v2H7V7zm0 4h10v2H7v-2zm0 4h6v2H7v-2z" fill="#fff" /></> },
-  { name: "Figma", svg: <><rect fill="#F24E1E" /><circle cx="12" cy="12" r="4" fill="#fff" opacity="0.9" /><path d="M12 8h4a4 4 0 010 8h-4V8z" fill="#0ab" /><circle cx="12" cy="16" r="3" fill="#ab4" /></> },
-  { name: "Linear", svg: <><rect fill="#5E6AD2" /><path d="M5 19L19 5M6 6h5v5M13 13h5v5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" fill="none" /></> },
-  { name: "Vercel", svg: <><rect fill="#fff" /><path d="M12 3L3 21h18L12 3z" fill="#0b1220" /></> },
-  { name: "Raycast", svg: <><rect fill="#FF6363" /><path d="M12 5l-4 7h8l-4-7z" fill="#fff" /><circle cx="12" cy="15" r="3" fill="#fff" /></> },
-  { name: "Supabase", svg: <><rect rx="4" fill="#3ECF8E" /><path d="M13 3l-7 11h5l-1 7 7-11h-5l1-7z" fill="#1a1a2e" /></> },
-  { name: "Cal.com", svg: <><rect rx="4" fill="#fff" /><rect x="4" y="4" width="16" height="16" rx="3" fill="#292929" /><path d="M7 4v3M17 4v3M4 10h16" stroke="#fff" strokeWidth="1.2" /></> },
+  { name: "Basecamp", color: "#1DED83", svg: <><rect fill="#1DED83" /><path d="M11.5 7L6 18h11L11.5 7z" fill="#0b1220" /></> },
+  { name: "Mailchimp", color: "#FFE01B", svg: <><rect fill="#FFE01B" /><path d="M12 6l8 12H4l8-12z" fill="#241c15" /><path d="M8.5 11l3.5-5 3.5 5" fill="none" stroke="#241c15" strokeWidth="1.2" /></> },
+  { name: "Sketch", color: "#F7B500", svg: <><rect fill="#F7B500" /><path d="M12 4l7 6.5-7 9-7-9L12 4z" fill="#fff" opacity="0.9" /><path d="M12 4l-2 6.5 2 9M12 4l2 6.5-2 9" stroke="#F7B500" strokeWidth="0.8" /></> },
+  { name: "Notion", color: "#fff", svg: <><rect rx="3" fill="#fff" /><rect x="3" y="3" width="18" height="18" rx="3" fill="#0b1220" /><path d="M7 7h10v2H7V7zm0 4h10v2H7v-2zm0 4h6v2H7v-2z" fill="#fff" /></> },
+  { name: "Figma", color: "#F24E1E", svg: <><rect fill="#F24E1E" /><circle cx="12" cy="12" r="4" fill="#fff" opacity="0.9" /><path d="M12 8h4a4 4 0 010 8h-4V8z" fill="#0ab" /><circle cx="12" cy="16" r="3" fill="#ab4" /></> },
+  { name: "Linear", color: "#5E6AD2", svg: <><rect fill="#5E6AD2" /><path d="M5 19L19 5M6 6h5v5M13 13h5v5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" fill="none" /></> },
+  { name: "Vercel", color: "#fff", svg: <><rect fill="#fff" /><path d="M12 3L3 21h18L12 3z" fill="#0b1220" /></> },
+  { name: "Raycast", color: "#FF6363", svg: <><rect fill="#FF6363" /><path d="M12 5l-4 7h8l-4-7z" fill="#fff" /><circle cx="12" cy="15" r="3" fill="#fff" /></> },
+  { name: "Supabase", color: "#3ECF8E", svg: <><rect rx="4" fill="#3ECF8E" /><path d="M13 3l-7 11h5l-1 7 7-11h-5l1-7z" fill="#1a1a2e" /></> },
+  { name: "Cal.com", color: "#fff", svg: <><rect rx="4" fill="#fff" /><rect x="4" y="4" width="16" height="16" rx="3" fill="#292929" /><path d="M7 4v3M17 4v3M4 10h16" stroke="#fff" strokeWidth="1.2" /></> },
 ];
 
 function TestimonialsSection() {
@@ -736,13 +736,14 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
           </div>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 border-t border-white/[0.06] bg-white/[0.03] py-2.5 backdrop-blur-[6px] sm:py-3">
+        <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-[#0b1220]/90 py-3 backdrop-blur-[8px] sm:py-3.5">
           <div className="mx-auto max-w-[1400px] px-5 sm:px-8">
+            <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35 sm:text-[11px]">Trusted by teams at</p>
             <div className="flex overflow-hidden">
-              <div className="flex animate-marquee items-center gap-10 whitespace-nowrap sm:gap-12">
+              <div className="flex animate-marquee items-center gap-12 whitespace-nowrap sm:gap-16">
                 {[...companies, ...companies, ...companies, ...companies].map((c, i) => (
-                  <span key={`${c.name}-${i}`} className="inline-flex items-center gap-2 text-xs font-semibold tracking-[-0.02em] text-white/65 sm:gap-2.5 sm:text-sm">
-                    <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                  <span key={`${c.name}-${i}`} className="inline-flex items-center gap-2.5 text-xs font-bold tracking-[-0.01em] sm:text-sm" style={{ color: c.color }}>
+                    <svg className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" viewBox="0 0 24 24" aria-hidden="true">
                       {c.svg}
                     </svg>
                     {c.name}
