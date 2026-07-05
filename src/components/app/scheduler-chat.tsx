@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, CalendarDays, CheckCircle2, Clock3, ListChecks, Loader2, Sparkles, WandSparkles, type LucideIcon } from "lucide-react";
+import { ArrowUp, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 
 import { LogoMark } from "@/components/shared/logo";
 import { formatDateLabel } from "@/lib/daystack";
@@ -78,20 +78,6 @@ function AssistantOrb({ className }: { className?: string }) {
       <span className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(40,180,234,0.95),transparent_34%),radial-gradient(circle_at_76%_78%,rgba(108,49,239,0.95),transparent_40%),linear-gradient(135deg,#28b4ea,#6c31ef)]" />
       <LogoMark className="relative z-10 h-[68%] w-[68%] rounded-xl" />
     </span>
-  );
-}
-
-function ContextMetric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
-  return (
-    <div className="rounded-[22px] border border-white/72 bg-white/68 p-3 shadow-[0_14px_34px_rgba(15,23,42,0.06)] backdrop-blur-2xl">
-      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-secondary-foreground/55">
-        <span className="grid h-7 w-7 place-items-center rounded-full bg-[linear-gradient(135deg,rgba(40,180,234,0.14),rgba(108,49,239,0.13))] text-primary">
-          <Icon className="h-3.5 w-3.5" />
-        </span>
-        {label}
-      </div>
-      <p className="mt-2 truncate text-sm font-semibold text-foreground">{value}</p>
-    </div>
   );
 }
 
@@ -397,7 +383,6 @@ export function SchedulerChat({
   const planDateLabel = formatDateLabel(snapshot.taskDate);
   const completedTasks = snapshot.summary.completedTasks;
   const totalTasks = snapshot.summary.totalTasks;
-  const remainingTasks = Math.max(totalTasks - completedTasks, 0);
 
   return (
     <section className="glass-panel relative flex h-full min-h-0 flex-1 flex-col overflow-hidden border-white/80 bg-white/72 lg:h-[calc(100dvh-13rem)] lg:min-h-[640px]">
@@ -426,15 +411,16 @@ export function SchedulerChat({
         </div>
       </div>
 
-      <div className="relative z-10 grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="flex min-h-0 flex-col lg:border-r lg:border-white/70">
+      <div className="relative z-10 flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 flex-col">
           <div ref={chatRef} className="soft-scrollbar min-h-0 flex-1 overflow-y-auto">
             {!hasConversation ? (
               <div className="flex min-h-full items-center justify-center px-4 py-7 sm:px-6 lg:px-10">
-                <div className="mx-auto w-full max-w-3xl text-center">
-                  <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/78 bg-white/66 px-3 py-1.5 text-xs font-bold text-secondary-foreground shadow-[0_16px_42px_rgba(15,23,42,0.06)] backdrop-blur-2xl">
-                    <WandSparkles className="h-4 w-4 text-primary" />
-                    Gemini-style planning, built for your calendar
+                <div className="mx-auto w-full max-w-4xl text-center">
+                  <div className="relative mx-auto grid h-24 w-24 place-items-center overflow-hidden rounded-[32px] border border-white/10 bg-[#05070d] shadow-[0_32px_90px_rgba(7,17,31,0.24)] sm:h-28 sm:w-28">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_26%_20%,rgba(40,180,234,0.34),transparent_38%),radial-gradient(circle_at_74%_76%,rgba(108,49,239,0.38),transparent_44%),linear-gradient(135deg,#05070d,#0a1020)]" />
+                    <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_45%)]" />
+                    <LogoMark className="relative z-10 h-16 w-16 rounded-[22px] opacity-95 mix-blend-screen sm:h-20 sm:w-20" />
                   </div>
                   <h1 className="mx-auto mt-5 max-w-2xl font-display text-[2.25rem] font-bold leading-[0.98] tracking-[-0.075em] text-foreground sm:text-[3.4rem] lg:text-[4rem]">
                     What should we plan today?
@@ -564,33 +550,6 @@ export function SchedulerChat({
             </div>
           </div>
         </div>
-
-        <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto bg-white/38 p-4 backdrop-blur-2xl lg:flex">
-          <div className="rounded-[28px] border border-white/72 bg-white/58 p-4 shadow-[0_18px_46px_rgba(15,23,42,0.06)] backdrop-blur-2xl">
-            <div className="flex items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-2xl bg-brand-gradient text-white shadow-[0_14px_28px_rgba(83,78,222,0.2)]">
-                <WandSparkles className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-sm font-bold text-foreground">Live planning context</p>
-                <p className="text-xs text-secondary-foreground/62">Uses your selected day</p>
-              </div>
-            </div>
-          </div>
-
-          <ContextMetric icon={CalendarDays} label="Date" value={planDateLabel} />
-          <ContextMetric icon={ListChecks} label="Today" value={totalTasks > 0 ? `${remainingTasks} left · ${completedTasks} done` : "Ready for blocks"} />
-          <ContextMetric icon={Clock3} label="Planner" value="Energy-aware timing" />
-
-          <div className="rounded-[28px] border border-white/72 bg-[#07111f] p-4 text-white shadow-[0_24px_60px_rgba(7,17,31,0.14)]">
-            <p className="text-sm font-bold">How DayStack AI thinks</p>
-            <div className="mt-3 space-y-2 text-xs leading-5 text-white/68">
-              <p>Deep work goes into high-focus windows.</p>
-              <p>Admin work moves away from peak energy.</p>
-              <p>Meals, meetings, and workouts keep human rhythm.</p>
-            </div>
-          </div>
-        </aside>
       </div>
     </section>
   );
