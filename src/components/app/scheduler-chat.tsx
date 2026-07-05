@@ -39,7 +39,7 @@ const QUICK_PROMPTS = [
   },
   {
     title: "Study rhythm",
-    description: "Deep focus, practice, notes, meals",
+    description: "Deep work, practice, notes, meals",
     prompt: "From 8 AM to 8 PM: calculus 2h, practice 90m, lunch 1h, notes 1h, textbook 90m, dinner 1h",
   },
   {

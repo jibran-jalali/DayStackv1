@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { CalendarRange, Check, CheckCheck, CheckCircle2, PencilLine, Play, Repeat, Trash2, Users, Video } from "lucide-react";
+import { CalendarRange, Check, CheckCheck, CheckCircle2, PencilLine, Repeat, Trash2, Users, Video } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/shared/button";
 import { formatClockTime, formatParticipantNames, getTaskAnchorId, isBlockedTask } from "@/lib/daystack";
@@ -7,14 +7,12 @@ import { cn } from "@/lib/utils";
 import type { PlannerTask, TaskVisualState } from "@/types/daystack";
 
 interface TaskCardProps {
-  focusedTaskId?: string | null;
   isSelected?: boolean;
   task: PlannerTask;
   visualState: TaskVisualState;
   isPending: boolean;
   onEdit: (task: PlannerTask) => void;
   onDelete: (task: PlannerTask) => void;
-  onStartFocusTask: (task: PlannerTask) => void;
   onToggleSelection?: (taskId: string) => void;
   onToggle: (task: PlannerTask) => void;
   selectionMode?: boolean;
@@ -45,12 +43,10 @@ const blockedStateStyles: Record<TaskVisualState, string> = {
 };
 
 function TaskCardComponent({
-  focusedTaskId,
   isPending,
   isSelected = false,
   onDelete,
   onEdit,
-  onStartFocusTask,
   onToggle,
   onToggleSelection,
   selectionMode = false,
@@ -68,7 +64,6 @@ function TaskCardComponent({
         "mobile-task-card rounded-[18px] border px-3 py-3 transition-[transform,box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-4 sm:py-4 lg:hover:-translate-y-0.5",
         isBlocked ? blockedStateStyles[visualState] : stateStyles[visualState],
         selectionMode && isSelected && "border-primary/35 ring-2 ring-primary/25 ring-offset-2 ring-offset-background",
-        focusedTaskId === task.id && "ring-2 ring-primary/35 ring-offset-2 ring-offset-background",
       )}
     >
       <div className="flex flex-col gap-3">
@@ -156,7 +151,7 @@ function TaskCardComponent({
 
         <div className={cn("gap-1.5", hasPrimaryActions ? "flex items-start" : "flex justify-end")}>
           {hasPrimaryActions ? (
-            <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
+            <div className="grid min-w-0 flex-1 grid-cols-1 gap-1.5">
               {isMeeting && task.meeting_link ? (
                 <a
                   href={task.meeting_link}
@@ -165,7 +160,7 @@ function TaskCardComponent({
                   className={buttonVariants({
                     variant: "ghost",
                     size: "sm",
-                    className: "col-span-2 h-10 justify-center px-3 text-xs",
+                    className: "h-10 justify-center px-3 text-xs",
                   })}
                 >
                   <Video className="h-4 w-4" />
@@ -182,18 +177,6 @@ function TaskCardComponent({
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   {task.status === "completed" ? "Undo" : "Done"}
-                </Button>
-              ) : null}
-              {!isBlocked ? (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="h-10 w-full justify-center px-2 text-xs"
-                  onClick={() => onStartFocusTask(task)}
-                  disabled={isPending || task.status === "completed"}
-                >
-                  <Play className="h-4 w-4" />
-                  Focus
                 </Button>
               ) : null}
             </div>
@@ -229,7 +212,6 @@ function TaskCardComponent({
 
 function areTaskCardPropsEqual(left: TaskCardProps, right: TaskCardProps) {
   return (
-    left.focusedTaskId === right.focusedTaskId &&
     left.isPending === right.isPending &&
     left.isSelected === right.isSelected &&
     left.selectionMode === right.selectionMode &&

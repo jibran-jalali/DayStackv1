@@ -24,7 +24,6 @@ interface ExecutionLaneProps {
   isPending: boolean;
   nextTask: PlannerTask | null;
   onEditTask: (task: PlannerTask) => void;
-  onFocusTask: (taskId: string) => void;
   onToggleTask: (task: PlannerTask) => void;
   queue: PlannerTask[];
   streak: number;
@@ -59,25 +58,21 @@ function TaskMeta({ task }: { task: PlannerTask }) {
 }
 
 function LaneTaskCard({
-  ctaLabel,
   ctaTone,
   emptyLabel,
   highlight,
   isPending,
   onEdit,
-  onFocus,
   onToggle,
   showCompleteAction = true,
   task,
   title,
 }: {
-  ctaLabel: string;
   ctaTone: "brand" | "default";
   emptyLabel: string;
   highlight?: ReactNode;
   isPending: boolean;
   onEdit: (task: PlannerTask) => void;
-  onFocus: (taskId: string) => void;
   onToggle: (task: PlannerTask) => void;
   showCompleteAction?: boolean;
   task: PlannerTask | null;
@@ -96,8 +91,8 @@ function LaneTaskCard({
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="secondary" onClick={() => onFocus(task.id)} disabled={isPending}>
-              {ctaLabel}
+            <Button size="sm" variant="secondary" onClick={() => onEdit(task)} disabled={isPending}>
+              Open
             </Button>
             {showCompleteAction ? (
               <Button
@@ -138,14 +133,12 @@ function QueueRow({
   allowCompletion,
   isPending,
   onEdit,
-  onFocus,
   onToggle,
   task,
 }: {
   allowCompletion: boolean;
   isPending: boolean;
   onEdit: (task: PlannerTask) => void;
-  onFocus: (taskId: string) => void;
   onToggle: (task: PlannerTask) => void;
   task: PlannerTask;
 }) {
@@ -155,7 +148,7 @@ function QueueRow({
         suppressHydrationWarning
         type="button"
         className="min-w-0 flex-1 text-left"
-        onClick={() => onFocus(task.id)}
+        onClick={() => onEdit(task)}
       >
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-secondary-foreground">{formatClockTime(task.start_time)}</span>
@@ -202,7 +195,6 @@ export function ExecutionLane({
   isPending,
   nextTask,
   onEditTask,
-  onFocusTask,
   onToggleTask,
   queue,
   streak,
@@ -253,26 +245,22 @@ export function ExecutionLane({
             <LaneTaskCard
               title="Now"
               task={currentTask}
-              ctaLabel="Focus"
               ctaTone="brand"
               emptyLabel="No block is live."
               highlight={currentTask ? <StatusChip label="Live" tone="brand" icon={PlayCircle} className="shrink-0" /> : null}
               isPending={isPending}
               onEdit={onEditTask}
-              onFocus={onFocusTask}
               onToggle={onToggleTask}
             />
 
             <LaneTaskCard
               title="Next"
               task={nextTask}
-              ctaLabel="Jump"
               ctaTone="default"
               emptyLabel="Nothing scheduled next."
               highlight={nextTask ? <StatusChip label="Next" tone="default" icon={ArrowRight} className="shrink-0" /> : null}
               isPending={isPending}
               onEdit={onEditTask}
-              onFocus={onFocusTask}
               onToggle={onToggleTask}
             />
           </>
@@ -287,14 +275,12 @@ export function ExecutionLane({
             <LaneTaskCard
               title="Starts with"
               task={nextTask}
-              ctaLabel="Open"
               ctaTone="default"
               emptyLabel="No first block is planned yet."
               highlight={nextTask ? <StatusChip label="Planned" tone="default" icon={ArrowRight} className="shrink-0" /> : null}
               isPending={isPending}
               showCompleteAction={false}
               onEdit={onEditTask}
-              onFocus={onFocusTask}
               onToggle={onToggleTask}
             />
           </>
@@ -309,13 +295,11 @@ export function ExecutionLane({
             <LaneTaskCard
               title="Left open"
               task={nextTask}
-              ctaLabel="Review"
               ctaTone="default"
               emptyLabel="No open blocks were left behind."
               highlight={nextTask ? <StatusChip label="History" tone="default" icon={ArrowRight} className="shrink-0" /> : null}
               isPending={isPending}
               onEdit={onEditTask}
-              onFocus={onFocusTask}
               onToggle={onToggleTask}
             />
           </>
@@ -331,7 +315,6 @@ export function ExecutionLane({
                   task={task}
                   isPending={isPending}
                   onEdit={onEditTask}
-                  onFocus={onFocusTask}
                   onToggle={onToggleTask}
                 />
               ))}

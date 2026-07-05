@@ -78,7 +78,7 @@ export function WorkspaceSettingsContent({
           <div className="mt-2.5 space-y-2.5">
             <div>
               <p className="text-sm font-semibold text-foreground">{displayName}</p>
-              <p className="text-xs text-secondary-foreground">{email ?? "Focused operator"}</p>
+              <p className="text-xs text-secondary-foreground">{email ?? "DayStack user"}</p>
             </div>
             {selectedDate ? (
               <div className="rounded-[14px] border border-border/70 bg-muted/35 px-2.5 py-2 text-xs text-secondary-foreground">
@@ -156,7 +156,7 @@ export function WorkspaceSettingsContent({
           <div className="mt-3 space-y-3">
             <div>
               <p className="text-sm font-semibold text-foreground">{displayName}</p>
-              <p className="text-sm text-secondary-foreground">{email ?? "Focused operator"}</p>
+              <p className="text-sm text-secondary-foreground">{email ?? "DayStack user"}</p>
             </div>
             {selectedDate ? (
               <div className="rounded-[18px] border border-border/70 bg-muted/35 px-3 py-2.5 text-sm text-secondary-foreground">

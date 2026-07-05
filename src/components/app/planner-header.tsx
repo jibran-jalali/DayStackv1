@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Bell, CalendarDays, Clock3, Flame, LoaderCircle, LogOut, MessageSquareText, Plus, Settings2, Sparkles, UserRoundPlus } from "lucide-react";
+import { Bell, CalendarDays, Flame, LoaderCircle, LogOut, MessageSquareText, Plus, Settings2, Sparkles, UserRoundPlus } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useTransition } from "react";
 
@@ -40,7 +40,6 @@ interface PlannerHeaderProps {
   onViewChange?: (value: PlannerViewMode) => void;
   plannerHref?: string;
   notificationsHref?: string;
-  pomodoroHref?: string;
   settingsHighlighted?: boolean;
   settingsHref?: string;
   showNotificationCenter?: boolean;
@@ -105,7 +104,6 @@ export function PlannerHeader({
   plannerHref = "/app",
   notificationsHref,
   onViewChange,
-  pomodoroHref = "https://flocus.com/",
   settingsHref = "/app/settings",
   showNotificationCenter = false,
   streak,
@@ -193,14 +191,6 @@ export function PlannerHeader({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          {renderNavPill({
-            active: false,
-            href: pomodoroHref,
-            icon: Clock3,
-            label: "Pomodoro",
-            target: "_blank",
-          })}
-
           {activePage === "planner" ? (
             <>
               {onAiPlan ? (
@@ -234,7 +224,7 @@ export function PlannerHeader({
             </div>
             <div className="hidden min-w-0 xl:block">
               <p className="truncate text-xs font-semibold text-foreground">{displayName}</p>
-              <p className="truncate text-[11px] text-secondary-foreground">{email ?? "Focused operator"}</p>
+              <p className="truncate text-[11px] text-secondary-foreground">{email ?? "DayStack user"}</p>
             </div>
             <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={handleSignOut} disabled={isPending} aria-label="Logout">
               {isPending ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}

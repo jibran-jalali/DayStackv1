@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarRange, CheckCheck, CheckCircle2, GripVertical, Play, Plus, Repeat, Users, Video } from "lucide-react";
+import { CalendarRange, CheckCheck, CheckCircle2, GripVertical, Plus, Repeat, Users, Video } from "lucide-react";
 
 import { Button } from "@/components/shared/button";
 import {
@@ -16,13 +16,11 @@ import { cn } from "@/lib/utils";
 import type { PlannerTask, TaskVisualState } from "@/types/daystack";
 
 interface TimelineGridProps {
-  focusedTaskId?: string | null;
   isPending: boolean;
   now: Date;
   onAddTask: (startTime?: string) => void;
   onEditTask: (task: PlannerTask) => void;
   onRescheduleTask: (task: PlannerTask, nextStartTime: string, nextEndTime: string) => void;
-  onStartFocusTask: (task: PlannerTask) => void;
   onToggleTask: (task: PlannerTask) => void;
   resolveVisualState: (task: PlannerTask) => TaskVisualState;
   taskDate: string;
@@ -204,13 +202,11 @@ interface DragState {
 }
 
 function TimelineGridComponent({
-  focusedTaskId,
   isPending,
   now,
   onAddTask,
   onEditTask,
   onRescheduleTask,
-  onStartFocusTask,
   onToggleTask,
   resolveVisualState,
   taskDate,
@@ -401,14 +397,13 @@ function TimelineGridComponent({
                     "pointer-events-auto absolute z-10 overflow-hidden rounded-[20px] border transition-[box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]",
                     isBlocked ? blockedBlockStyles[visualState] : blockStyles[visualState],
                     dragState?.task.id === task.id && "shadow-[0_18px_34px_rgba(15,23,42,0.14)] ring-2 ring-primary/25",
-                    focusedTaskId === task.id && "ring-2 ring-primary/35 ring-offset-2 ring-offset-background",
                   )}
                   style={{
                     top: `${topOffset}px`,
                     height: `${blockHeight}px`,
                     left,
                     width,
-                    zIndex: dragState?.task.id === task.id ? 30 : focusedTaskId === task.id ? 20 : 10 + layout.column,
+                    zIndex: dragState?.task.id === task.id ? 30 : 10 + layout.column,
                   }}
                 >
                   <div
@@ -418,10 +413,10 @@ function TimelineGridComponent({
                     className={cn(
                       "relative h-full cursor-pointer text-left focus:outline-none",
                       isMicro
-                        ? "px-2 py-1 pr-12"
+                        ? "px-2 py-1 pr-8"
                         : density === "compact"
-                          ? "px-3 py-2.5 pr-[4.5rem]"
-                          : "px-3 py-3 pr-24 sm:pr-[6.75rem]",
+                          ? "px-3 py-2.5 pr-14"
+                          : "px-3 py-3 pr-16 sm:pr-[4.5rem]",
                     )}
                     onClick={() => onEditTask(task)}
                     onKeyDown={(event) => {
@@ -524,20 +519,6 @@ function TimelineGridComponent({
                       <Button
                         size="sm"
                         variant="ghost"
-                        className={controlButtonClass}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onStartFocusTask(task);
-                        }}
-                        disabled={isPending || task.status === "completed" || isBlocked}
-                        aria-label={`Start focus for ${task.title}`}
-                      >
-                        <Play className={cn(isMicro ? "h-3 w-3" : "h-4 w-4")} />
-                      </Button>
-
-                      <Button
-                        size="sm"
-                        variant="ghost"
                         className={cn("hidden sm:inline-flex", controlButtonClass)}
                         onPointerDown={(event) => {
                           event.preventDefault();
@@ -611,7 +592,6 @@ function TimelineGridComponent({
 
 function areTimelineGridPropsEqual(left: TimelineGridProps, right: TimelineGridProps) {
   return (
-    left.focusedTaskId === right.focusedTaskId &&
     left.isPending === right.isPending &&
     left.now.getTime() === right.now.getTime() &&
     left.onAddTask === right.onAddTask &&

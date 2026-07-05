@@ -180,7 +180,7 @@ export function SettingsShell({
               <div className="mt-3 space-y-3">
                 <div>
                   <p className="text-sm font-semibold text-foreground">{displayName}</p>
-                  <p className="text-sm text-secondary-foreground">{email ?? "Focused operator"}</p>
+                  <p className="text-sm text-secondary-foreground">{email ?? "DayStack user"}</p>
                 </div>
                 {returnDate ? (
                   <div className="rounded-[18px] border border-border/70 bg-muted/35 px-3 py-2.5 text-sm text-secondary-foreground">

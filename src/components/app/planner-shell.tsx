@@ -291,7 +291,6 @@ export function PlannerShell({
   const [editorTask, setEditorTask] = useState<PlannerTask | null>(null);
   const [recurringSeriesEditor, setRecurringSeriesEditor] = useState<RecurringSeriesEditorState>(null);
   const [composerDefaults, setComposerDefaults] = useState<TaskFormValues | null>(null);
-  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
   const [followToday, setFollowToday] = useState(() => initialSnapshot.taskDate === formatDateKey(initialNow));
   const [isAiPlanModalOpen, setIsAiPlanModalOpen] = useState(false);
   const [pushSetupUrgent, setPushSetupUrgent] = useState(false);
@@ -408,7 +407,6 @@ export function PlannerShell({
       setEditorTask(null);
       setRecurringSeriesEditor(null);
       setComposerDefaults(null);
-      setFocusedTaskId(null);
       handleCloseRecurringScope();
       setWorkspaceTab(nextTab);
       setNotice(null);
@@ -462,7 +460,6 @@ export function PlannerShell({
       setEditorTask(null);
       setRecurringSeriesEditor(null);
       setComposerDefaults(null);
-      setFocusedTaskId(null);
       setNotice(null);
       setWorkspaceTab(targetTab);
       const requestId = dateRequestIdRef.current + 1;
@@ -1004,14 +1001,6 @@ export function PlannerShell({
     })();
   }
 
-  const handleStartFocusTask = useCallback(
-    function handleStartFocusTask() {
-      playActionFeedback("navigate");
-      window.open("https://flocus.com/", "_blank", "noreferrer");
-    },
-    [playActionFeedback],
-  );
-
   async function handleNotificationAccepted(result: TaskNotificationAcceptResult) {
     if (result.taskDate !== snapshot.taskDate) {
       return;
@@ -1489,7 +1478,6 @@ export function PlannerShell({
                   <LeaderboardView currentUserId={userId} entries={snapshot.leaderboard} />
                 ) : mobilePlanView === "grid" ? (
                   <TimelineGrid
-                    focusedTaskId={focusedTaskId}
                     tasks={snapshot.tasks}
                     taskDate={snapshot.taskDate}
                     now={now}
@@ -1498,19 +1486,16 @@ export function PlannerShell({
                     onAddTask={handleCreateTask}
                     onEditTask={handleEditTask}
                     onRescheduleTask={handleRescheduleTask}
-                    onStartFocusTask={handleStartFocusTask}
                     onToggleTask={handleToggleTask}
                   />
                 ) : (
                   <TimelineList
-                    focusedTaskId={focusedTaskId}
                     tasks={snapshot.tasks}
                     resolveVisualState={resolveTaskVisualState}
                     isPending={isPending}
                     onAddTask={handleCreateTask}
                     onEditTask={handleEditTask}
                     onDeleteTask={handleDeleteTask}
-                    onStartFocusTask={handleStartFocusTask}
                     onToggleTaskSelection={toggleTaskSelection}
                     onToggleTask={handleToggleTask}
                     selectedTaskIds={selectedTaskIds}
@@ -1647,7 +1632,6 @@ export function PlannerShell({
             streak={workspaceTab === "plan" ? snapshot.streak : undefined}
             subtitle={activeSubtitle}
             viewMode={viewMode}
-            pomodoroHref="https://flocus.com/"
             onAiPlan={workspaceTab === "plan" ? handleOpenAiPlan : undefined}
             onAddTask={workspaceTab === "plan" ? () => handleCreateTask() : undefined}
             onViewChange={handleChangePlannerView}
@@ -1792,7 +1776,6 @@ export function PlannerShell({
                     <LeaderboardView currentUserId={userId} entries={snapshot.leaderboard} />
                   ) : viewMode === "grid" ? (
                     <TimelineGrid
-                      focusedTaskId={focusedTaskId}
                       tasks={snapshot.tasks}
                       taskDate={snapshot.taskDate}
                       now={now}
@@ -1801,19 +1784,16 @@ export function PlannerShell({
                       onAddTask={handleCreateTask}
                       onEditTask={handleEditTask}
                       onRescheduleTask={handleRescheduleTask}
-                      onStartFocusTask={handleStartFocusTask}
                       onToggleTask={handleToggleTask}
                     />
                   ) : (
                     <TimelineList
-                      focusedTaskId={focusedTaskId}
                       tasks={snapshot.tasks}
                       resolveVisualState={resolveTaskVisualState}
                       isPending={isPending}
                       onAddTask={handleCreateTask}
                       onEditTask={handleEditTask}
                       onDeleteTask={handleDeleteTask}
-                      onStartFocusTask={handleStartFocusTask}
                       onToggleTaskSelection={toggleTaskSelection}
                       onToggleTask={handleToggleTask}
                       selectedTaskIds={selectedTaskIds}
@@ -1890,7 +1870,7 @@ export function PlannerShell({
             ? `Changes will apply from ${formatDateLabel(formValues.taskDate)} onward for this recurring block.`
             : editorTask
               ? "Adjust the timing, date, or details for this block."
-              : `Add the next focused block for ${formatDateLabel(formValues.taskDate)}.`
+              : `Add the next block for ${formatDateLabel(formValues.taskDate)}.`
         }
         eyebrow={recurringSeriesEditor ? "Recurring series" : undefined}
         onClose={handleCancelEditor}

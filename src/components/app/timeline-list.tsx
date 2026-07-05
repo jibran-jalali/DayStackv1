@@ -7,14 +7,12 @@ import type { PlannerTask, TaskVisualState } from "@/types/daystack";
 import { TaskCard } from "./task-card";
 
 interface TimelineListProps {
-  focusedTaskId?: string | null;
   tasks: PlannerTask[];
   resolveVisualState: (task: PlannerTask) => TaskVisualState;
   isPending: boolean;
   onAddTask: (startTime?: string) => void;
   onEditTask: (task: PlannerTask) => void;
   onDeleteTask: (task: PlannerTask) => void;
-  onStartFocusTask: (task: PlannerTask) => void;
   onToggleTaskSelection: (taskId: string) => void;
   onToggleTask: (task: PlannerTask) => void;
   selectedTaskIds: string[];
@@ -22,14 +20,12 @@ interface TimelineListProps {
 }
 
 function TimelineListComponent({
-  focusedTaskId,
   tasks,
   resolveVisualState,
   isPending,
   onAddTask,
   onEditTask,
   onDeleteTask,
-  onStartFocusTask,
   onToggleTaskSelection,
   onToggleTask,
   selectedTaskIds,
@@ -54,13 +50,11 @@ function TimelineListComponent({
       {tasks.map((task) => (
         <TaskCard
           key={task.id}
-          focusedTaskId={focusedTaskId}
           task={task}
           visualState={resolveVisualState(task)}
           isPending={isPending}
           onEdit={onEditTask}
           onDelete={onDeleteTask}
-          onStartFocusTask={onStartFocusTask}
           onToggleSelection={onToggleTaskSelection}
           onToggle={onToggleTask}
           isSelected={selectedTaskIds.includes(task.id)}
@@ -82,7 +76,6 @@ function TimelineListComponent({
 
 function areTimelineListPropsEqual(left: TimelineListProps, right: TimelineListProps) {
   return (
-    left.focusedTaskId === right.focusedTaskId &&
     left.tasks === right.tasks &&
     left.resolveVisualState === right.resolveVisualState &&
     left.isPending === right.isPending &&
