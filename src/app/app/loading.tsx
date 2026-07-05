@@ -5,6 +5,8 @@ export default function AppLoading() {
     <div className="daystack-loading-screen" role="status" aria-label="Loading DayStack">
       <div className="daystack-loading-orb daystack-loading-orb--one" />
       <div className="daystack-loading-orb daystack-loading-orb--two" />
+      <div className="daystack-loading-orb daystack-loading-orb--three" />
+      <div className="daystack-loading-orb daystack-loading-orb--four" />
 
       <div className="daystack-loading-card">
         <div className="daystack-loading-topbar">
@@ -34,24 +36,6 @@ export default function AppLoading() {
 
           <div className="daystack-loading-progress">
             <span />
-          </div>
-
-          <div className="daystack-loading-preview" aria-hidden="true">
-            <div className="daystack-loading-time">9 AM</div>
-            <div className="daystack-loading-block daystack-loading-block--focus">
-              <strong>Focus block</strong>
-              <small>Deep work</small>
-            </div>
-            <div className="daystack-loading-time">1 PM</div>
-            <div className="daystack-loading-block daystack-loading-block--ai">
-              <strong>DayStack AI</strong>
-              <small>Optimizing schedule</small>
-            </div>
-            <div className="daystack-loading-time">4 PM</div>
-            <div className="daystack-loading-block daystack-loading-block--done">
-              <strong>Next move</strong>
-              <small>Ready</small>
-            </div>
           </div>
         </div>
       </div>
