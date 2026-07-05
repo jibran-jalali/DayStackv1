@@ -480,16 +480,16 @@ function GoogleCalendarSyncSection() {
 }
 
 const companies = [
-  { name: "Basecamp", color: "#1DED83", svg: <><rect fill="#1DED83" /><path d="M11.5 7L6 18h11L11.5 7z" fill="#0b1220" /></> },
-  { name: "Mailchimp", color: "#FFE01B", svg: <><rect fill="#FFE01B" /><path d="M12 6l8 12H4l8-12z" fill="#241c15" /><path d="M8.5 11l3.5-5 3.5 5" fill="none" stroke="#241c15" strokeWidth="1.2" /></> },
-  { name: "Sketch", color: "#F7B500", svg: <><rect fill="#F7B500" /><path d="M12 4l7 6.5-7 9-7-9L12 4z" fill="#fff" opacity="0.9" /><path d="M12 4l-2 6.5 2 9M12 4l2 6.5-2 9" stroke="#F7B500" strokeWidth="0.8" /></> },
-  { name: "Notion", color: "#fff", svg: <><rect rx="3" fill="#fff" /><rect x="3" y="3" width="18" height="18" rx="3" fill="#0b1220" /><path d="M7 7h10v2H7V7zm0 4h10v2H7v-2zm0 4h6v2H7v-2z" fill="#fff" /></> },
-  { name: "Figma", color: "#F24E1E", svg: <><rect fill="#F24E1E" /><circle cx="12" cy="12" r="4" fill="#fff" opacity="0.9" /><path d="M12 8h4a4 4 0 010 8h-4V8z" fill="#0ab" /><circle cx="12" cy="16" r="3" fill="#ab4" /></> },
-  { name: "Linear", color: "#5E6AD2", svg: <><rect fill="#5E6AD2" /><path d="M5 19L19 5M6 6h5v5M13 13h5v5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" fill="none" /></> },
-  { name: "Vercel", color: "#fff", svg: <><rect fill="#fff" /><path d="M12 3L3 21h18L12 3z" fill="#0b1220" /></> },
-  { name: "Raycast", color: "#FF6363", svg: <><rect fill="#FF6363" /><path d="M12 5l-4 7h8l-4-7z" fill="#fff" /><circle cx="12" cy="15" r="3" fill="#fff" /></> },
-  { name: "Supabase", color: "#3ECF8E", svg: <><rect rx="4" fill="#3ECF8E" /><path d="M13 3l-7 11h5l-1 7 7-11h-5l1-7z" fill="#1a1a2e" /></> },
-  { name: "Cal.com", color: "#fff", svg: <><rect rx="4" fill="#fff" /><rect x="4" y="4" width="16" height="16" rx="3" fill="#292929" /><path d="M7 4v3M17 4v3M4 10h16" stroke="#fff" strokeWidth="1.2" /></> },
+  { name: "Basecamp", color: "#1DED83", soft: "rgba(29,237,131,0.14)", border: "rgba(29,237,131,0.35)", svg: <><rect fill="#1DED83" /><path d="M11.5 7L6 18h11L11.5 7z" fill="#0b1220" /></> },
+  { name: "Mailchimp", color: "#FFE01B", soft: "rgba(255,224,27,0.18)", border: "rgba(255,224,27,0.42)", svg: <><rect fill="#FFE01B" /><path d="M12 6l8 12H4l8-12z" fill="#241c15" /><path d="M8.5 11l3.5-5 3.5 5" fill="none" stroke="#241c15" strokeWidth="1.2" /></> },
+  { name: "Sketch", color: "#F7B500", soft: "rgba(247,181,0,0.15)", border: "rgba(247,181,0,0.38)", svg: <><rect fill="#F7B500" /><path d="M12 4l7 6.5-7 9-7-9L12 4z" fill="#fff" opacity="0.9" /><path d="M12 4l-2 6.5 2 9M12 4l2 6.5-2 9" stroke="#F7B500" strokeWidth="0.8" /></> },
+  { name: "Notion", color: "#111827", soft: "rgba(17,24,39,0.08)", border: "rgba(17,24,39,0.18)", svg: <><rect rx="3" fill="#fff" /><rect x="3" y="3" width="18" height="18" rx="3" fill="#0b1220" /><path d="M7 7h10v2H7V7zm0 4h10v2H7v-2zm0 4h6v2H7v-2z" fill="#fff" /></> },
+  { name: "Figma", color: "#F24E1E", soft: "rgba(242,78,30,0.13)", border: "rgba(242,78,30,0.34)", svg: <><rect fill="#F24E1E" /><circle cx="12" cy="12" r="4" fill="#fff" opacity="0.9" /><path d="M12 8h4a4 4 0 010 8h-4V8z" fill="#0ab" /><circle cx="12" cy="16" r="3" fill="#ab4" /></> },
+  { name: "Linear", color: "#5E6AD2", soft: "rgba(94,106,210,0.13)", border: "rgba(94,106,210,0.34)", svg: <><rect fill="#5E6AD2" /><path d="M5 19L19 5M6 6h5v5M13 13h5v5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" fill="none" /></> },
+  { name: "Vercel", color: "#111827", soft: "rgba(17,24,39,0.08)", border: "rgba(17,24,39,0.18)", svg: <><rect fill="#fff" /><path d="M12 3L3 21h18L12 3z" fill="#0b1220" /></> },
+  { name: "Raycast", color: "#FF6363", soft: "rgba(255,99,99,0.14)", border: "rgba(255,99,99,0.35)", svg: <><rect fill="#FF6363" /><path d="M12 5l-4 7h8l-4-7z" fill="#fff" /><circle cx="12" cy="15" r="3" fill="#fff" /></> },
+  { name: "Supabase", color: "#3ECF8E", soft: "rgba(62,207,142,0.14)", border: "rgba(62,207,142,0.35)", svg: <><rect rx="4" fill="#3ECF8E" /><path d="M13 3l-7 11h5l-1 7 7-11h-5l1-7z" fill="#1a1a2e" /></> },
+  { name: "Cal.com", color: "#111827", soft: "rgba(17,24,39,0.08)", border: "rgba(17,24,39,0.18)", svg: <><rect rx="4" fill="#fff" /><rect x="4" y="4" width="16" height="16" rx="3" fill="#292929" /><path d="M7 4v3M17 4v3M4 10h16" stroke="#fff" strokeWidth="1.2" /></> },
 ];
 
 function TestimonialsSection() {
@@ -736,20 +736,22 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
           </div>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-[#0b1220]/90 py-3 backdrop-blur-[8px] sm:py-3.5">
-          <div className="mx-auto max-w-[1400px] px-5 sm:px-8">
-            <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35 sm:text-[11px]">Trusted by teams at</p>
-            <div className="flex overflow-hidden">
-              <div className="flex animate-marquee items-center gap-12 whitespace-nowrap sm:gap-16">
-                {[...companies, ...companies, ...companies, ...companies].map((c, i) => (
-                  <span key={`${c.name}-${i}`} className="inline-flex items-center gap-2.5 text-xs font-bold tracking-[-0.01em] sm:text-sm" style={{ color: c.color }}>
-                    <svg className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" viewBox="0 0 24 24" aria-hidden="true">
-                      {c.svg}
-                    </svg>
-                    {c.name}
-                  </span>
-                ))}
-              </div>
+        <div className="absolute inset-x-4 bottom-20 z-20 mx-auto max-w-[1180px] rounded-[22px] border border-white/75 bg-white/74 px-3 py-3 shadow-[0_24px_70px_rgba(15,23,42,0.12)] backdrop-blur-[28px] sm:bottom-8 sm:px-4 sm:py-3.5 lg:bottom-10">
+          <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-[#344155]/45 sm:text-[11px]">Trusted by teams at</p>
+          <div className="flex overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_8%,#000_92%,transparent)]">
+            <div className="flex animate-marquee items-center gap-3 whitespace-nowrap sm:gap-4">
+              {[...companies, ...companies, ...companies, ...companies].map((c, i) => (
+                <span
+                  key={`${c.name}-${i}`}
+                  className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold tracking-[-0.01em] shadow-[0_10px_24px_rgba(15,23,42,0.05)] sm:px-3.5 sm:py-2 sm:text-sm"
+                  style={{ background: c.soft, borderColor: c.border, color: c.color }}
+                >
+                  <svg className="h-5 w-5 shrink-0 rounded-[6px] shadow-[0_5px_12px_rgba(15,23,42,0.08)]" viewBox="0 0 24 24" aria-hidden="true">
+                    {c.svg}
+                  </svg>
+                  {c.name}
+                </span>
+              ))}
             </div>
           </div>
         </div>
