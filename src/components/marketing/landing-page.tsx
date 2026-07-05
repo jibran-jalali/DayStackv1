@@ -113,7 +113,7 @@ function MotionDayPreview() {
   ];
 
   return (
-    <section className="relative mx-auto mt-20 w-full max-w-[1500px] px-4 pb-10 sm:px-8 lg:px-14">
+    <section id="how-it-works" className="relative mx-auto mt-20 w-full max-w-[1500px] px-4 pb-10 sm:px-8 lg:px-14">
       <div className="relative overflow-hidden rounded-[24px] border border-black/[0.06] bg-[#fff4f4] px-3 py-10 shadow-[inset_0px_4px_4px_0px_rgba(255,255,255,0.5),0_30px_100px_rgba(15,23,42,0.08)] sm:rounded-[34px] sm:px-6 sm:py-12 lg:px-12">
         <div className="pointer-events-none absolute left-1/2 top-10 h-[320px] w-[560px] -translate-x-1/2 rounded-full bg-[#60B1FF]/16 blur-[120px] sm:h-[420px] sm:w-[760px]" />
 
@@ -327,7 +327,7 @@ function FeatureShowcase() {
   ];
 
   return (
-    <section className="relative mx-auto w-full max-w-[1500px] px-4 pb-24 pt-4 sm:px-8 lg:px-14">
+    <section id="features" className="relative mx-auto w-full max-w-[1500px] px-4 pb-24 pt-4 sm:px-8 lg:px-14">
       <div className="relative overflow-hidden rounded-[28px] border border-black/[0.06] bg-[linear-gradient(135deg,#f8fbff,#f7f1ff)] px-4 py-10 shadow-[0_30px_100px_rgba(15,23,42,0.08)] sm:rounded-[36px] sm:px-7 sm:py-14 lg:px-12">
         <div className="pointer-events-none absolute -left-20 top-10 h-72 w-72 rounded-full bg-[#28b4ea]/16 blur-[90px]" />
         <div className="pointer-events-none absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-[#6c31ef]/14 blur-[100px]" />
@@ -387,7 +387,7 @@ function GoogleCalendarSyncSection() {
   ];
 
   return (
-    <section className="relative mx-auto w-full max-w-[1500px] px-4 pb-24 sm:px-8 lg:px-14">
+    <section id="sync" className="relative mx-auto w-full max-w-[1500px] px-4 pb-24 sm:px-8 lg:px-14">
       <div className="relative overflow-hidden rounded-[30px] border border-black/[0.06] bg-[#07111f] px-4 py-10 shadow-[0_34px_110px_rgba(7,17,31,0.18)] sm:rounded-[40px] sm:px-8 sm:py-14 lg:px-12">
         <div className="pointer-events-none absolute left-[-10%] top-[-20%] h-[28rem] w-[28rem] rounded-full bg-[#4285F4]/20 blur-[110px]" />
         <div className="pointer-events-none absolute bottom-[-20%] right-[-10%] h-[30rem] w-[30rem] rounded-full bg-[#34A853]/14 blur-[120px]" />
@@ -503,6 +503,21 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
 
       <nav className="sticky top-[18px] z-30 mx-auto flex w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] items-center justify-between gap-2 rounded-[16px] border border-[rgba(0,0,0,0.1)] bg-[rgba(255,255,255,0.34)] px-3 py-2 shadow-[inset_0px_4px_4px_0px_rgba(255,255,255,0.25),0_22px_60px_rgba(15,23,42,0.08)] backdrop-blur-[50px] sm:top-[30px] sm:w-fit sm:justify-center sm:gap-4 sm:px-4">
         <Logo className="px-0" priority />
+        <div className="hidden items-center gap-1 sm:flex">
+          {[
+            { href: "#features", label: "Features" },
+            { href: "#how-it-works", label: "How it works" },
+            { href: "#sync", label: "Sync" },
+          ].map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              className="rounded-full px-3 py-2 text-sm font-medium tracking-[-0.02em] text-[#253041]/75 transition hover:text-[#0b1220]"
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
         <Link
           href="/signin"
           className="hidden rounded-full px-3 py-2 text-sm font-medium tracking-[-0.02em] text-[#253041]/75 transition hover:text-[#0b1220] sm:inline-flex"
