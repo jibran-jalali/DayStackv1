@@ -550,7 +550,7 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
             </div>
 
             <h1 className="mt-4 font-display text-[36px] font-bold leading-[1.05] tracking-[-2px] text-[#07111f] sm:text-[52px] lg:text-[64px]">
-              Plan your day,<br />execute with <span className="daystack-gradient-text">clarity</span>
+              Plan your day<br />with <span className="daystack-gradient-text">DayStack AI</span>
             </h1>
 
             <p className="mt-3 max-w-[520px] text-[15px] leading-7 tracking-[-1px] text-[#344155]/78 sm:text-[17px] sm:leading-8">
