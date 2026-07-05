@@ -8,6 +8,7 @@ export interface AdminAccount {
   lastSignInAt: string | null;
   name: string;
   status: AdminAccountStatus;
+  storageBytes: number | null;
 }
 
 export interface AdminDashboardSnapshot {

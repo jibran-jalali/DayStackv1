@@ -1,6 +1,6 @@
 "use client";
 
-import { HardDrive, LoaderCircle, LogOut, ShieldCheck, ShieldX, Trash2, UserRoundX, Users } from "lucide-react";
+import { HardDrive, LoaderCircle, LogIn, LogOut, Search, ShieldCheck, ShieldX, SlidersHorizontal, Trash2, UserRoundX, Users, X } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 
 import { EmptyState } from "@/components/shared/empty-state";
@@ -19,6 +19,10 @@ type NoticeState =
       type: "error" | "success";
     }
   | null;
+
+type AccountStatusFilter = "active" | "all" | "disabled";
+type AccountUsageFilter = "all" | "empty" | "with-data";
+type AccountSortKey = "name" | "newest" | "oldest" | "usage";
 
 function formatAccountDate(value: string) {
   try {
@@ -39,6 +43,28 @@ function formatUsageLabel(estimatedOwnedRecords: number | null) {
   return `Estimated from ${estimatedOwnedRecords} owned record${estimatedOwnedRecords === 1 ? "" : "s"}`;
 }
 
+function getUsageCount(account: AdminAccount) {
+  return account.estimatedOwnedRecords ?? 0;
+}
+
+function getStorageBytes(account: AdminAccount) {
+  return account.storageBytes ?? 0;
+}
+
+function formatStorageLabel(storageBytes: number | null) {
+  if (storageBytes === null) {
+    return "Not available";
+  }
+
+  const storageMb = storageBytes / (1024 * 1024);
+
+  if (storageMb > 0 && storageMb < 0.01) {
+    return "<0.01 MB";
+  }
+
+  return `${storageMb.toFixed(storageMb >= 10 ? 1 : 2)} MB`;
+}
+
 function createSnapshot(accounts: AdminAccount[]): AdminDashboardSnapshot {
   const activeAccounts = accounts.filter((account) => account.status === "active").length;
   const disabledAccounts = accounts.length - activeAccounts;
@@ -55,10 +81,64 @@ export function AdminDashboard({ initialSnapshot }: AdminDashboardProps) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [notice, setNotice] = useState<NoticeState>(null);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<AccountStatusFilter>("all");
+  const [usageFilter, setUsageFilter] = useState<AccountUsageFilter>("all");
+  const [sortKey, setSortKey] = useState<AccountSortKey>("newest");
   const [isPending, startTransition] = useTransition();
 
   const hasAccounts = snapshot.accounts.length > 0;
   const pendingAccountId = useMemo(() => pendingKey?.split(":")[1] ?? null, [pendingKey]);
+  const filteredAccounts = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return snapshot.accounts
+      .filter((account) => {
+        const matchesSearch = normalizedQuery.length === 0
+          || account.name.toLowerCase().includes(normalizedQuery)
+          || account.email.toLowerCase().includes(normalizedQuery)
+          || account.id.toLowerCase().includes(normalizedQuery);
+        const matchesStatus = statusFilter === "all" || account.status === statusFilter;
+        const usageCount = getUsageCount(account);
+        const matchesUsage = usageFilter === "all"
+          || (usageFilter === "with-data" && usageCount > 1)
+          || (usageFilter === "empty" && usageCount <= 1);
+
+        return matchesSearch && matchesStatus && matchesUsage;
+      })
+      .sort((left, right) => {
+        if (sortKey === "oldest") {
+          return left.createdAt.localeCompare(right.createdAt);
+        }
+
+        if (sortKey === "name") {
+          return left.name.localeCompare(right.name);
+        }
+
+        if (sortKey === "usage") {
+          return getStorageBytes(right) - getStorageBytes(left);
+        }
+
+        return right.createdAt.localeCompare(left.createdAt);
+      });
+  }, [searchQuery, snapshot.accounts, sortKey, statusFilter, usageFilter]);
+  const hasFilteredAccounts = filteredAccounts.length > 0;
+  const filtersActive = searchQuery.trim().length > 0 || statusFilter !== "all" || usageFilter !== "all" || sortKey !== "newest";
+  const totalStorageBytes = useMemo(
+    () => snapshot.accounts.reduce((total, account) => total + getStorageBytes(account), 0),
+    [snapshot.accounts],
+  );
+
+  function clearFilters() {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setUsageFilter("all");
+    setSortKey("newest");
+  }
+
+  function handleImpersonate(accountId: string) {
+    window.open(`/admin/api/accounts/${accountId}/impersonate`, "_blank", "noopener,noreferrer");
+  }
 
   function replaceAccount(nextAccount: AdminAccount) {
     setSnapshot((current) =>
@@ -168,11 +248,10 @@ export function AdminDashboard({ initialSnapshot }: AdminDashboardProps) {
               </div>
               <div className="space-y-2">
                 <h1 className="font-display text-[2rem] font-semibold tracking-tight text-foreground sm:text-[2.5rem]">
-                  Account control surface
+                  Manage accounts
                 </h1>
                 <p className="max-w-2xl text-sm leading-7 text-secondary-foreground sm:text-base">
-                  Review registered DayStack accounts, inspect their current status, and take server-authorized action
-                  without exposing admin credentials or service-role logic to the browser.
+                  Search users, filter by status, and disable accounts quickly from one simple admin surface.
                 </p>
               </div>
             </div>
@@ -205,7 +284,7 @@ export function AdminDashboard({ initialSnapshot }: AdminDashboardProps) {
           </div>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="elevated-card rounded-[28px] bg-white/90 p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -241,7 +320,106 @@ export function AdminDashboard({ initialSnapshot }: AdminDashboardProps) {
               </span>
             </div>
           </div>
+
+          <div className="elevated-card rounded-[28px] bg-white/90 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="section-label">Storage</p>
+                <p className="mt-3 font-display text-4xl font-semibold text-foreground">{formatStorageLabel(totalStorageBytes)}</p>
+              </div>
+              <span className="rounded-2xl bg-violet-50 p-3 text-violet-600">
+                <HardDrive className="h-5 w-5" />
+              </span>
+            </div>
+          </div>
         </section>
+
+        {hasAccounts ? (
+          <section className="glass-panel p-4 sm:p-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div className="min-w-0 flex-1">
+                <label htmlFor="admin-account-search" className="section-label">
+                  Search accounts
+                </label>
+                <div className="mt-2 flex min-h-11 items-center gap-2 rounded-[18px] border border-border/80 bg-white/92 px-3 shadow-[0_12px_26px_rgba(15,23,42,0.05)] focus-within:border-primary/30 focus-within:ring-4 focus-within:ring-[var(--ring)]">
+                  <Search className="h-4 w-4 shrink-0 text-secondary-foreground/55" />
+                  <input
+                    id="admin-account-search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search by name, email, or user ID"
+                    className="min-w-0 flex-1 border-0 bg-transparent py-2.5 text-sm text-foreground outline-none placeholder:text-secondary-foreground/45"
+                  />
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      aria-label="Clear search"
+                      className="rounded-full p-1 text-secondary-foreground/55 transition hover:bg-muted hover:text-foreground"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-3 lg:w-[34rem]">
+                <label className="block">
+                  <span className="section-label">Status</span>
+                  <select
+                    value={statusFilter}
+                    onChange={(event) => setStatusFilter(event.target.value as AccountStatusFilter)}
+                    className="mt-2 h-11 w-full rounded-[16px] border border-border/80 bg-white/92 px-3 text-sm font-semibold text-foreground shadow-[0_12px_26px_rgba(15,23,42,0.05)] outline-none focus:border-primary/30 focus:ring-4 focus:ring-[var(--ring)]"
+                  >
+                    <option value="all">All accounts</option>
+                    <option value="active">Active only</option>
+                    <option value="disabled">Disabled only</option>
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="section-label">Usage</span>
+                  <select
+                    value={usageFilter}
+                    onChange={(event) => setUsageFilter(event.target.value as AccountUsageFilter)}
+                    className="mt-2 h-11 w-full rounded-[16px] border border-border/80 bg-white/92 px-3 text-sm font-semibold text-foreground shadow-[0_12px_26px_rgba(15,23,42,0.05)] outline-none focus:border-primary/30 focus:ring-4 focus:ring-[var(--ring)]"
+                  >
+                    <option value="all">Any usage</option>
+                    <option value="with-data">Has data</option>
+                    <option value="empty">No activity</option>
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="section-label">Sort</span>
+                  <select
+                    value={sortKey}
+                    onChange={(event) => setSortKey(event.target.value as AccountSortKey)}
+                    className="mt-2 h-11 w-full rounded-[16px] border border-border/80 bg-white/92 px-3 text-sm font-semibold text-foreground shadow-[0_12px_26px_rgba(15,23,42,0.05)] outline-none focus:border-primary/30 focus:ring-4 focus:ring-[var(--ring)]"
+                  >
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="name">Name A-Z</option>
+                    <option value="usage">Most storage</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-4">
+              <div className="inline-flex items-center gap-2 text-sm font-medium text-secondary-foreground">
+                <SlidersHorizontal className="h-4 w-4 text-primary" />
+                Showing <span className="font-semibold text-foreground">{filteredAccounts.length}</span> of {snapshot.totalAccounts} account{snapshot.totalAccounts === 1 ? "" : "s"}
+              </div>
+              {filtersActive ? (
+                <Button size="sm" variant="secondary" onClick={clearFilters}>
+                  <X className="h-4 w-4" />
+                  Clear filters
+                </Button>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
 
         {!hasAccounts ? (
           <EmptyState
@@ -249,10 +427,22 @@ export function AdminDashboard({ initialSnapshot }: AdminDashboardProps) {
             title="No accounts found"
             description="No registered DayStack users were returned from the application database."
           />
+        ) : !hasFilteredAccounts ? (
+          <EmptyState
+            icon={<Search className="h-5 w-5" />}
+            title="No matching accounts"
+            description="Try a different search term, status, usage filter, or sort option."
+            action={filtersActive ? (
+              <Button size="sm" variant="secondary" onClick={clearFilters}>
+                <X className="h-4 w-4" />
+                Clear filters
+              </Button>
+            ) : null}
+          />
         ) : (
           <>
             <section className="space-y-3 md:hidden">
-              {snapshot.accounts.map((account) => {
+              {filteredAccounts.map((account) => {
                 const rowPending = isPending && pendingAccountId === account.id;
 
                 return (
@@ -277,9 +467,23 @@ export function AdminDashboard({ initialSnapshot }: AdminDashboardProps) {
                         <dt className="section-label text-[10px]">Usage</dt>
                         <dd className="mt-1 text-secondary-foreground">{formatUsageLabel(account.estimatedOwnedRecords)}</dd>
                       </div>
+                      <div>
+                        <dt className="section-label text-[10px]">Storage</dt>
+                        <dd className="mt-1 font-semibold text-foreground">{formatStorageLabel(account.storageBytes)}</dd>
+                      </div>
                     </dl>
 
                     <div className="mt-4 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={rowPending || account.status === "disabled"}
+                        onClick={() => handleImpersonate(account.id)}
+                      >
+                        <LogIn className="h-4 w-4" />
+                        Open as
+                      </Button>
+
                       {account.status === "active" ? (
                         <Button
                           size="sm"
@@ -341,6 +545,9 @@ export function AdminDashboard({ initialSnapshot }: AdminDashboardProps) {
                         Created
                       </th>
                       <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/70">
+                        Storage
+                      </th>
+                      <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/70">
                         Usage
                       </th>
                       <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/70">
@@ -352,7 +559,7 @@ export function AdminDashboard({ initialSnapshot }: AdminDashboardProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {snapshot.accounts.map((account) => {
+                    {filteredAccounts.map((account) => {
                       const rowPending = isPending && pendingAccountId === account.id;
 
                       return (
@@ -365,6 +572,12 @@ export function AdminDashboard({ initialSnapshot }: AdminDashboardProps) {
                           </td>
                           <td className="px-6 py-5 align-top text-sm text-secondary-foreground">
                             {formatAccountDate(account.createdAt)}
+                          </td>
+                          <td className="px-6 py-5 align-top text-sm">
+                            <div className="flex items-start gap-2 font-semibold text-foreground">
+                              <HardDrive className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" />
+                              <span>{formatStorageLabel(account.storageBytes)}</span>
+                            </div>
                           </td>
                           <td className="px-6 py-5 align-top text-sm text-secondary-foreground">
                             <div className="flex items-start gap-2">
@@ -380,6 +593,16 @@ export function AdminDashboard({ initialSnapshot }: AdminDashboardProps) {
                           </td>
                           <td className="px-6 py-5 align-top">
                             <div className="flex flex-wrap gap-2">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={rowPending || account.status === "disabled"}
+                                onClick={() => handleImpersonate(account.id)}
+                              >
+                                <LogIn className="h-4 w-4" />
+                                Open as
+                              </Button>
+
                               {account.status === "active" ? (
                                 <Button
                                   size="sm"
