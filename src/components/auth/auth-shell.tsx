@@ -14,16 +14,10 @@ const features = [
 ];
 
 const plannerAvatars = [
-  { color: "#28b4ea", initial: "A", name: "Ayesha" },
-  { color: "#6c31ef", initial: "J", name: "Jibran" },
-  { color: "#10b981", initial: "H", name: "Hamza" },
+  { src: "https://i.pravatar.cc/80?u=ayesha", name: "Ayesha" },
+  { src: "https://i.pravatar.cc/80?u=jibran", name: "Jibran" },
+  { src: "https://i.pravatar.cc/80?u=hamza", name: "Hamza" },
 ];
-
-function avatarImage({ color, initial }: { color: string; initial: string }) {
-  return `data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="${color}"/><stop offset="1" stop-color="#07111f"/></linearGradient></defs><rect width="80" height="80" rx="40" fill="url(#g)"/><circle cx="58" cy="20" r="16" fill="rgba(255,255,255,0.22)"/><text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="white">${initial}</text></svg>`,
-  )}`;
-}
 
 export function AuthShell({
   mode,
@@ -77,7 +71,7 @@ export function AuthShell({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={avatar.name}
-                  src={avatarImage(avatar)}
+                  src={avatar.src}
                   alt={`${avatar.name} avatar`}
                   className="h-8 w-8 rounded-full border-2 border-white object-cover shadow-[0_8px_18px_rgba(15,23,42,0.12)]"
                 />
