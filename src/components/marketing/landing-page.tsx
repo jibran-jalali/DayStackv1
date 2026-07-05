@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Bot, CalendarCheck, MessageSquareText, RefreshCw, Star, UsersRound, Zap } from "lucide-react";
+import { ArrowRight, Bot, CalendarCheck, MessageSquareText, Quote, RefreshCw, Star, UsersRound, Zap } from "lucide-react";
 
 import { Logo, LogoMark } from "@/components/shared/logo";
 import type { LeaderboardEntry } from "@/types/daystack";
@@ -492,11 +492,140 @@ const companies = [
   { name: "Cal.com", color: "#292929", svg: "M8 4v16M16 4v16M4 8h16M4 16h16" },
 ];
 
+function TestimonialsSection() {
+  const testimonials = [
+    {
+      quote: "I used to juggle three apps to plan my day. DayStack puts everything on one timeline — and the AI planning is scarily good.",
+      name: "Alex Chen",
+      role: "Product Designer",
+      rating: 5,
+    },
+    {
+      quote: "The friend approval system means I never double-book with my team. It just works.",
+      name: "Sarah Khanna",
+      role: "Freelance Developer",
+      rating: 5,
+    },
+    {
+      quote: "Started using it for my morning routine. Now I plan my entire week. Can't go back to Google Calendar alone.",
+      name: "Marcus Okafor",
+      role: "Student",
+      rating: 5,
+    },
+  ];
+
+  return (
+    <section className="relative mx-auto w-full max-w-[1500px] px-4 pb-24 sm:px-8 lg:px-14">
+      <div className="relative overflow-hidden rounded-[30px] border border-black/[0.06] bg-[#fafcff] px-4 py-12 shadow-[0_30px_100px_rgba(15,23,42,0.06)] sm:rounded-[40px] sm:px-8 sm:py-16 lg:px-12">
+        <div className="pointer-events-none absolute -left-20 top-10 h-72 w-72 rounded-full bg-[#28b4ea]/10 blur-[90px]" />
+        <div className="pointer-events-none absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-[#6c31ef]/10 blur-[100px]" />
+
+        <div className="relative z-10 mx-auto max-w-3xl text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#0084ff]/70 sm:text-sm">Loved by planners</p>
+          <h2 className="mt-3 font-display text-[30px] font-bold leading-[1.04] tracking-[-1.6px] text-[#07111f] sm:text-[42px] lg:text-[52px]">
+            Real people. Real focus.
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 tracking-[-0.03em] text-[#344155]/72 sm:text-base sm:leading-7">
+            Early users are already replacing their to-do lists, notes apps, and calendar with one timeline.
+          </p>
+        </div>
+
+        <div className="relative z-10 mt-9 grid gap-5 md:grid-cols-3">
+          {testimonials.map((t, i) => (
+            <article
+              key={t.name}
+              className="daystack-card-enter rounded-[24px] border border-white/72 bg-white/70 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_22px_70px_rgba(15,23,42,0.08)] backdrop-blur-[28px]"
+              style={{ animationDelay: `${i * 0.15}s` }}
+            >
+              <div className="mb-3 flex gap-0.5 text-[#FF801E]">
+                {Array.from({ length: t.rating }).map((_, idx) => (
+                  <Star key={idx} className="h-4 w-4 fill-current" strokeWidth={1.8} />
+                ))}
+              </div>
+              <Quote className="mb-2 h-5 w-5 text-[#0084ff]/30" />
+              <p className="text-sm leading-6 tracking-[-0.02em] text-[#344155]/80">&ldquo;{t.quote}&rdquo;</p>
+              <div className="mt-4 flex items-center gap-3 border-t border-black/[0.04] pt-4">
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-[linear-gradient(135deg,#28b4ea,#6c31ef)] text-xs font-bold text-white">
+                  {t.name.split(" ").map((n) => n[0]).join("")}
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-[#07111f]">{t.name}</p>
+                  <p className="text-xs text-[#667084]">{t.role}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FinalCtaSection() {
+  return (
+    <section className="relative mx-auto w-full max-w-[1500px] px-4 pb-8 sm:px-8 lg:px-14">
+      <div className="relative overflow-hidden rounded-[30px] border border-black/[0.06] bg-[#07111f] px-4 py-16 text-center shadow-[0_34px_110px_rgba(7,17,31,0.18)] sm:rounded-[40px] sm:px-8 sm:py-24 lg:px-12">
+        <div className="pointer-events-none absolute left-[-10%] top-[-30%] h-[32rem] w-[32rem] rounded-full bg-[#28b4ea]/18 blur-[120px]" />
+        <div className="pointer-events-none absolute bottom-[-30%] right-[-10%] h-[34rem] w-[34rem] rounded-full bg-[#6c31ef]/14 blur-[130px]" />
+
+        <div className="relative z-10 mx-auto max-w-3xl">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-white/70">
+            <Star className="h-3.5 w-3.5 text-[#FF801E]" />
+            Free forever. No catch.
+          </span>
+          <h2 className="mt-5 font-display text-[32px] font-bold leading-[1.03] tracking-[-0.06em] text-white sm:text-[44px] lg:text-[56px]">
+            You&apos;re one click away<br />from a calmer day.
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-white/68 sm:text-base">
+            Sign up free. No credit card. Start planning with AI in 30 seconds.
+          </p>
+          <Link
+            href="/signup"
+            className="group mx-auto mt-8 inline-flex items-center gap-3 rounded-[16px] bg-[rgba(0,132,255,0.9)] py-3 pl-6 pr-2 text-base font-semibold tracking-[-0.03em] text-white shadow-[inset_0px_4px_4px_0px_rgba(255,255,255,0.35),0_24px_50px_rgba(0,132,255,0.32)] backdrop-blur-[2px] transition duration-300 hover:scale-[1.02] sm:text-lg sm:py-4 sm:pl-7 sm:pr-3"
+          >
+            Start Planning Free — It&rsquo;s Free
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-[#0084ff] sm:h-9 sm:w-9">
+              <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.4} />
+            </span>
+          </Link>
+          <p className="mt-3 text-xs font-medium text-white/40">
+            No signup fee. No hidden charges. Just plan your day.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-black/[0.06] bg-white">
+      <div className="mx-auto flex max-w-[1500px] flex-col items-center gap-4 px-5 py-8 sm:flex-row sm:justify-between sm:px-8 lg:px-14">
+        <div className="flex items-center gap-3">
+          <LogoMark className="h-7 w-7 rounded-[8px]" />
+          <span className="font-display text-sm font-bold tracking-[-0.05em] text-[#141923]">DayStack</span>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-medium text-[#667084]">
+          <a href="#features" className="transition hover:text-[#0b1220]">Features</a>
+          <a href="#how-it-works" className="transition hover:text-[#0b1220]">How it works</a>
+          <a href="#sync" className="transition hover:text-[#0b1220]">Sync</a>
+          <span className="text-black/20">·</span>
+          <Link href="/signin" className="transition hover:text-[#0b1220]">Sign in</Link>
+          <Link href="/signup" className="transition hover:text-[#0b1220]">Sign up</Link>
+        </div>
+        <p className="text-[11px] text-[#667084]/60">
+          &copy; {new Date().getFullYear()} DayStack. All rights reserved.
+        </p>
+      </div>
+    </footer>
+  );
+}
+
 export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }) {
   const ratedCustomerCount = Math.max(2700, leaderboard.length);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-white text-[#0b1220]">
+    <main className="relative min-h-screen overflow-hidden bg-white pb-16 text-[#0b1220] sm:pb-0">
       <div className="daystack-ambient-orb pointer-events-none absolute left-[-150px] top-[-180px] h-[520px] w-[640px] rounded-full bg-[#60B1FF]/35 blur-[120px]" />
       <div className="daystack-ambient-orb-delayed pointer-events-none absolute left-[90px] top-[-110px] h-[380px] w-[460px] rounded-full bg-[#319AFF]/24 blur-[105px]" />
       <div className="daystack-ambient-orb-slow pointer-events-none absolute left-[280px] top-[85px] h-[220px] w-[320px] rounded-full bg-[#60B1FF]/16 blur-[95px]" />
@@ -562,7 +691,7 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
                 href="/signup"
                 className="group flex items-center gap-3 rounded-[14px] bg-[rgba(0,132,255,0.8)] py-2.5 pl-5 pr-1.5 text-sm font-medium tracking-[-0.03em] text-white shadow-[inset_0px_4px_4px_0px_rgba(255,255,255,0.35),0_24px_50px_rgba(0,132,255,0.28)] backdrop-blur-[2px] transition duration-300 hover:scale-[1.02] sm:text-base sm:py-3 sm:pl-6 sm:pr-2"
               >
-                Get Started Now
+                Start Planning Free
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-white text-[#0084ff] sm:h-8 sm:w-8">
                   <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2.4} />
                 </span>
@@ -574,6 +703,9 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
                 Sign in
               </Link>
             </div>
+            <p className="mt-2 text-xs font-medium tracking-[-0.02em] text-[#344155]/60">
+              No credit card. No time limit.
+            </p>
 
             <div className="mt-5 flex flex-wrap justify-center gap-2 lg:justify-start">
               {[
@@ -627,6 +759,19 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
       <MotionDayPreview />
       <FeatureShowcase />
       <GoogleCalendarSyncSection />
+      <TestimonialsSection />
+      <FinalCtaSection />
+      <Footer />
+
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-black/[0.06] bg-white/94 px-4 py-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-[28px] sm:hidden">
+        <Link
+          href="/signup"
+          className="flex items-center justify-center gap-2 rounded-[14px] bg-[rgba(0,132,255,0.9)] py-3 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(0,132,255,0.24)]"
+        >
+          Start Planning Free
+          <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
+        </Link>
+      </div>
     </main>
   );
 }

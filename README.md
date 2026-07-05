@@ -1,5 +1,10 @@
 # DayStack
 
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
+![React](https://img.shields.io/badge/React-19-61dafb)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)
+![License](https://img.shields.io/badge/license-proprietary-red)
+
 DayStack is a timeline-based daily execution planner built for people who want a clear plan, visible momentum, and fewer decisions during the day. It combines structured time blocking, task execution tracking, reminders, friend-based meeting mentions, Google Calendar import, and DayStack AI scheduling.
 
 ## What DayStack Does
@@ -27,6 +32,17 @@ DayStack is a timeline-based daily execution planner built for people who want a
 - Nodemailer for email reminders
 - Web Push for browser and installed-PWA reminders
 - Groq or OpenAI for DayStack AI planning
+
+## Repository Guide
+
+- `src/app` contains Next.js App Router routes, API endpoints, and route layouts.
+- `src/components` contains product UI, marketing UI, auth UI, and admin UI surfaces.
+- `src/lib` contains server/data utilities, assistant planning, auth, reminders, Google Calendar, and client APIs.
+- `src/db/schema.ts` defines the Drizzle/PostgreSQL schema.
+- `docs/database-schema.md` documents the database model.
+- `docs/architecture.md` gives a high-level architecture overview.
+- `CONTRIBUTING.md` documents local workflow and contribution expectations.
+- `SECURITY.md` documents vulnerability reporting and secret handling.
 
 ## App Surfaces
 
@@ -191,6 +207,8 @@ npm run dev          # Start Next.js in development mode
 npm run build        # Create a production build
 npm run start        # Start the production server after build
 npm run lint         # Run ESLint
+npm run typecheck    # Run TypeScript without emitting files
+npm run check        # Run lint and typecheck
 npm run db:generate  # Generate Drizzle migrations
 npm run db:migrate   # Apply Drizzle migrations
 ```
@@ -302,7 +320,7 @@ Before shipping changes, run:
 
 ```bash
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 npm run build
 ```
 

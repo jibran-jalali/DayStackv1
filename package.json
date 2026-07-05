@@ -1,14 +1,22 @@
 {
   "name": "daystack",
   "version": "0.1.0",
+  "description": "Timeline-based daily execution planner with DayStack AI scheduling.",
   "private": true,
+  "author": "Jibran Jalali",
+  "license": "UNLICENSED",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run lint && npm run typecheck",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
+  },
+  "engines": {
+    "node": ">=20.11.0"
   },
   "dependencies": {
     "@types/nodemailer": "^7.0.11",

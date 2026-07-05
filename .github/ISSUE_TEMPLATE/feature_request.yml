@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest a product, operations, or developer-experience improvement
+title: "Feature: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or operational problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the desired behavior or UI.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Planner
+        - DayStack AI
+        - Friends/meetings
+        - Google Calendar
+        - Notifications/reminders
+        - Admin
+        - Marketing
+        - Developer experience
+        - Other
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Add screenshots, examples, acceptance criteria, or rollout concerns.

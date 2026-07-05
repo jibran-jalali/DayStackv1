@@ -1,0 +1,58 @@
+name: Bug report
+description: Report a reproducible DayStack issue
+title: "Bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include secrets, API keys, passwords, private tokens, or production database URLs.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is broken?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest set of steps that reproduces the bug.
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - Marketing site
+        - Auth
+        - Planner app
+        - DayStack AI
+        - Google Calendar
+        - Notifications/reminders
+        - Admin
+        - Automation API
+        - Other
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Browser, device, screenshots, logs, or suspected files.
