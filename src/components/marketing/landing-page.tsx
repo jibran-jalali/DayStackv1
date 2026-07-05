@@ -736,14 +736,16 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
           </div>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-[#0b1220]/90 py-3 backdrop-blur-[8px] sm:py-3.5">
-          <div className="mx-auto max-w-[1400px] px-5 sm:px-8">
-            <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35 sm:text-[11px]">Trusted by teams at</p>
-            <div className="flex overflow-hidden">
-              <div className="flex animate-marquee items-center gap-12 whitespace-nowrap sm:gap-16">
+        <div className="absolute bottom-0 left-1/2 w-screen -translate-x-1/2 border-y border-white/10 bg-[linear-gradient(90deg,#07111f_0%,#0d1829_34%,#111a2c_66%,#07111f_100%)] py-3 shadow-[0_-24px_70px_rgba(7,17,31,0.22),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[10px] sm:py-3.5">
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-[linear-gradient(90deg,#07111f,transparent)] sm:w-40" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-[linear-gradient(270deg,#07111f,transparent)] sm:w-40" />
+          <div className="mx-auto w-full">
+            <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45 sm:text-[11px]">Trusted by teams at</p>
+            <div className="flex w-full overflow-hidden">
+              <div className="flex animate-marquee items-center gap-14 whitespace-nowrap px-6 sm:gap-20 sm:px-10">
                 {[...companies, ...companies, ...companies, ...companies].map((c, i) => (
-                  <span key={`${c.name}-${i}`} className="inline-flex items-center gap-2.5 text-xs font-bold tracking-[-0.01em] sm:text-sm" style={{ color: c.color }}>
-                    <svg className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" viewBox="0 0 24 24" aria-hidden="true">
+                  <span key={`${c.name}-${i}`} className="inline-flex items-center gap-2.5 text-xs font-bold tracking-[-0.01em] drop-shadow-[0_8px_18px_rgba(0,0,0,0.24)] sm:text-sm" style={{ color: c.color }}>
+                    <svg className="h-5 w-5 shrink-0 rounded-[6px] shadow-[0_6px_16px_rgba(0,0,0,0.2)] sm:h-6 sm:w-6" viewBox="0 0 24 24" aria-hidden="true">
                       {c.svg}
                     </svg>
                     {c.name}
