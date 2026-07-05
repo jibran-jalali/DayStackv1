@@ -428,8 +428,8 @@ function GoogleCalendarSyncSection() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  {googleEvents.map((event) => (
-                    <div key={event.title} className="rounded-[16px] border border-white/10 bg-white/[0.07] px-3 py-2.5">
+                  {googleEvents.map((event, index) => (
+                    <div key={event.title} className="daystack-sync-item rounded-[16px] border border-white/10 bg-white/[0.07] px-3 py-2.5" style={{ animationDelay: `${index * 0.18}s` }}>
                       <div className="flex items-center gap-2">
                         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: event.color }} />
                         <p className="text-sm font-bold text-white">{event.title}</p>
@@ -440,8 +440,10 @@ function GoogleCalendarSyncSection() {
                 </div>
               </div>
 
-              <div className="hidden justify-center md:flex">
-                <div className="grid h-16 w-16 place-items-center rounded-full border border-white/12 bg-white/[0.08] text-white shadow-[0_20px_60px_rgba(40,180,234,0.18)] backdrop-blur-xl">
+              <div className="relative hidden h-24 justify-center md:flex">
+                <span className="daystack-sync-beam absolute left-[-1.5rem] right-[-1.5rem] top-1/2 h-px bg-[linear-gradient(90deg,transparent,rgba(139,216,255,0.88),transparent)]" />
+                <span className="daystack-sync-dot absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-[#8bd8ff] shadow-[0_0_18px_rgba(139,216,255,0.9)]" />
+                <div className="relative z-10 grid h-16 w-16 place-items-center self-center rounded-full border border-white/12 bg-white/[0.08] text-white shadow-[0_20px_60px_rgba(40,180,234,0.18)] backdrop-blur-xl">
                   <RefreshCw className="h-6 w-6 animate-spin [animation-duration:2.8s]" />
                 </div>
               </div>
@@ -455,8 +457,8 @@ function GoogleCalendarSyncSection() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  {dayStackBlocks.map((block) => (
-                    <div key={block.title} className="relative rounded-[16px] border border-white/12 bg-white/[0.08] px-3 py-2.5 pl-4">
+                  {dayStackBlocks.map((block, index) => (
+                    <div key={block.title} className="daystack-sync-item relative rounded-[16px] border border-white/12 bg-white/[0.08] px-3 py-2.5 pl-4" style={{ animationDelay: `${0.28 + index * 0.18}s` }}>
                       <span className="absolute bottom-2 left-2 top-2 w-1 rounded-full" style={{ backgroundColor: block.color }} />
                       <p className="text-sm font-bold text-white">{block.title}</p>
                       <p className="mt-1 text-xs text-white/50">{block.time}</p>
@@ -495,9 +497,9 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-white text-[#0b1220]">
-      <div className="pointer-events-none absolute left-[-150px] top-[-180px] h-[520px] w-[640px] rounded-full bg-[#60B1FF]/35 blur-[120px]" />
-      <div className="pointer-events-none absolute left-[90px] top-[-110px] h-[380px] w-[460px] rounded-full bg-[#319AFF]/24 blur-[105px]" />
-      <div className="pointer-events-none absolute left-[280px] top-[85px] h-[220px] w-[320px] rounded-full bg-[#60B1FF]/16 blur-[95px]" />
+      <div className="daystack-ambient-orb pointer-events-none absolute left-[-150px] top-[-180px] h-[520px] w-[640px] rounded-full bg-[#60B1FF]/35 blur-[120px]" />
+      <div className="daystack-ambient-orb-delayed pointer-events-none absolute left-[90px] top-[-110px] h-[380px] w-[460px] rounded-full bg-[#319AFF]/24 blur-[105px]" />
+      <div className="daystack-ambient-orb-slow pointer-events-none absolute left-[280px] top-[85px] h-[220px] w-[320px] rounded-full bg-[#60B1FF]/16 blur-[95px]" />
 
       <nav className="sticky top-[18px] z-30 mx-auto flex w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] items-center justify-between gap-2 rounded-[16px] border border-[rgba(0,0,0,0.1)] bg-[rgba(255,255,255,0.34)] px-3 py-2 shadow-[inset_0px_4px_4px_0px_rgba(255,255,255,0.25),0_22px_60px_rgba(15,23,42,0.08)] backdrop-blur-[50px] sm:top-[30px] sm:w-fit sm:justify-center sm:gap-4 sm:px-4">
         <Logo className="px-0" priority />
@@ -533,7 +535,7 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
             </div>
 
             <h1 className="mt-4 font-display text-[36px] font-bold leading-[1.05] tracking-[-2px] text-[#07111f] sm:text-[52px] lg:text-[64px]">
-              Plan your day,<br />execute with clarity
+              Plan your day,<br />execute with <span className="daystack-gradient-text">clarity</span>
             </h1>
 
             <p className="mt-3 max-w-[520px] text-[15px] leading-7 tracking-[-1px] text-[#344155]/78 sm:text-[17px] sm:leading-8">
@@ -557,10 +559,30 @@ export function LandingPage({ leaderboard }: { leaderboard: LeaderboardEntry[] }
                 Sign in
               </Link>
             </div>
+
+            <div className="mt-5 flex flex-wrap justify-center gap-2 lg:justify-start">
+              {["AI time blocking", "Live calendar sync", "Friend approvals"].map((label, index) => (
+                <span key={label} className="daystack-micro-pill rounded-full border border-black/10 bg-white/55 px-3 py-1.5 text-xs font-bold text-[#344155]/74 shadow-[0_14px_34px_rgba(15,23,42,0.05)] backdrop-blur-[18px]" style={{ animationDelay: `${index * 0.2}s` }}>
+                  {label}
+                </span>
+              ))}
+            </div>
           </div>
 
           <div className="relative flex min-h-[280px] w-full items-center justify-center overflow-visible sm:min-h-[360px] lg:min-h-[460px]">
             <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(0,132,255,0.18),transparent_58%)] blur-3xl" />
+            <div className="daystack-hero-chip daystack-hero-chip-1 hidden sm:flex">
+              <Bot className="h-4 w-4 text-[#6c31ef]" />
+              <span>AI planned 4 blocks</span>
+            </div>
+            <div className="daystack-hero-chip daystack-hero-chip-2 hidden sm:flex">
+              <RefreshCw className="h-4 w-4 text-[#168fea]" />
+              <span>Calendar synced</span>
+            </div>
+            <div className="daystack-hero-chip daystack-hero-chip-3 hidden sm:flex">
+              <CalendarCheck className="h-4 w-4 text-emerald-600" />
+              <span>Meeting accepted</span>
+            </div>
             <video
               className="absolute z-0 h-[410px] w-[410px] scale-125 object-contain opacity-80 mix-blend-screen sm:h-[560px] sm:w-[560px] lg:h-[680px] lg:w-[680px]"
               src="https://future.co/images/homepage/glassy-orb/orb-purple.webm"
