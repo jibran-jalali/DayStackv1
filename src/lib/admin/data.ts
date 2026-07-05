@@ -142,51 +142,61 @@ function storageBytesToNumber(value: StorageRow["storage_bytes"]) {
   return 0;
 }
 
+function buildUuidArraySql(userIds: string[]) {
+  return sql.raw(`array[${userIds.map((userId) => `'${userId.replaceAll("'", "''")}'::uuid`).join(",")}]`);
+}
+
 async function fetchStorageBytesByIds(db: DayStackDb, userIds: string[]) {
   if (userIds.length === 0) {
     return new Map<string, number>();
   }
 
-  const rows = normalizeStorageRows(
-    await db.execute(sql`
+  try {
+    const userIdArray = buildUuidArraySql(userIds);
+    const rows = normalizeStorageRows(
+      await db.execute(sql`
       with storage_rows as (
-        select id as user_id, pg_column_size(users.*)::bigint as bytes from users where id = any(${userIds}::uuid[])
-        union all select user_id, pg_column_size(tasks.*)::bigint from tasks where user_id = any(${userIds}::uuid[])
-        union all select user_id, pg_column_size(api_keys.*)::bigint from api_keys where user_id = any(${userIds}::uuid[])
-        union all select requester_id as user_id, pg_column_size(friend_connections.*)::bigint from friend_connections where requester_id = any(${userIds}::uuid[])
-        union all select addressee_id as user_id, pg_column_size(friend_connections.*)::bigint from friend_connections where addressee_id = any(${userIds}::uuid[])
-        union all select user_id, pg_column_size(recurring_templates.*)::bigint from recurring_templates where user_id = any(${userIds}::uuid[])
-        union all select user_id, pg_column_size(recurring_rules.*)::bigint from recurring_rules where user_id = any(${userIds}::uuid[])
-        union all select recurring_rules.user_id, pg_column_size(recurring_rule_participants.*)::bigint from recurring_rule_participants inner join recurring_rules on recurring_rules.id = recurring_rule_participants.recurring_rule_id where recurring_rules.user_id = any(${userIds}::uuid[])
-        union all select recurring_rules.user_id, pg_column_size(recurring_rule_exceptions.*)::bigint from recurring_rule_exceptions inner join recurring_rules on recurring_rules.id = recurring_rule_exceptions.recurring_rule_id where recurring_rules.user_id = any(${userIds}::uuid[])
-        union all select tasks.user_id, pg_column_size(task_participants.*)::bigint from task_participants inner join tasks on tasks.id = task_participants.task_id where tasks.user_id = any(${userIds}::uuid[])
-        union all select user_id, pg_column_size(daily_summaries.*)::bigint from daily_summaries where user_id = any(${userIds}::uuid[])
-        union all select user_id, pg_column_size(user_notification_preferences.*)::bigint from user_notification_preferences where user_id = any(${userIds}::uuid[])
-        union all select user_id, pg_column_size(push_subscriptions.*)::bigint from push_subscriptions where user_id = any(${userIds}::uuid[])
-        union all select user_id, pg_column_size(google_calendar_connections.*)::bigint from google_calendar_connections where user_id = any(${userIds}::uuid[])
-        union all select user_id, pg_column_size(task_calendar_events.*)::bigint from task_calendar_events where user_id = any(${userIds}::uuid[])
-        union all select user_id, pg_column_size(task_reminders.*)::bigint from task_reminders where user_id = any(${userIds}::uuid[])
-        union all select user_id, pg_column_size(task_notifications.*)::bigint from task_notifications where user_id = any(${userIds}::uuid[])
-        union all select actor_user_id as user_id, pg_column_size(task_notifications.*)::bigint from task_notifications where actor_user_id = any(${userIds}::uuid[])
+        select id as user_id, pg_column_size(users.*)::bigint as bytes from users where id = any(${userIdArray})
+        union all select user_id, pg_column_size(tasks.*)::bigint from tasks where user_id = any(${userIdArray})
+        union all select user_id, pg_column_size(api_keys.*)::bigint from api_keys where user_id = any(${userIdArray})
+        union all select requester_id as user_id, pg_column_size(friend_connections.*)::bigint from friend_connections where requester_id = any(${userIdArray})
+        union all select addressee_id as user_id, pg_column_size(friend_connections.*)::bigint from friend_connections where addressee_id = any(${userIdArray})
+        union all select user_id, pg_column_size(recurring_templates.*)::bigint from recurring_templates where user_id = any(${userIdArray})
+        union all select user_id, pg_column_size(recurring_rules.*)::bigint from recurring_rules where user_id = any(${userIdArray})
+        union all select recurring_rules.user_id, pg_column_size(recurring_rule_participants.*)::bigint from recurring_rule_participants inner join recurring_rules on recurring_rules.id = recurring_rule_participants.recurring_rule_id where recurring_rules.user_id = any(${userIdArray})
+        union all select recurring_rules.user_id, pg_column_size(recurring_rule_exceptions.*)::bigint from recurring_rule_exceptions inner join recurring_rules on recurring_rules.id = recurring_rule_exceptions.recurring_rule_id where recurring_rules.user_id = any(${userIdArray})
+        union all select tasks.user_id, pg_column_size(task_participants.*)::bigint from task_participants inner join tasks on tasks.id = task_participants.task_id where tasks.user_id = any(${userIdArray})
+        union all select user_id, pg_column_size(daily_summaries.*)::bigint from daily_summaries where user_id = any(${userIdArray})
+        union all select user_id, pg_column_size(user_notification_preferences.*)::bigint from user_notification_preferences where user_id = any(${userIdArray})
+        union all select user_id, pg_column_size(push_subscriptions.*)::bigint from push_subscriptions where user_id = any(${userIdArray})
+        union all select user_id, pg_column_size(google_calendar_connections.*)::bigint from google_calendar_connections where user_id = any(${userIdArray})
+        union all select user_id, pg_column_size(task_calendar_events.*)::bigint from task_calendar_events where user_id = any(${userIdArray})
+        union all select user_id, pg_column_size(task_reminders.*)::bigint from task_reminders where user_id = any(${userIdArray})
+        union all select user_id, pg_column_size(task_notifications.*)::bigint from task_notifications where user_id = any(${userIdArray})
+        union all select actor_user_id as user_id, pg_column_size(task_notifications.*)::bigint from task_notifications where actor_user_id = any(${userIdArray})
       )
       select user_id, coalesce(sum(bytes), 0)::bigint as storage_bytes
       from storage_rows
       group by user_id
     `),
-  );
+    );
 
-  const storageById = new Map(userIds.map((userId) => [userId, 0]));
+    const storageById = new Map(userIds.map((userId) => [userId, 0]));
 
-  for (const row of rows) {
-    storageById.set(row.user_id, storageBytesToNumber(row.storage_bytes));
+    for (const row of rows) {
+      storageById.set(row.user_id, storageBytesToNumber(row.storage_bytes));
+    }
+
+    return storageById;
+  } catch (error) {
+    console.error("Admin storage calculation failed:", error);
+    return new Map(userIds.map((userId) => [userId, null]));
   }
-
-  return storageById;
 }
 
 function mapAdminAccount(
   user: typeof users.$inferSelect,
-  storageBytes: number | undefined,
+  storageBytes: number | null | undefined,
   usage: number | undefined,
 ): AdminAccount {
   return {
