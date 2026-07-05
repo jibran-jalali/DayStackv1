@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { ArrowUp, CalendarDays, CheckCircle2, Clock3, ListChecks, Loader2, Sparkles, WandSparkles, type LucideIcon } from "lucide-react";
 
 import { LogoMark } from "@/components/shared/logo";
 import { formatDateLabel } from "@/lib/daystack";
@@ -32,9 +32,21 @@ interface ChatMessage {
 }
 
 const QUICK_PROMPTS = [
-  "From 9 AM to 6 PM: code feature 3h, standup 30m, lunch 1h, PR review 1h, email 30m, gym 1h",
-  "From 8 AM to 8 PM: calculus 2h, practice 90m, lunch 1h, notes 1h, textbook 90m, dinner 1h",
-  "From 10 AM to 4 PM: morning routine 30m, admin 1h, lunch 1h, walk 30m, plan tomorrow 30m",
+  {
+    title: "Plan a workday",
+    description: "Feature work, standup, lunch, reviews, gym",
+    prompt: "From 9 AM to 6 PM: code feature 3h, standup 30m, lunch 1h, PR review 1h, email 30m, gym 1h",
+  },
+  {
+    title: "Study rhythm",
+    description: "Deep focus, practice, notes, meals",
+    prompt: "From 8 AM to 8 PM: calculus 2h, practice 90m, lunch 1h, notes 1h, textbook 90m, dinner 1h",
+  },
+  {
+    title: "Light reset",
+    description: "Routine, admin, walk, tomorrow prep",
+    prompt: "From 10 AM to 4 PM: morning routine 30m, admin 1h, lunch 1h, walk 30m, plan tomorrow 30m",
+  },
 ];
 
 const TASK_COLORS = [
@@ -60,6 +72,29 @@ function formatClock(time: string) {
   return `${hour}:${m.toString().padStart(2, "0")} ${period}`;
 }
 
+function AssistantOrb({ className }: { className?: string }) {
+  return (
+    <span className={cn("relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#07111f] shadow-[0_18px_42px_rgba(83,78,222,0.26)]", className)}>
+      <span className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(40,180,234,0.95),transparent_34%),radial-gradient(circle_at_76%_78%,rgba(108,49,239,0.95),transparent_40%),linear-gradient(135deg,#28b4ea,#6c31ef)]" />
+      <LogoMark className="relative z-10 h-[68%] w-[68%] rounded-xl" />
+    </span>
+  );
+}
+
+function ContextMetric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  return (
+    <div className="rounded-[22px] border border-white/72 bg-white/68 p-3 shadow-[0_14px_34px_rgba(15,23,42,0.06)] backdrop-blur-2xl">
+      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-secondary-foreground/55">
+        <span className="grid h-7 w-7 place-items-center rounded-full bg-[linear-gradient(135deg,rgba(40,180,234,0.14),rgba(108,49,239,0.13))] text-primary">
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+        {label}
+      </div>
+      <p className="mt-2 truncate text-sm font-semibold text-foreground">{value}</p>
+    </div>
+  );
+}
+
 function TimelineCard({
   schedule,
   isConfirming,
@@ -81,19 +116,21 @@ function TimelineCard({
   const totalWindow = windowEnd - windowStart;
 
   return (
-    <div className="mt-3 overflow-hidden rounded-[22px] border border-white/80 bg-white/94 shadow-[0_12px_30px_rgba(83,78,222,0.08)] backdrop-blur-xl">
-      <div className="bg-[linear-gradient(135deg,rgba(24,190,239,0.1),rgba(109,40,240,0.06))] border-b border-cyan-100/60 px-4 py-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <Sparkles className="h-4 w-4 text-primary" />
-          Optimized plan
+    <div className="mt-4 overflow-hidden rounded-[26px] border border-white/80 bg-white/88 shadow-[0_24px_60px_rgba(83,78,222,0.12)] backdrop-blur-2xl">
+      <div className="border-b border-white/70 bg-[linear-gradient(135deg,rgba(40,180,234,0.16),rgba(108,49,239,0.12),rgba(255,255,255,0.72))] px-4 py-3.5">
+        <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-white/80 text-primary shadow-sm">
+            <Sparkles className="h-4 w-4" />
+          </span>
+          Optimized timeline
         </div>
         <p className="mt-0.5 text-xs text-secondary-foreground">
-          {schedule.window.start} — {schedule.window.end} · {schedule.tasks.length} task{schedule.tasks.length !== 1 ? "s" : ""}
+          {formatClock(schedule.window.start)} to {formatClock(schedule.window.end)} · {schedule.tasks.length} task{schedule.tasks.length !== 1 ? "s" : ""}
         </p>
       </div>
 
-      <div className="px-4 py-3">
-        <div className="relative h-8 w-full overflow-hidden rounded-full border border-border/50 bg-muted/60">
+      <div className="px-4 py-3.5">
+        <div className="relative h-9 w-full overflow-hidden rounded-full border border-white/70 bg-slate-950/[0.04] shadow-inner">
           {dayMinutes.map((task, index) => {
             const left = ((task.startM - windowStart) / totalWindow) * 100;
             const width = (task.durationM / totalWindow) * 100;
@@ -101,7 +138,7 @@ function TimelineCard({
               <div
                 key={task.title}
                 className={cn(
-                  "absolute top-0 h-full rounded-full bg-gradient-to-r transition-all",
+                  "absolute top-0 h-full rounded-full bg-gradient-to-r shadow-[0_10px_26px_rgba(83,78,222,0.2)] transition-all",
                   TASK_COLORS[index % TASK_COLORS.length],
                 )}
                 style={{
@@ -113,17 +150,17 @@ function TimelineCard({
             );
           })}
         </div>
-        <div className="mt-1 flex justify-between px-0.5 text-[10px] font-medium text-secondary-foreground/50">
-          <span>{schedule.window.start}</span>
-          <span>{schedule.window.end}</span>
+        <div className="mt-1.5 flex justify-between px-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-secondary-foreground/45">
+          <span>{formatClock(schedule.window.start)}</span>
+          <span>{formatClock(schedule.window.end)}</span>
         </div>
       </div>
 
-      <div className="space-y-1 px-4 pb-3">
+      <div className="space-y-2 px-4 pb-4">
         {dayMinutes.map((task, index) => (
           <div
             key={task.title}
-            className="flex items-center gap-3 rounded-[14px] border border-border/60 bg-muted/30 px-3 py-2 transition hover:bg-muted/60"
+            className="flex items-center gap-3 rounded-[18px] border border-white/70 bg-white/72 px-3 py-2.5 shadow-[0_10px_26px_rgba(15,23,42,0.045)] transition hover:bg-white/92"
           >
             <span
               className={cn(
@@ -132,7 +169,7 @@ function TimelineCard({
               )}
             />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-foreground">{task.title}</p>
+              <p className="text-sm font-semibold text-foreground">{task.title}</p>
               <p className="text-xs text-secondary-foreground/70">{task.durationM} min</p>
             </div>
             <div className="shrink-0 text-right">
@@ -143,7 +180,7 @@ function TimelineCard({
         ))}
       </div>
 
-      <div className="border-t border-border/50 px-4 py-3">
+      <div className="border-t border-white/70 bg-white/58 px-4 py-3.5">
         <button
           type="button"
           onClick={onConfirm}
@@ -250,8 +287,7 @@ export function SchedulerChat({
             id: crypto.randomUUID(),
             role: "assistant",
             content:
-              "Add a time window and durations. Example:\n\n" +
-              "> *From 9 AM to 5 PM: calculus 2h, gym 1h, lunch 1h, review notes 45m*",
+              "Add a time window and durations so I can build the plan. Example:\n\nFrom 9 AM to 5 PM: calculus 2h, gym 1h, lunch 1h, review notes 45m",
           },
         ]);
         setIsPlanning(false);
@@ -285,7 +321,7 @@ export function SchedulerChat({
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: `Drafted a productive plan for **${planInfo.startTime} — ${planInfo.endTime}**.\n\n> ${summary}`,
+          content: `Drafted a productive plan for ${formatClock(planInfo.startTime)} to ${formatClock(planInfo.endTime)}.\n\n${summary}`,
           schedule: {
             tasks: data.tasks,
             date: snapshot.taskDate,
@@ -333,7 +369,7 @@ export function SchedulerChat({
         {
           id: crypto.randomUUID(),
           role: "assistant",
-            content: `Created ${result.created.length} task${result.created.length !== 1 ? "s" : ""}.${result.errors.length > 0 ? `\n${result.errors.length} failed.` : ""}`,
+          content: `Created ${result.created.length} task${result.created.length !== 1 ? "s" : ""}.${result.errors.length > 0 ? `\n${result.errors.length} failed.` : ""}`,
         },
       ]);
 
@@ -358,167 +394,203 @@ export function SchedulerChat({
   }
 
   const isBusy = isPlanning || isConfirming;
+  const planDateLabel = formatDateLabel(snapshot.taskDate);
+  const completedTasks = snapshot.summary.completedTasks;
+  const totalTasks = snapshot.summary.totalTasks;
+  const remainingTasks = Math.max(totalTasks - completedTasks, 0);
 
   return (
-    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      {/* ── Header ── */}
-      <div className="flex items-center gap-3 border-b border-white/70 bg-white/78 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
-        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-gradient shadow-[0_8px_18px_rgba(83,78,222,0.18)]">
-          <Sparkles className="h-4 w-4 text-white" />
-        </span>
+    <section className="glass-panel relative flex h-full min-h-0 flex-1 flex-col overflow-hidden border-white/80 bg-white/72 lg:h-[calc(100dvh-13rem)] lg:min-h-[640px]">
+      <div className="pointer-events-none absolute -left-20 top-[-8rem] h-80 w-80 rounded-full bg-[#28b4ea]/18 blur-[95px]" />
+      <div className="pointer-events-none absolute -right-24 bottom-[-8rem] h-96 w-96 rounded-full bg-[#6c31ef]/16 blur-[110px]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-[linear-gradient(90deg,rgba(66,133,244,0.08),rgba(171,71,188,0.08),rgba(40,180,234,0.08))]" />
+
+      <div className="relative z-10 flex flex-wrap items-center gap-3 border-b border-white/70 bg-white/58 px-4 py-3 backdrop-blur-2xl sm:px-5 lg:px-6">
+        <AssistantOrb className="h-11 w-11 rounded-[18px]" />
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-sm font-bold tracking-tight text-foreground">DayStack AI</h2>
-          <p className="truncate text-[11px] text-secondary-foreground/60">Planning {formatDateLabel(snapshot.taskDate)}</p>
-        </div>
-        {snapshot.summary.totalTasks > 0 && (
-          <div className="shrink-0 rounded-full border border-border/70 bg-white/80 px-3 py-1 text-[11px] font-semibold text-secondary-foreground shadow-sm">
-            {snapshot.summary.completedTasks}/{snapshot.summary.totalTasks}
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-display text-lg font-bold tracking-[-0.05em] text-foreground sm:text-xl">DayStack AI</h2>
+            <span className="rounded-full border border-violet-200/70 bg-violet-50/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-violet-700">
+              Planner
+            </span>
           </div>
-        )}
+          <p className="truncate text-xs font-medium text-secondary-foreground/68 sm:text-sm">Planning {planDateLabel}</p>
+        </div>
+        <div className="hidden items-center gap-2 sm:flex">
+          <span className="rounded-full border border-white/70 bg-white/72 px-3 py-1.5 text-xs font-bold text-secondary-foreground shadow-sm">
+            {totalTasks > 0 ? `${completedTasks}/${totalTasks} done` : "No blocks yet"}
+          </span>
+          <span className="rounded-full border border-emerald-200/70 bg-emerald-50/86 px-3 py-1.5 text-xs font-bold text-emerald-700">
+            Best-time scheduling
+          </span>
+        </div>
       </div>
 
-      {/* ── Chat area ── */}
-      <div ref={chatRef} className="soft-scrollbar flex-1 overflow-y-auto">
-        {!hasConversation ? (
-          /* ── Welcome screen (like Claude/Gemini) ── */
-          <div className="flex min-h-full flex-col items-center justify-center px-4 pb-4 pt-6 sm:px-6">
-            <div className="mx-auto flex w-full max-w-lg flex-col items-center text-center">
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-gradient shadow-[0_14px_28px_rgba(83,78,222,0.22)] ring-1 ring-white/20">
-                <Sparkles className="h-6 w-6 text-white" />
-              </span>
-              <h1 className="mt-4 font-display text-xl font-bold tracking-tight text-foreground">
-                Build a better day
-              </h1>
-              <p className="mt-1.5 max-w-sm text-sm leading-6 text-secondary-foreground">
-                Add your window and tasks. DayStack AI will place the work where it fits best.
-              </p>
-
-              <div className="mt-6 w-full space-y-2 text-left">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary-foreground/50">
-                  Examples
-                </p>
-                {QUICK_PROMPTS.slice(0, 2).map((prompt) => (
-                  <button
-                    key={prompt}
-                    type="button"
-                    disabled={isBusy}
-                    onClick={() => void handleSubmit(prompt)}
-                    className="w-full rounded-[16px] border border-border/70 bg-white/92 px-4 py-3 text-left text-sm leading-5 text-foreground shadow-[0_4px_12px_rgba(15,23,42,0.04)] transition-all hover:border-primary/25 hover:bg-white hover:shadow-[0_8px_18px_rgba(83,78,222,0.08)] disabled:opacity-60"
-                  >
-                    <p className="line-clamp-2">{prompt}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* ── Messages ── */
-          <div className="mx-auto w-full max-w-2xl space-y-5 px-3 py-4 sm:px-6">
-            {messages.map((msg) => (
-              <div key={msg.id} className="fade-in-up">
-                {msg.role === "user" ? (
-                  <div className="flex justify-end">
-                    <div className="max-w-[min(85%,36rem)] rounded-[22px] rounded-br-md bg-brand-gradient px-4 py-3 text-[15px] leading-6 text-white shadow-[0_14px_28px_rgba(83,78,222,0.22)]">
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
-                    </div>
+      <div className="relative z-10 grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="flex min-h-0 flex-col lg:border-r lg:border-white/70">
+          <div ref={chatRef} className="soft-scrollbar min-h-0 flex-1 overflow-y-auto">
+            {!hasConversation ? (
+              <div className="flex min-h-full items-center justify-center px-4 py-7 sm:px-6 lg:px-10">
+                <div className="mx-auto w-full max-w-3xl text-center">
+                  <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/78 bg-white/66 px-3 py-1.5 text-xs font-bold text-secondary-foreground shadow-[0_16px_42px_rgba(15,23,42,0.06)] backdrop-blur-2xl">
+                    <WandSparkles className="h-4 w-4 text-primary" />
+                    Gemini-style planning, built for your calendar
                   </div>
-                ) : (
-                  <div className="flex items-start gap-2.5 sm:gap-3">
-                    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-gradient shadow-[0_10px_20px_rgba(83,78,222,0.18)]">
-                      <LogoMark className="h-5 w-5 rounded-lg" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1.5 flex items-center gap-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-secondary-foreground/60">
-                          DayStack AI
-                        </p>
-                        {msg.schedule ? (
-                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
-                            Ready
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="max-w-[min(100%,44rem)] rounded-[22px] rounded-tl-md border border-white/80 bg-white/94 px-4 py-3.5 text-[15px] leading-7 text-foreground shadow-[0_12px_30px_rgba(83,78,222,0.08)] backdrop-blur-xl">
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
-                        {msg.schedule ? (
-                          <TimelineCard
-                            schedule={msg.schedule}
-                            isConfirming={isConfirming}
-                            onConfirm={() => handleConfirmSchedule(msg.schedule!)}
-                          />
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  <h1 className="mx-auto mt-5 max-w-2xl font-display text-[2.25rem] font-bold leading-[0.98] tracking-[-0.075em] text-foreground sm:text-[3.4rem] lg:text-[4rem]">
+                    What should we plan today?
+                  </h1>
+                  <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-secondary-foreground sm:text-base">
+                    Give DayStack AI a time window and tasks with durations. It places deep work, admin, meals, meetings, and workouts around natural energy rhythms.
+                  </p>
 
-            {/* Typing */}
-            {isPlanning && (
-              <div className="flex items-start gap-3 fade-in-up">
-                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-gradient shadow-[0_4px_12px_rgba(99,102,241,0.35)]">
-                  <LogoMark className="h-5 w-5 rounded-lg" />
-                </span>
-                <div className="rounded-[20px] rounded-tl-[6px] border border-border/60 bg-white px-4 py-3 shadow-[0_4px_16px_rgba(15,23,42,0.06)]">
-                  <div className="flex items-center gap-1 text-secondary-foreground/60">
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-current [animation-delay:-0.3s]" />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-current [animation-delay:-0.15s]" />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-current" />
+                  <div className="mt-7 grid gap-3 text-left sm:grid-cols-3">
+                    {QUICK_PROMPTS.map((prompt) => (
+                      <button
+                        key={prompt.title}
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => void handleSubmit(prompt.prompt)}
+                        className="group rounded-[24px] border border-white/74 bg-white/64 p-4 text-left shadow-[0_18px_50px_rgba(15,23,42,0.07)] backdrop-blur-2xl transition-all hover:-translate-y-1 hover:border-primary/24 hover:bg-white/86 hover:shadow-[0_24px_60px_rgba(83,78,222,0.13)] disabled:translate-y-0 disabled:opacity-60"
+                      >
+                        <span className="mb-4 grid h-9 w-9 place-items-center rounded-2xl bg-[linear-gradient(135deg,rgba(40,180,234,0.16),rgba(108,49,239,0.16))] text-primary transition group-hover:scale-105">
+                          <Sparkles className="h-4 w-4" />
+                        </span>
+                        <p className="text-sm font-bold text-foreground">{prompt.title}</p>
+                        <p className="mt-1 text-xs leading-5 text-secondary-foreground/72">{prompt.description}</p>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
+            ) : (
+              <div className="mx-auto w-full max-w-3xl space-y-6 px-3 py-5 sm:px-6 lg:px-8">
+                {messages.map((msg) => (
+                  <div key={msg.id} className="fade-in-up">
+                    {msg.role === "user" ? (
+                      <div className="flex justify-end">
+                        <div className="max-w-[min(88%,38rem)] rounded-[28px] rounded-br-[10px] bg-[#111827] px-4 py-3 text-[15px] leading-6 text-white shadow-[0_18px_42px_rgba(17,24,39,0.18)] sm:px-5">
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-2.5 sm:gap-3">
+                        <AssistantOrb className="mt-0.5 h-9 w-9 rounded-2xl" />
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2 flex items-center gap-2">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-secondary-foreground/58">DayStack AI</p>
+                            {msg.schedule ? (
+                              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                Ready to create
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="max-w-[min(100%,46rem)] rounded-[28px] rounded-tl-[10px] border border-white/80 bg-white/78 px-4 py-3.5 text-[15px] leading-7 text-foreground shadow-[0_18px_50px_rgba(83,78,222,0.1)] backdrop-blur-2xl sm:px-5">
+                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                            {msg.schedule ? (
+                              <TimelineCard
+                                schedule={msg.schedule}
+                                isConfirming={isConfirming}
+                                onConfirm={() => handleConfirmSchedule(msg.schedule!)}
+                              />
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {isPlanning ? (
+                  <div className="flex items-start gap-3 fade-in-up">
+                    <AssistantOrb className="h-9 w-9 rounded-2xl" />
+                    <div className="rounded-[24px] rounded-tl-[8px] border border-white/80 bg-white/78 px-4 py-3 shadow-[0_18px_42px_rgba(83,78,222,0.1)] backdrop-blur-2xl">
+                      <div className="flex items-center gap-3 text-sm font-semibold text-secondary-foreground/72">
+                        <span>Finding the best times</span>
+                        <span className="flex items-center gap-1 text-primary">
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.3s]" />
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.15s]" />
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="h-4" />
+              </div>
             )}
-
-            <div className="h-4" />
-          </div>
-        )}
-      </div>
-
-      {/* ── Composer ── */}
-      <div className="border-t border-white/70 bg-white/82 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-10px_28px_rgba(83,78,222,0.06)] backdrop-blur-xl sm:px-6 lg:pb-3">
-        <div className="mx-auto w-full max-w-2xl">
-          <div
-            className={cn(
-              "flex items-end gap-2.5 rounded-[24px] border bg-white/94 px-3.5 py-2.5 shadow-[0_12px_28px_rgba(83,78,222,0.09)] backdrop-blur-xl transition-all",
-              isBusy
-                ? "border-border/50 opacity-80"
-                : "border-border/70 focus-within:border-violet-300 focus-within:shadow-[0_4px_20px_rgba(99,102,241,0.12)]",
-            )}
-          >
-            <textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-              placeholder={hasConversation ? "Ask for changes..." : "From 9 to 5: calculus 2h, gym 1h, lunch 1h..."}
-              disabled={isBusy}
-              className="max-h-40 min-h-0 flex-1 resize-none border-0 bg-transparent py-1.5 text-[16px] leading-6 text-foreground outline-none placeholder:text-secondary-foreground/50 disabled:opacity-60"
-            />
-            <button
-              type="button"
-              aria-label="Send"
-              disabled={!draft.trim() || isBusy}
-              onClick={() => void handleSubmit(draft)}
-              className={cn(
-                "mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all",
-                draft.trim() && !isBusy
-                  ? "bg-brand-gradient text-white shadow-[0_12px_24px_rgba(83,78,222,0.22)] hover:scale-105 active:scale-95"
-                  : "cursor-not-allowed bg-muted text-secondary-foreground/40",
-              )}
-            >
-              {isPlanning ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowUp className="h-4 w-4" />
-              )}
-            </button>
           </div>
 
-          <p className="mt-2 text-center text-[11px] text-secondary-foreground/45">
-             {hasConversation ? "Ask for changes or start over" : "Include durations: 30m, 1h, 90m"}
-          </p>
+          <div className="border-t border-white/70 bg-white/64 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-18px_50px_rgba(83,78,222,0.08)] backdrop-blur-2xl sm:px-6 lg:pb-4">
+            <div className="mx-auto w-full max-w-3xl">
+              <div
+                className={cn(
+                  "rounded-[30px] border bg-white/86 p-2.5 shadow-[0_20px_52px_rgba(83,78,222,0.12)] backdrop-blur-2xl transition-all",
+                  isBusy
+                    ? "border-white/60 opacity-80"
+                    : "border-white/76 focus-within:border-violet-300/90 focus-within:bg-white/94 focus-within:shadow-[0_24px_60px_rgba(83,78,222,0.18)]",
+                )}
+              >
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                  placeholder={hasConversation ? "Ask DayStack AI to adjust the plan..." : "From 9 to 5: calculus 2h, gym 1h, lunch 1h..."}
+                  disabled={isBusy}
+                  className="max-h-40 min-h-[2.75rem] w-full resize-none border-0 bg-transparent px-2 py-2 text-[16px] leading-6 text-foreground outline-none placeholder:text-secondary-foreground/45 disabled:opacity-60"
+                />
+                <div className="flex items-center justify-between gap-2 border-t border-border/50 px-1 pt-2">
+                  <div className="flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-secondary-foreground/48">
+                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                    <span className="truncate">Include durations like 30m, 1h, or 90m</span>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Send"
+                    disabled={!draft.trim() || isBusy}
+                    onClick={() => void handleSubmit(draft)}
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all",
+                      draft.trim() && !isBusy
+                        ? "bg-brand-gradient text-white shadow-[0_14px_30px_rgba(83,78,222,0.26)] hover:scale-105 active:scale-95"
+                        : "cursor-not-allowed bg-muted text-secondary-foreground/40",
+                    )}
+                  >
+                    {isPlanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto bg-white/38 p-4 backdrop-blur-2xl lg:flex">
+          <div className="rounded-[28px] border border-white/72 bg-white/58 p-4 shadow-[0_18px_46px_rgba(15,23,42,0.06)] backdrop-blur-2xl">
+            <div className="flex items-center gap-2">
+              <span className="grid h-9 w-9 place-items-center rounded-2xl bg-brand-gradient text-white shadow-[0_14px_28px_rgba(83,78,222,0.2)]">
+                <WandSparkles className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-sm font-bold text-foreground">Live planning context</p>
+                <p className="text-xs text-secondary-foreground/62">Uses your selected day</p>
+              </div>
+            </div>
+          </div>
+
+          <ContextMetric icon={CalendarDays} label="Date" value={planDateLabel} />
+          <ContextMetric icon={ListChecks} label="Today" value={totalTasks > 0 ? `${remainingTasks} left · ${completedTasks} done` : "Ready for blocks"} />
+          <ContextMetric icon={Clock3} label="Planner" value="Energy-aware timing" />
+
+          <div className="rounded-[28px] border border-white/72 bg-[#07111f] p-4 text-white shadow-[0_24px_60px_rgba(7,17,31,0.14)]">
+            <p className="text-sm font-bold">How DayStack AI thinks</p>
+            <div className="mt-3 space-y-2 text-xs leading-5 text-white/68">
+              <p>Deep work goes into high-focus windows.</p>
+              <p>Admin work moves away from peak energy.</p>
+              <p>Meals, meetings, and workouts keep human rhythm.</p>
+            </div>
+          </div>
+        </aside>
       </div>
     </section>
   );
