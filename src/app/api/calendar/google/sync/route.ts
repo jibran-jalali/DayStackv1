@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import { syncGoogleCalendarEventsToDayStack } from "@/lib/data/google-calendar";
 import { isValidDateKey } from "@/lib/daystack";
-import { requireSameOriginRequest } from "@/lib/security";
+import { requireSameOriginRequest, rateLimitRequest, rateLimiters } from "@/lib/security";
 
 const calendarSyncSchema = z.object({
   taskDate: z.string().trim().refine(isValidDateKey, "A valid sync date is required."),
@@ -15,6 +15,12 @@ export async function POST(request: Request) {
 
   if (sameOriginError) {
     return sameOriginError;
+  }
+
+  const rateLimitError = rateLimitRequest(request, rateLimiters.calendar);
+
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   const user = await getSessionUser();

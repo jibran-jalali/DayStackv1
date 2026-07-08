@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAutomationUser } from "@/lib/automation-auth";
 import { createTask, fetchTasksForDate } from "@/lib/data/daystack";
 import { isValidDateKey } from "@/lib/daystack";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 import { taskFormSchema } from "@/types/daystack";
 
 export async function GET(request: Request) {
@@ -41,6 +42,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.tasks);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const { response, user } = await requireAutomationUser(request);
 
   if (response || !user) {

@@ -83,6 +83,21 @@ export function rateLimitRequest(request: Request, options: RateLimitOptions) {
   );
 }
 
+export const rateLimiters = {
+  tasks: { keyPrefix: "tasks", limit: 30, windowMs: 10 * 60 * 1000 },
+  friends: { keyPrefix: "friends", limit: 10, windowMs: 10 * 60 * 1000 },
+  search: { keyPrefix: "search", limit: 20, windowMs: 10 * 60 * 1000 },
+  notifications: { keyPrefix: "notifications", limit: 30, windowMs: 10 * 60 * 1000 },
+  push: { keyPrefix: "push", limit: 10, windowMs: 10 * 60 * 1000 },
+  calendar: { keyPrefix: "calendar", limit: 10, windowMs: 10 * 60 * 1000 },
+  developer: { keyPrefix: "developer", limit: 5, windowMs: 10 * 60 * 1000 },
+  assistant: { keyPrefix: "assistant-exec", limit: 30, windowMs: 10 * 60 * 1000 },
+  recurring: { keyPrefix: "recurring", limit: 10, windowMs: 10 * 60 * 1000 },
+  reminders: { keyPrefix: "reminders", limit: 5, windowMs: 60 * 1000 },
+} as const;
+
+export type RateLimitKey = keyof typeof rateLimiters;
+
 export function requireSameOriginRequest(request: Request) {
   const origin = request.headers.get("origin");
 

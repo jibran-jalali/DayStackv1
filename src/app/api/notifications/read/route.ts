@@ -3,12 +3,19 @@ import { z } from "zod";
 
 import { getSessionUser } from "@/lib/auth";
 import { markTaskNotificationsRead } from "@/lib/data/notifications";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 
 const readSchema = z.object({
   notificationIds: z.array(z.string().uuid()).max(50),
 });
 
 export async function POST(request: Request) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.notifications);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getSessionUser } from "@/lib/auth";
 import { deleteTask, updateTask } from "@/lib/data/daystack";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 import { taskFormSchema } from "@/types/daystack";
 
 const propagationModeSchema = z.enum(["owner_only", "owner_and_accepted_copies"]);
@@ -12,6 +13,12 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ taskId: string }> },
 ) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.tasks);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {
@@ -89,6 +96,12 @@ export async function DELETE(
   request: Request,
   context: { params: Promise<{ taskId: string }> },
 ) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.tasks);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

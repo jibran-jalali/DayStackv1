@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getSessionUser } from "@/lib/auth";
 import { fetchNotificationPreferences, updateNotificationPreferences } from "@/lib/data/reminders";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 
 const preferenceUpdateSchema = z
   .object({
@@ -44,6 +45,12 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.notifications);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

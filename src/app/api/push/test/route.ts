@@ -3,8 +3,15 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { isWebPushConfigured } from "@/lib/env";
 import { sendUserPushNotification } from "@/lib/push/server";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 
-export async function POST() {
+export async function POST(request: Request) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.push);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

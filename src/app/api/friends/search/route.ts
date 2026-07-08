@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth";
 import { searchFriendCandidates } from "@/lib/data/friends";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 
 const MAX_RESULTS = 8;
 
 export async function GET(request: Request) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.search);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

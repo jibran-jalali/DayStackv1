@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getSessionUser } from "@/lib/auth";
 import { toggleTaskStatus } from "@/lib/data/daystack";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 
 const statusSchema = z.object({
   status: z.enum(["pending", "completed"]),
@@ -12,6 +13,12 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ taskId: string }> },
 ) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.tasks);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

@@ -2,11 +2,18 @@ import { NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth";
 import { executeAssistantAction } from "@/lib/assistant/server";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 import { assistantExecuteRequestSchema } from "@/types/assistant";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.assistant);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

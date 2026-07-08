@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getSessionUser } from "@/lib/auth";
 import { rescheduleTask } from "@/lib/data/daystack";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 
 const rescheduleSchema = z
   .object({
@@ -24,6 +25,12 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ taskId: string }> },
 ) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.tasks);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

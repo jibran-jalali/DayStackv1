@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getSessionUser } from "@/lib/auth";
 import { fetchFriendsSnapshot, sendFriendRequest } from "@/lib/data/friends";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 
 const friendRequestSchema = z.object({
   addresseeId: z.string().uuid(),
@@ -37,6 +38,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.friends);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

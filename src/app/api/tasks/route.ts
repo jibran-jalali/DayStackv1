@@ -2,9 +2,16 @@ import { NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth";
 import { createTask } from "@/lib/data/daystack";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 import { taskFormSchema } from "@/types/daystack";
 
 export async function POST(request: Request) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.tasks);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

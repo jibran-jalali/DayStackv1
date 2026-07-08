@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getSessionUser } from "@/lib/auth";
 import { createAutomationApiKey, listAutomationApiKeys } from "@/lib/data/automation";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 
 const createApiKeySchema = z.object({
   label: z
@@ -41,6 +42,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.developer);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

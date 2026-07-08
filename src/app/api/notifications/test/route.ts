@@ -4,8 +4,15 @@ import { getSessionUser } from "@/lib/auth";
 import { formatDateKey } from "@/lib/daystack";
 import { getAppBaseUrl } from "@/lib/env";
 import { isEmailServerConfigured, sendTaskReminderEmail } from "@/lib/email/server";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 
 export async function POST(request: Request) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.notifications);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   if (!isEmailServerConfigured()) {
     return NextResponse.json(
       {

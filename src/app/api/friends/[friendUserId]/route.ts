@@ -2,11 +2,18 @@ import { NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth";
 import { fetchFriendsSnapshot, removeFriend } from "@/lib/data/friends";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 
 export async function DELETE(
   _request: Request,
   context: { params: Promise<{ friendUserId: string }> },
 ) {
+  const rateLimitError = rateLimitRequest(_request, rateLimiters.friends);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

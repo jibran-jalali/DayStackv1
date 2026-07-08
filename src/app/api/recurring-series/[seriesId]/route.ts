@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getSessionUser } from "@/lib/auth";
 import { deleteRecurringSeries, updateRecurringSeries } from "@/lib/data/daystack";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 import { taskFormSchema } from "@/types/daystack";
 
 const deleteRecurringSeriesSchema = z.object({
@@ -13,6 +14,12 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ seriesId: string }> },
 ) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.recurring);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {
@@ -67,6 +74,12 @@ export async function DELETE(
   request: Request,
   context: { params: Promise<{ seriesId: string }> },
 ) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.recurring);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {

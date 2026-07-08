@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getSessionUser } from "@/lib/auth";
 import { deletePushSubscription, savePushSubscription } from "@/lib/data/push-subscriptions";
+import { rateLimitRequest, rateLimiters } from "@/lib/security";
 
 const pushSubscriptionSchema = z.object({
   endpoint: z.string().url(),
@@ -17,6 +18,12 @@ const deleteSubscriptionSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.push);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {
@@ -64,6 +71,12 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const rateLimitError = rateLimitRequest(request, rateLimiters.push);
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const user = await getSessionUser();
 
   if (!user) {
